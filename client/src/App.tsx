@@ -1,0 +1,85 @@
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+
+import Home from "@/pages/home";
+import Planner from "@/pages/planner";
+import Goals from "@/pages/goals";
+import SecondBrain from "@/pages/second-brain";
+import Languages from "@/pages/languages";
+import Disciplines from "@/pages/disciplines";
+import Body from "@/pages/body";
+import Worship from "@/pages/worship";
+import Finances from "@/pages/finances";
+import Masterpieces from "@/pages/masterpieces";
+import Possessions from "@/pages/possessions";
+import Studies from "@/pages/studies";
+import Business from "@/pages/business";
+import Work from "@/pages/work";
+import SocialPurpose from "@/pages/social-purpose";
+import UltimateTest from "@/pages/ultimate-test";
+import Settings from "@/pages/settings";
+import NotFound from "@/pages/not-found";
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/planner" component={Planner} />
+      <Route path="/goals" component={Goals} />
+      <Route path="/second-brain" component={SecondBrain} />
+      <Route path="/languages" component={Languages} />
+      <Route path="/disciplines" component={Disciplines} />
+      <Route path="/body" component={Body} />
+      <Route path="/body/:subpage" component={Body} />
+      <Route path="/worship" component={Worship} />
+      <Route path="/finances" component={Finances} />
+      <Route path="/masterpieces" component={Masterpieces} />
+      <Route path="/possessions" component={Possessions} />
+      <Route path="/studies" component={Studies} />
+      <Route path="/business" component={Business} />
+      <Route path="/work" component={Work} />
+      <Route path="/social-purpose" component={SocialPurpose} />
+      <Route path="/ultimate-test" component={UltimateTest} />
+      <Route path="/settings" component={Settings} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+export default function App() {
+  const style = {
+    "--sidebar-width": "20rem",
+    "--sidebar-width-icon": "4rem",
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <SidebarProvider style={style as React.CSSProperties}>
+          <div className="flex h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <header className="flex items-center justify-between p-4 border-b bg-background">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Dojo OS
+                  </span>
+                </div>
+              </header>
+              <main className="flex-1 overflow-y-auto bg-background">
+                <Router />
+              </main>
+            </div>
+          </div>
+        </SidebarProvider>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
