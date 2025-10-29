@@ -1,0 +1,144 @@
+Build an app called “Dojo OS” that replaces a complex Notion setup. Focus ONLY on behavior, data, and interactions (no styling requirements).
+
+TOP-LEVEL
+- Two top-level spaces on the same hierarchy:
+  1) Dojo = active workspace (both input and per-page live views)
+  2) Ultimate Test = summarized view (reads metrics from Dojo pages when needed)
+- All metrics in Dojo pages must be “readable” by other pages and by Ultimate Test (no hard coupling or forced alignments; pages expose metrics that others can read).
+
+NAV/STRUCTURE
+- Home routes to Dojo and Ultimate Test.
+- In Dojo, each module is its own page with its own behavior (pages can be similar but are not identical).
+- Any page can show the day’s time blocks that are assigned to it, and allow editing those blocks locally.
+
+DAILY HABIT / PLANNER (core behavior)
+- Single-day view (like Google Calendar’s 1-day). Navigate previous/next day; quick jump to date.
+- Presets system:
+  - User can create day-presets (a set of time blocks).
+  - Applying a preset fills the day’s blocks.
+  - Blocks can be created/edited on the fly without presets.
+- Each block:
+  - Can be associated with one or more pages/modules (e.g., Body→Workout, Languages→Japanese, Second Brain→History).
+  - Can carry a list of tasks/activities (optionally chosen from a preset specific to that page).
+  - Has an importance level 1–5. Daily completion score is weighted by importance (more important = larger weight).
+- Completion:
+  - Day completion = weighted sum of completed blocks (use importance weights).
+  - Show a historical daily-completion series (for the planner page only).
+- Visibility:
+  - A block associated with page X must also appear inside page X under a “linked time blocks” area, editable there.
+  - Checking off a block in either place keeps both in sync.
+
+GOALS (very important)
+- Goals are organized by Year → Quarter (Q1–Q4 within that year) → Month (optional but recommended).
+- A goal must be assigned to a specific Quarter within a Year (and can also be further assigned to a specific Month).
+- There are also goals “not yet scheduled” (no year/quarter yet).
+- Each goal has arbitrarily deep hierarchy: subgoals and sub-subgoals (at least 3 levels).
+- No manual percentage field. Progress derives from subgoal completion (and optionally linked tasks completed).
+- Priority: 3 visual levels only (affects ordering in views, not calculations).
+- Creation flow: “Add goal” opens a modal to define title, description, year+quarter (+ optional month), subgoals tree, and associations to any relevant pages (Body, Social Purpose, etc.). Example: goal “new best friend” associates to Social Purpose (and optionally a precise sub-area there). Example: “80kg” associates to Body.
+- Metrics:
+  - Show per-period counts (#goals scheduled in the period, #completed).
+  - A timeline/series that plots completion vs number of active goals at that moment (to see evolution).
+
+SECOND BRAIN (knowledge tracker, not an archive)
+- User defines their own knowledge themes (e.g., History, Science, Politics…).
+- For each theme:
+  - A timeless learn-plan (checklist of learning objectives; no dates required).
+  - Materials (flashcards, docs, links, videos).
+  - Two core metrics over time: COMPLETION (from learn-plan checks) and READINESS (ability to explain/use; updated by spaced repetition/flashcard outcomes).
+  - Show a line chart per theme with both series.
+- Global (Second Brain root):
+  - Aggregate COMPLETION and READINESS across all themes and show both as a line chart.
+- Planner integration:
+  - Time blocks linked to Second Brain appear here; user can pick a theme and an activity preset for that block; completing there syncs with Planner.
+
+LANGUAGES (similar to Second Brain behavior)
+- Per language: learn-plan (completion), materials, flashcards, spaced repetition.
+- Track COMPLETION and READINESS per language; aggregate at root.
+- Planner integration identical to Second Brain.
+
+DISCIPLINES / SKILLS (similar structure)
+- User defines skills (hard/soft). Each skill has a learn-plan (completion) and a readiness/test area (can reuse spaced repetition).
+- Track per-skill COMPLETION/READINESS; aggregate at root.
+- Planner integration identical.
+
+BODY (four subpages)
+- Subpages: Workout (Output), Intake (Nutrition), Sleep/Rest, Hygiene/Looks.
+- Planner integration:
+  - Blocks can target Body or a specific subpage (e.g., Workout block).
+  - Linked blocks appear in the corresponding subpage and are editable there.
+- TRACKING:
+  - Workout: exercises, sets/reps/weights; per-exercise history chart; workout completion per day.
+  - Intake: calories, protein, macros; daily totals.
+  - Sleep/Rest: planned vs actual sleep time; daily result.
+  - Hygiene/Looks: routines; daily completion (simple).
+- Derived metrics (optional): caloric deficit/surplus, projected weight change if enough inputs exist.
+
+WORSHIP (actions, not knowledge)
+- Track actionable worship items: Salah (5 daily + Sunnah/Nafl with degrees), Quran reading (pages/minutes), Dhikr, Du’a.
+- Salah is not forced into time-specific planner blocks; user can mark “on-time”, “within legal time but not exact”, “made up later”, or “missed”.
+- Line chart per day of counts/completion by category (obligatory vs voluntary).
+- Planner integration is optional (user can also add worship tasks as non-time-constrained items).
+
+FINANCES (keep it lean first)
+- Core: recurring payments + manual expenses/income.
+- Any transaction can be associated with any page (e.g., Languages subscription).
+- Optional “Groceries” can be associated with Body→Intake if the user wants.
+- Do not over-couple; other pages simply can read finance metrics when relevant.
+- Later feature (not now): bank sync.
+
+MASTERPIECES
+- Large projects the user cares about (e.g., write a book, craft a sword). Can be associated with Goals and/or other pages but can also stand alone.
+- Contains its own structure: sections, notes, attachments.
+- Time blocks associated with a masterpiece appear here.
+
+POSSESSIONS
+- Plain inventory (clothes, perfumes, houses, cars, value) and wishlist.
+- Clothing sub-area:
+  - Pick outfits for specific days; see usage stats (most worn, streaks).
+  - Track laundry status per item (clean/dirty/second-wear).
+  - Outfits selected for a day should also be visible from the Planner’s day view.
+
+STUDIES (formal/academic)
+- Courses → lessons → exercises/tests; grades tracking.
+- Flashcards allowed; completion/readiness per course (like knowledge pages but formal).
+- Planner integration per course.
+
+BUSINESS
+- Minimal now: list businesses, describe each; show linked time blocks; allow presets per business.
+- Tasks/projects can exist but keep it simple initially.
+- Finance linkage only by readable metrics (income/expenses associated when the user records them).
+
+WORK
+- For people with a job: hours, projects, tasks; link blocks, allow presets; can map project subtasks to blocks.
+
+SOCIAL PURPOSE
+- Sub-areas (example set): Helping, Networking & Community, Charity & Volunteering, Legacy & Leadership, Bringing Pride.
+- Blocks can be associated to any of these sub-areas.
+- Optionally maintain a simple people database to tag who you met/visited; allow per-person counts or recency.
+
+ULTIMATE TEST (summary, not input)
+- Six fixed categories: Worship, Beneficial to People, Physical Body, Character, Knowledge, Speech.
+- It DOES NOT pull direct “alignment” from Goals.
+- It reads whatever metrics are exposed from the relevant Dojo pages when needed (e.g., Body → Physical Body; Second Brain/Languages/Studies → Knowledge).
+- Exact formulas/weights are NOT fixed now; design the code so that categories can read a set of named metrics and display them. Keep this pluggable for later.
+
+CROSS-CUTTING RULES
+- “Associations” replace hard links: pages expose metrics; other pages may show those metrics if relevant. No tight coupling.
+- Time blocks can associate with multiple pages/subpages when it makes sense (e.g., a morning routine touching Hygiene, Workout, Second Brain).
+- Any page that shows linked blocks must let the user:
+  - choose a preset specific to that page,
+  - add/adjust tasks for that block,
+  - check them off; synced with the Planner.
+- Deactivate/activate pages (feature flags) so users can hide modules they don’t use.
+- Every page that tracks something important should have at least one simple chart over time (line chart or streak count), but do not enforce formulas now.
+
+DELIVERABLES
+- Implement routing and data models for all pages above.
+- Implement the Planner with presets, importance-weighted completion, and per-page visibility/edit of associated blocks.
+- Implement Goals with Year→Quarter (+Month), hierarchical subgoals, priority levels (3), “not yet scheduled” goals, and the evolution chart (completion vs active goals count).
+- Implement Second Brain/Languages/Disciplines as knowledge-like trackers with COMPLETION + READINESS per subpage and aggregate lines at root.
+- Implement Body with its four subpages and the described tracking.
+- Implement Worship actions tracking as described, including Salah outcomes.
+- Implement minimal Finances, Masterpieces, Possessions (with outfits/laundry), Studies, Business, Work, Social Purpose behaviors as specified.
+- Ultimate Test page reads exposed metrics (pluggable), but leave formula definitions for later.
