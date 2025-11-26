@@ -145,7 +145,8 @@ export const learnPlanItems = pgTable("learn_plan_items", {
 
 export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id").notNull(),
+  themeId: varchar("theme_id"), // For Second Brain / Languages
+  courseId: varchar("course_id"), // For Studies (courses)
   chapterId: varchar("chapter_id"), // Optional: link material to specific chapter
   type: text("type").notNull(), // "pdf", "video", "link", "file"
   title: text("title").notNull(),
@@ -156,7 +157,8 @@ export const materials = pgTable("materials", {
 
 export const flashcards = pgTable("flashcards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id").notNull(), // Knowledge theme (second_brain/language)
+  themeId: varchar("theme_id"), // For Second Brain / Languages
+  courseId: varchar("course_id"), // For Studies (courses)
   chapterId: varchar("chapter_id"), // Optional: link to specific chapter
   front: text("front").notNull(),
   back: text("back").notNull(),
@@ -204,6 +206,14 @@ export const materialsRelations = relations(materials, ({ one, many }) => ({
     fields: [materials.themeId],
     references: [knowledgeThemes.id],
   }),
+  course: one(courses, {
+    fields: [materials.courseId],
+    references: [courses.id],
+  }),
+  chapter: one(learnPlanItems, {
+    fields: [materials.chapterId],
+    references: [learnPlanItems.id],
+  }),
   flashcards: many(flashcards),
 }));
 
@@ -211,6 +221,10 @@ export const flashcardsRelations = relations(flashcards, ({ one }) => ({
   theme: one(knowledgeThemes, {
     fields: [flashcards.themeId],
     references: [knowledgeThemes.id],
+  }),
+  course: one(courses, {
+    fields: [flashcards.courseId],
+    references: [courses.id],
   }),
   chapter: one(learnPlanItems, {
     fields: [flashcards.chapterId],
