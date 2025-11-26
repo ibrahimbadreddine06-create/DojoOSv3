@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Languages as LanguagesIcon, BookOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TodaySessions } from "@/components/today-sessions";
 
 export default function Languages() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
@@ -126,13 +127,7 @@ export default function Languages() {
           </TabsContent>
 
           <TabsContent value="linked-blocks" className="space-y-4 mt-6">
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No linked time blocks</h3>
-              <p className="text-sm text-muted-foreground">
-                Time blocks associated with Languages will appear here
-              </p>
-            </div>
+            <TodaySessions module="languages" />
           </TabsContent>
         </Tabs>
       </div>

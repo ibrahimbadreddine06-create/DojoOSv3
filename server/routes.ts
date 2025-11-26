@@ -44,6 +44,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== TIME BLOCKS & PRESETS =====
+  // Note: /linked route must come BEFORE /:date to avoid matching "linked" as a date
+  app.get("/api/time-blocks/linked", async (req, res) => {
+    const { date, module, itemId } = req.query;
+    if (!date || !module) {
+      return res.status(400).json({ message: "date and module are required" });
+    }
+    const blocks = await storage.getLinkedTimeBlocks(
+      date as string, 
+      module as string, 
+      itemId as string | undefined
+    );
+    res.json(blocks);
+  });
+
   app.get("/api/time-blocks/:date", async (req, res) => {
     const blocks = await storage.getTimeBlocks(req.params.date);
     res.json(blocks);
@@ -51,6 +65,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/time-blocks", async (req, res) => {
     const data = insertTimeBlockSchema.parse(req.body);
+    
+    if (data.parentId) {
+      const parent = await storage.getTimeBlock(data.parentId);
+      if (!parent) {
+        return res.status(400).json({ message: "Parent block not found" });
+      }
+      if (parent.parentId) {
+        return res.status(400).json({ message: "Maximum nesting depth is 2 levels (block → sub-block)" });
+      }
+    }
+    
     const block = await storage.createTimeBlock(data);
     res.json(block);
   });

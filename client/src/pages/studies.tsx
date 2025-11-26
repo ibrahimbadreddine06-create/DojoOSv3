@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Plus, GraduationCap, BookOpen } from "lucide-react";
+import { TodaySessions } from "@/components/today-sessions";
 
 export default function Studies() {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
@@ -161,6 +162,8 @@ export default function Studies() {
             </CardContent>
           </Card>
         )}
+
+        <TodaySessions module="studies" />
       </div>
     </div>
   );

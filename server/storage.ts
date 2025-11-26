@@ -34,6 +34,8 @@ export interface IStorage {
 
   // Time Blocks & Presets
   getTimeBlocks(date: string): Promise<TimeBlock[]>;
+  getTimeBlock(id: string): Promise<TimeBlock | undefined>;
+  getLinkedTimeBlocks(date: string, module: string, itemId?: string): Promise<TimeBlock[]>;
   createTimeBlock(data: InsertTimeBlock): Promise<TimeBlock>;
   updateTimeBlock(id: string, data: Partial<InsertTimeBlock>): Promise<TimeBlock>;
   deleteTimeBlock(id: string): Promise<void>;
@@ -157,6 +159,22 @@ export class DatabaseStorage implements IStorage {
   // Time Blocks & Presets
   async getTimeBlocks(date: string): Promise<TimeBlock[]> {
     return await db.select().from(timeBlocks).where(eq(timeBlocks.date, date));
+  }
+
+  async getTimeBlock(id: string): Promise<TimeBlock | undefined> {
+    const [block] = await db.select().from(timeBlocks).where(eq(timeBlocks.id, id));
+    return block;
+  }
+
+  async getLinkedTimeBlocks(date: string, module: string, itemId?: string): Promise<TimeBlock[]> {
+    const conditions = [
+      eq(timeBlocks.date, date),
+      eq(timeBlocks.linkedModule, module)
+    ];
+    if (itemId) {
+      conditions.push(eq(timeBlocks.linkedItemId, itemId));
+    }
+    return await db.select().from(timeBlocks).where(and(...conditions));
   }
 
   async createTimeBlock(data: InsertTimeBlock): Promise<TimeBlock> {

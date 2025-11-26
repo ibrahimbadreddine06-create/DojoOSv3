@@ -45,16 +45,27 @@ export const moduleEnum = pgEnum("module", [
 // ===== TIME BLOCKS & PRESETS =====
 export const timeBlocks = pgTable("time_blocks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentId: varchar("parent_id"), // For sub-blocks (max 2 levels deep)
   date: date("date").notNull(),
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
   title: text("title").notNull(),
-  importance: integer("importance").notNull().default(3), // 1-5
   completed: boolean("completed").notNull().default(false),
-  associatedModules: text("associated_modules").array(), // Array of module names
-  tasks: jsonb("tasks").$type<{ id: string; text: string; completed: boolean }[]>().default([]),
+  linkedModule: text("linked_module"), // Which module this block is linked to (e.g., "languages", "second_brain")
+  linkedItemId: varchar("linked_item_id"), // ID of the linked theme/language/course
+  linkedSubItemId: varchar("linked_sub_item_id"), // ID of the linked sub-item (chapter/lesson)
+  tasks: jsonb("tasks").$type<{ id: string; text: string; completed: boolean; importance: number }[]>().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const timeBlocksRelations = relations(timeBlocks, ({ one, many }) => ({
+  parent: one(timeBlocks, {
+    fields: [timeBlocks.parentId],
+    references: [timeBlocks.id],
+    relationName: "subBlocks"
+  }),
+  subBlocks: many(timeBlocks, { relationName: "subBlocks" }),
+}));
 
 export const dayPresets = pgTable("day_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -63,8 +74,16 @@ export const dayPresets = pgTable("day_presets", {
     startTime: string;
     endTime: string;
     title: string;
-    importance: number;
-    associatedModules: string[];
+    linkedModule?: string;
+    linkedItemId?: string;
+    tasks?: { text: string; importance: number }[];
+    subBlocks?: {
+      startTime: string;
+      endTime: string;
+      title: string;
+      linkedSubItemId?: string;
+      tasks?: { text: string; importance: number }[];
+    }[];
   }[]>().notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });

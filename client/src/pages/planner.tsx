@@ -61,6 +61,7 @@ export default function Planner() {
   const [clickedTime, setClickedTime] = useState<{ start: string; end: string } | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [tempBlock, setTempBlock] = useState<{ id: string; startTime: string; endTime: string } | null>(null);
+  const [addSubBlockParentId, setAddSubBlockParentId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -244,9 +245,13 @@ export default function Planner() {
             <AddTimeBlockDialog 
               date={dateStr} 
               open={addDialogOpen}
-              onOpenChange={setAddDialogOpen}
+              onOpenChange={(open) => {
+                setAddDialogOpen(open);
+                if (!open) setAddSubBlockParentId(null);
+              }}
               defaultStartTime={clickedTime?.start}
               defaultEndTime={clickedTime?.end}
+              parentId={addSubBlockParentId || undefined}
             />
           </div>
         </div>
@@ -312,81 +317,151 @@ export default function Planner() {
                     <div className="animate-pulse text-muted-foreground">Loading...</div>
                   </div>
                 ) : blocks && blocks.length > 0 ? (
-                  blocks.map((originalBlock) => {
-                    const block = getDisplayBlock(originalBlock);
-                    const { top, height } = getBlockStyle(block);
-                    const isDragging = dragState?.blockId === block.id;
-                    
-                    return (
-                      <div
-                        key={block.id}
-                        data-block-id={block.id}
-                        className={`absolute left-12 right-4 rounded-md border transition-shadow ${
-                          isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
-                        } ${
-                          block.completed 
-                            ? "bg-primary/10 border-primary/30" 
-                            : "bg-card border-border"
-                        }`}
-                        style={{ top, height }}
-                        data-testid={`block-${block.id}`}
-                      >
-                        <div 
-                          className="absolute top-0 left-0 right-0 flex items-center justify-center h-5 cursor-grab active:cursor-grabbing"
-                          onMouseDown={(e) => handleDragStart(e, originalBlock, 'move')}
-                          data-testid={`block-drag-handle-${block.id}`}
+                  <>
+                    {/* Render parent blocks only (no parentId) */}
+                    {blocks.filter(b => !b.parentId).map((originalBlock) => {
+                      const block = getDisplayBlock(originalBlock);
+                      const { top, height } = getBlockStyle(block);
+                      const isDragging = dragState?.blockId === block.id;
+                      const subBlocks = blocks.filter(b => b.parentId === block.id);
+                      const isParent = subBlocks.length > 0;
+                      
+                      return (
+                        <div
+                          key={block.id}
+                          data-block-id={block.id}
+                          className={`absolute left-12 rounded-md border transition-shadow ${
+                            isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
+                          } ${
+                            block.completed 
+                              ? "bg-primary/10 border-primary/30" 
+                              : "bg-card border-border"
+                          }`}
+                          style={{ top, height, right: isParent ? '40%' : '4px' }}
+                          data-testid={`block-${block.id}`}
                         >
-                          <GripVertical className="w-4 h-4 text-muted-foreground/50" />
-                        </div>
-                        
-                        <div 
-                          className="p-2 pt-5 h-full flex flex-col overflow-hidden cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!dragState) {
-                              toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
-                            }
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className={`font-medium text-sm truncate ${
-                              block.completed ? "line-through text-muted-foreground" : ""
-                            }`}>
-                              {block.title}
-                            </span>
-                            {block.completed && (
-                              <Badge variant="outline" className="text-xs shrink-0">
-                                Done
-                              </Badge>
+                          <div 
+                            className="absolute top-0 left-0 right-0 flex items-center justify-between h-5 px-1"
+                          >
+                            <div 
+                              className="flex-1 flex justify-center cursor-grab active:cursor-grabbing"
+                              onMouseDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                              data-testid={`block-drag-handle-${block.id}`}
+                            >
+                              <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                            </div>
+                            {!block.parentId && height > 50 && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5 shrink-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAddSubBlockParentId(block.id);
+                                  setClickedTime({ start: block.startTime, end: block.endTime });
+                                  setAddDialogOpen(true);
+                                }}
+                                data-testid={`button-add-sub-block-${block.id}`}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {block.startTime} - {block.endTime}
-                          </span>
-                          {block.associatedModules && block.associatedModules.length > 0 && height > 60 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {block.associatedModules.slice(0, 2).map((module: string) => (
-                                <Badge key={module} variant="secondary" className="text-xs px-1 py-0">
-                                  {module}
+                          
+                          <div 
+                            className="p-2 pt-5 h-full flex flex-col overflow-hidden cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!dragState) {
+                                toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className={`font-medium text-sm truncate ${
+                                block.completed ? "line-through text-muted-foreground" : ""
+                              }`}>
+                                {block.title}
+                              </span>
+                              {block.completed && (
+                                <Badge variant="outline" className="text-xs shrink-0">
+                                  Done
                                 </Badge>
-                              ))}
+                              )}
                             </div>
-                          )}
-                          {block.tasks && block.tasks.length > 0 && height > 90 && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {block.tasks.filter((t: any) => t.completed).length}/{block.tasks.length} tasks
-                            </div>
-                          )}
-                        </div>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {block.startTime} - {block.endTime}
+                            </span>
+                            {block.linkedModule && height > 60 && (
+                              <Badge variant="secondary" className="text-xs px-1 py-0 mt-1">
+                                {block.linkedModule.replace('_', ' ')}
+                              </Badge>
+                            )}
+                            {block.tasks && block.tasks.length > 0 && height > 90 && (
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {block.tasks.filter((t: { completed: boolean }) => t.completed).length}/{block.tasks.length} tasks
+                              </div>
+                            )}
+                          </div>
 
-                        <div 
-                          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-b-md"
-                          onMouseDown={(e) => handleDragStart(e, originalBlock, 'resize')}
-                          data-testid={`block-resize-handle-${block.id}`}
-                        />
-                      </div>
-                    );
-                  })
+                          <div 
+                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-b-md"
+                            onMouseDown={(e) => handleDragStart(e, originalBlock, 'resize')}
+                            data-testid={`block-resize-handle-${block.id}`}
+                          />
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Render sub-blocks (with parentId) */}
+                    {blocks.filter(b => b.parentId).map((originalBlock) => {
+                      const block = getDisplayBlock(originalBlock);
+                      const { top, height } = getBlockStyle(block);
+                      const isDragging = dragState?.blockId === block.id;
+                      
+                      return (
+                        <div
+                          key={block.id}
+                          data-block-id={block.id}
+                          className={`absolute rounded-md border-l-4 border-l-primary/50 transition-shadow ${
+                            isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
+                          } ${
+                            block.completed 
+                              ? "bg-primary/5 border border-primary/20" 
+                              : "bg-muted/50 border border-border/50"
+                          }`}
+                          style={{ top, height, left: '60%', right: '4px' }}
+                          data-testid={`sub-block-${block.id}`}
+                        >
+                          <div 
+                            className="p-2 h-full flex flex-col overflow-hidden cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!dragState) {
+                                toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                              }
+                            }}
+                          >
+                            <div className="flex items-start justify-between gap-1">
+                              <span className={`font-medium text-xs truncate ${
+                                block.completed ? "line-through text-muted-foreground" : ""
+                              }`}>
+                                {block.title}
+                              </span>
+                              {block.completed && (
+                                <Badge variant="outline" className="text-xs shrink-0 px-1 py-0">
+                                  Done
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {block.startTime} - {block.endTime}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center">
