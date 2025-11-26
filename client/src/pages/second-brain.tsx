@@ -1,31 +1,19 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Brain, BookOpen, FileText, Link as LinkIcon, Video } from "lucide-react";
+import { Brain } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 
 export default function SecondBrain() {
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [, navigate] = useLocation();
 
   const { data: themes, isLoading } = useQuery<any[]>({
     queryKey: ["/api/knowledge-themes", "second_brain"],
   });
-
-  const { data: selectedThemeData } = useQuery({
-    queryKey: ["/api/knowledge-themes", selectedTheme],
-    enabled: !!selectedTheme,
-  });
-
-  const materialIcons = {
-    flashcard_deck: BookOpen,
-    doc: FileText,
-    link: LinkIcon,
-    video: Video,
-  };
 
   return (
     <div className="container mx-auto p-8 max-w-7xl">
@@ -77,7 +65,7 @@ export default function SecondBrain() {
                   <Card
                     key={theme.id}
                     className="hover-elevate active-elevate-2 cursor-pointer"
-                    onClick={() => setSelectedTheme(theme.id)}
+                    onClick={() => navigate(`/second-brain/${theme.id}`)}
                     data-testid={`card-theme-${theme.id}`}
                   >
                     <CardHeader className="pb-3">
@@ -140,20 +128,6 @@ export default function SecondBrain() {
             <TodaySessions module="second_brain" />
           </TabsContent>
         </Tabs>
-
-        {selectedTheme && selectedThemeData && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedThemeData.name} - Metrics Over Time</CardTitle>
-              <CardDescription>Completion and readiness trends</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                Per-theme chart will be implemented in integration phase
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

@@ -57,8 +57,10 @@ export interface IStorage {
   getKnowledgeTheme(id: string): Promise<KnowledgeTheme | undefined>;
   createKnowledgeTheme(data: InsertKnowledgeTheme): Promise<KnowledgeTheme>;
   getLearnPlanItems(themeId: string): Promise<LearnPlanItem[]>;
+  getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]>;
   createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem>;
   updateLearnPlanItem(id: string, data: Partial<InsertLearnPlanItem>): Promise<LearnPlanItem>;
+  deleteLearnPlanItem(id: string): Promise<void>;
   getMaterials(themeId: string): Promise<Material[]>;
   createMaterial(data: InsertMaterial): Promise<Material>;
   getFlashcards(materialId: string): Promise<Flashcard[]>;
@@ -104,10 +106,12 @@ export interface IStorage {
 
   // Studies
   getCourses(): Promise<Course[]>;
+  getCourse(id: string): Promise<Course | undefined>;
   createCourse(data: InsertCourse): Promise<Course>;
   updateCourse(id: string, data: Partial<InsertCourse>): Promise<Course>;
   getLessons(courseId: string): Promise<Lesson[]>;
   createLesson(data: InsertLesson): Promise<Lesson>;
+  updateLesson(id: string, data: Partial<InsertLesson>): Promise<Lesson>;
   getCourseExercises(lessonId: string): Promise<CourseExercise[]>;
   createCourseExercise(data: InsertCourseExercise): Promise<CourseExercise>;
 
@@ -258,6 +262,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId)).orderBy(asc(learnPlanItems.order));
   }
 
+  async getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]> {
+    return await db.select().from(learnPlanItems).where(eq(learnPlanItems.courseId, courseId)).orderBy(asc(learnPlanItems.order));
+  }
+
   async createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem> {
     const [item] = await db.insert(learnPlanItems).values(data).returning();
     return item;
@@ -266,6 +274,10 @@ export class DatabaseStorage implements IStorage {
   async updateLearnPlanItem(id: string, data: Partial<InsertLearnPlanItem>): Promise<LearnPlanItem> {
     const [item] = await db.update(learnPlanItems).set(data).where(eq(learnPlanItems.id, id)).returning();
     return item;
+  }
+
+  async deleteLearnPlanItem(id: string): Promise<void> {
+    await db.delete(learnPlanItems).where(eq(learnPlanItems.id, id));
   }
 
   async getMaterials(themeId: string): Promise<Material[]> {
@@ -422,6 +434,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(courses).orderBy(desc(courses.createdAt));
   }
 
+  async getCourse(id: string): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
+    return course;
+  }
+
   async createCourse(data: InsertCourse): Promise<Course> {
     const [course] = await db.insert(courses).values(data).returning();
     return course;
@@ -438,6 +455,11 @@ export class DatabaseStorage implements IStorage {
 
   async createLesson(data: InsertLesson): Promise<Lesson> {
     const [lesson] = await db.insert(lessons).values(data).returning();
+    return lesson;
+  }
+
+  async updateLesson(id: string, data: Partial<InsertLesson>): Promise<Lesson> {
+    const [lesson] = await db.update(lessons).set(data).where(eq(lessons.id, id)).returning();
     return lesson;
   }
 

@@ -161,6 +161,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(theme);
   });
 
+  // Route for course chapters must come first (more specific path)
+  app.get("/api/learn-plan-items/course/:courseId", isAuthenticated, async (req, res) => {
+    const items = await storage.getCourseLearnPlanItems(req.params.courseId);
+    res.json(items);
+  });
+
+  // Route for theme chapters (less specific, matches any :themeId)
   app.get("/api/learn-plan-items/:themeId", isAuthenticated, async (req, res) => {
     const items = await storage.getLearnPlanItems(req.params.themeId);
     res.json(items);
@@ -175,6 +182,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/learn-plan-items/:id", isAuthenticated, async (req, res) => {
     const item = await storage.updateLearnPlanItem(req.params.id, req.body);
     res.json(item);
+  });
+
+  app.delete("/api/learn-plan-items/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteLearnPlanItem(req.params.id);
+    res.json({ success: true });
   });
 
   app.get("/api/materials/:themeId", isAuthenticated, async (req, res) => {
@@ -364,6 +376,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(courses);
   });
 
+  app.get("/api/courses/:id", isAuthenticated, async (req, res) => {
+    const course = await storage.getCourse(req.params.id);
+    res.json(course);
+  });
+
   app.post("/api/courses", isAuthenticated, async (req, res) => {
     const data = insertCourseSchema.parse(req.body);
     const course = await storage.createCourse(data);
@@ -383,6 +400,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/lessons", isAuthenticated, async (req, res) => {
     const data = insertLessonSchema.parse(req.body);
     const lesson = await storage.createLesson(data);
+    res.json(lesson);
+  });
+
+  app.patch("/api/lessons/:id", isAuthenticated, async (req, res) => {
+    const lesson = await storage.updateLesson(req.params.id, req.body);
     res.json(lesson);
   });
 

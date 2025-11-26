@@ -132,17 +132,22 @@ export const knowledgeThemes = pgTable("knowledge_themes", {
 
 export const learnPlanItems = pgTable("learn_plan_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id").notNull(),
+  themeId: varchar("theme_id"), // For Second Brain / Languages
+  courseId: varchar("course_id"), // For Studies (courses)
+  parentId: varchar("parent_id"), // For nested chapters (infinite depth: 1.1 → 1.1.1 → 1.1.1.1)
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
+  importance: integer("importance").notNull().default(3), // 1-5 scale
   order: integer("order").notNull().default(0),
+  notes: text("notes"), // Rich text notes for the chapter
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   themeId: varchar("theme_id").notNull(),
-  type: text("type").notNull(), // "flashcard_deck", "doc", "link", "video"
+  chapterId: varchar("chapter_id"), // Optional: link material to specific chapter
+  type: text("type").notNull(), // "pdf", "video", "link", "file"
   title: text("title").notNull(),
   content: text("content"),
   url: text("url"),
@@ -151,13 +156,15 @@ export const materials = pgTable("materials", {
 
 export const flashcards = pgTable("flashcards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  materialId: varchar("material_id").notNull(),
+  themeId: varchar("theme_id").notNull(), // Knowledge theme (second_brain/language)
+  chapterId: varchar("chapter_id"), // Optional: link to specific chapter
   front: text("front").notNull(),
   back: text("back").notNull(),
   lastReviewed: timestamp("last_reviewed"),
   nextReview: timestamp("next_review"),
   ease: decimal("ease", { precision: 3, scale: 2 }).default("2.5"),
   interval: integer("interval").default(0),
+  mastery: integer("mastery").notNull().default(0), // 0=new, 1=bad, 2=okay, 3=good, 4=perfect
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -175,11 +182,21 @@ export const knowledgeThemesRelations = relations(knowledgeThemes, ({ many }) =>
   metrics: many(knowledgeMetrics),
 }));
 
-export const learnPlanItemsRelations = relations(learnPlanItems, ({ one }) => ({
+export const learnPlanItemsRelations = relations(learnPlanItems, ({ one, many }) => ({
   theme: one(knowledgeThemes, {
     fields: [learnPlanItems.themeId],
     references: [knowledgeThemes.id],
   }),
+  course: one(courses, {
+    fields: [learnPlanItems.courseId],
+    references: [courses.id],
+  }),
+  parent: one(learnPlanItems, {
+    fields: [learnPlanItems.parentId],
+    references: [learnPlanItems.id],
+    relationName: "subChapters"
+  }),
+  children: many(learnPlanItems, { relationName: "subChapters" }),
 }));
 
 export const materialsRelations = relations(materials, ({ one, many }) => ({
@@ -191,9 +208,13 @@ export const materialsRelations = relations(materials, ({ one, many }) => ({
 }));
 
 export const flashcardsRelations = relations(flashcards, ({ one }) => ({
-  material: one(materials, {
-    fields: [flashcards.materialId],
-    references: [materials.id],
+  theme: one(knowledgeThemes, {
+    fields: [flashcards.themeId],
+    references: [knowledgeThemes.id],
+  }),
+  chapter: one(learnPlanItems, {
+    fields: [flashcards.chapterId],
+    references: [learnPlanItems.id],
   }),
 }));
 

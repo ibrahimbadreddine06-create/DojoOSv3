@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,6 +14,8 @@ import Planner from "@/pages/planner";
 import Goals from "@/pages/goals";
 import SecondBrain from "@/pages/second-brain";
 import Languages from "@/pages/languages";
+import ThemeDetail from "@/pages/theme-detail";
+import CourseDetail from "@/pages/course-detail";
 import Disciplines from "@/pages/disciplines";
 import Body from "@/pages/body";
 import Worship from "@/pages/worship";
@@ -35,7 +37,9 @@ function AuthenticatedRouter() {
       <Route path="/planner" component={Planner} />
       <Route path="/goals" component={Goals} />
       <Route path="/second-brain" component={SecondBrain} />
+      <Route path="/second-brain/:id" component={ThemeDetail} />
       <Route path="/languages" component={Languages} />
+      <Route path="/languages/:id" component={ThemeDetail} />
       <Route path="/disciplines" component={Disciplines} />
       <Route path="/body" component={Body} />
       <Route path="/body/:subpage" component={Body} />
@@ -44,6 +48,7 @@ function AuthenticatedRouter() {
       <Route path="/masterpieces" component={Masterpieces} />
       <Route path="/possessions" component={Possessions} />
       <Route path="/studies" component={Studies} />
+      <Route path="/studies/:id" component={CourseDetail} />
       <Route path="/business" component={Business} />
       <Route path="/work" component={Work} />
       <Route path="/social-purpose" component={SocialPurpose} />
@@ -75,13 +80,18 @@ function LoadingScreen() {
 }
 
 function AuthenticatedApp() {
+  const [location] = useLocation();
+  
+  // Detect if we're on a sub-page (detail pages like /second-brain/:id, /languages/:id, /studies/:id)
+  const isSubPage = /^\/(second-brain|languages|studies)\/[^/]+$/.test(location);
+  
   const style = {
     "--sidebar-width": "20rem",
     "--sidebar-width-icon": "4rem",
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
+    <SidebarProvider style={style as React.CSSProperties} forceOverlay={isSubPage}>
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">

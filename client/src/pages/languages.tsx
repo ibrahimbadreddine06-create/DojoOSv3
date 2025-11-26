@@ -1,15 +1,15 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Languages as LanguagesIcon, BookOpen } from "lucide-react";
+import { Languages as LanguagesIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 
 export default function Languages() {
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [, navigate] = useLocation();
 
   const { data: languages, isLoading } = useQuery<any[]>({
     queryKey: ["/api/knowledge-themes", "language"],
@@ -65,7 +65,7 @@ export default function Languages() {
                   <Card
                     key={language.id}
                     className="hover-elevate active-elevate-2 cursor-pointer"
-                    onClick={() => setSelectedLanguage(language.id)}
+                    onClick={() => navigate(`/languages/${language.id}`)}
                     data-testid={`card-language-${language.id}`}
                   >
                     <CardHeader className="pb-3">

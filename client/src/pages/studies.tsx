@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, BookOpen, Archive, ArchiveRestore, Plus } from "lucide-react";
+import { GraduationCap, Archive, ArchiveRestore } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,7 +29,7 @@ interface Course {
 }
 
 export default function Studies() {
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [, navigate] = useLocation();
   const [selectedSemester, setSelectedSemester] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
   const { toast } = useToast();
@@ -36,11 +37,6 @@ export default function Studies() {
 
   const { data: courses, isLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
-  });
-
-  const { data: lessons } = useQuery<any[]>({
-    queryKey: ["/api/courses", selectedCourse, "lessons"],
-    enabled: !!selectedCourse,
   });
 
   const archiveMutation = useMutation({
@@ -125,7 +121,7 @@ export default function Studies() {
                 <Card
                   key={course.id}
                   className={`hover-elevate active-elevate-2 cursor-pointer ${course.archived ? 'opacity-60' : ''}`}
-                  onClick={() => setSelectedCourse(course.id)}
+                  onClick={() => navigate(`/studies/${course.id}`)}
                   data-testid={`card-course-${course.id}`}
                 >
                   <CardHeader>
@@ -206,63 +202,6 @@ export default function Studies() {
             </p>
             {!showArchived && <AddCourseDialog />}
           </div>
-        )}
-
-        {selectedCourse && lessons && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardTitle>Lessons</CardTitle>
-                  <CardDescription>Course curriculum and progress</CardDescription>
-                </div>
-                <Button size="sm" data-testid="button-add-lesson">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Lesson
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {lessons.length > 0 ? (
-                lessons.map((lesson, index) => (
-                  <Card key={lesson.id} data-testid={`card-lesson-${lesson.id}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <span className="text-sm font-mono text-muted-foreground">
-                            {String(index + 1).padStart(2, '0')}
-                          </span>
-                          <div className="space-y-1">
-                            <CardTitle className="text-base">{lesson.title}</CardTitle>
-                            {lesson.content && (
-                              <CardDescription className="text-sm line-clamp-1">
-                                {lesson.content}
-                              </CardDescription>
-                            )}
-                          </div>
-                        </div>
-                        <Badge variant={lesson.completed ? "default" : "outline"}>
-                          {lesson.completed ? "Completed" : "Not Started"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    {lesson.exercises && lesson.exercises.length > 0 && (
-                      <CardContent className="pt-0">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <BookOpen className="w-4 h-4" />
-                          <span>{lesson.exercises.length} exercises</span>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No lessons yet. Add lessons to build your course curriculum.
-                </p>
-              )}
-            </CardContent>
-          </Card>
         )}
 
         <TodaySessions module="studies" />
