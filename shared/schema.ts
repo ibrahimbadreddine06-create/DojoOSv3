@@ -360,6 +360,8 @@ export const courses = pgTable("courses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  semester: text("semester"), // e.g., "Fall 2024", "Spring 2025"
+  archived: boolean("archived").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

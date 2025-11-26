@@ -1,0 +1,128 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface AddThemeDialogProps {
+  type: "second_brain" | "language";
+  trigger?: React.ReactNode;
+}
+
+export function AddThemeDialog({ type, trigger }: AddThemeDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string; type: string }) => {
+      return await apiRequest("POST", "/api/knowledge-themes", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-themes", type] });
+      toast({ title: `${type === "language" ? "Language" : "Theme"} created successfully` });
+      setOpen(false);
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: `Failed to create ${type === "language" ? "language" : "theme"}`, variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast({ title: "Please enter a name", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate({
+      name: name.trim(),
+      description: description.trim() || undefined,
+      type,
+    });
+  };
+
+  const label = type === "language" ? "Language" : "Theme";
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (!o) resetForm();
+    }}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button size="sm" data-testid={`button-add-${type}`}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add {label}
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add {label}</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="theme-name">{label} Name</Label>
+            <Input
+              id="theme-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={type === "language" ? "e.g., Spanish, Japanese" : "e.g., Machine Learning, Philosophy"}
+              data-testid={`input-${type}-name`}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="theme-description">Description (optional)</Label>
+            <Textarea
+              id="theme-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={`Brief description of your ${label.toLowerCase()}`}
+              rows={3}
+              data-testid={`input-${type}-description`}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              data-testid={`button-cancel-${type}`}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending}
+              data-testid={`button-create-${type}`}
+            >
+              {createMutation.isPending ? "Creating..." : `Create ${label}`}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

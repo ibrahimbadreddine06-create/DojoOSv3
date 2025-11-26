@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Languages as LanguagesIcon, BookOpen } from "lucide-react";
+import { Languages as LanguagesIcon, BookOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
+import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 
 export default function Languages() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
@@ -27,10 +27,7 @@ export default function Languages() {
               Track language learning progress and fluency
             </p>
           </div>
-          <Button size="sm" data-testid="button-add-language">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Language
-          </Button>
+          <AddThemeDialog type="language" />
         </div>
 
         <Card>
@@ -119,9 +116,7 @@ export default function Languages() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Start tracking your language learning journey
                 </p>
-                <Button data-testid="button-create-language">
-                  Add Language
-                </Button>
+                <AddThemeDialog type="language" />
               </div>
             )}
           </TabsContent>

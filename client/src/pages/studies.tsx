@@ -1,16 +1,40 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, GraduationCap, BookOpen } from "lucide-react";
+import { GraduationCap, BookOpen, Archive, ArchiveRestore, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TodaySessions } from "@/components/today-sessions";
+import { AddCourseDialog } from "@/components/dialogs/add-course-dialog";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface Course {
+  id: string;
+  name: string;
+  description?: string;
+  semester?: string;
+  archived: boolean;
+  lessons?: { id: string; completed: boolean }[];
+  averageGrade?: string;
+}
 
 export default function Studies() {
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<string>("all");
+  const [showArchived, setShowArchived] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data: courses, isLoading } = useQuery<any[]>({
+  const { data: courses, isLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
 
@@ -18,6 +42,30 @@ export default function Studies() {
     queryKey: ["/api/courses", selectedCourse, "lessons"],
     enabled: !!selectedCourse,
   });
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      return await apiRequest("PATCH", `/api/courses/${id}`, { archived });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      toast({ title: "Course updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update course", variant: "destructive" });
+    },
+  });
+
+  const semesters = courses
+    ? Array.from(new Set(courses.filter(c => c.semester).map(c => c.semester!)))
+    : [];
+
+  const filteredCourses = courses?.filter(course => {
+    if (!showArchived && course.archived) return false;
+    if (showArchived && !course.archived) return false;
+    if (selectedSemester !== "all" && course.semester !== selectedSemester) return false;
+    return true;
+  }) || [];
 
   return (
     <div className="container mx-auto p-8 max-w-7xl">
@@ -31,9 +79,32 @@ export default function Studies() {
               Track courses, lessons, and academic performance
             </p>
           </div>
-          <Button size="sm" data-testid="button-add-course">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Course
+          <AddCourseDialog defaultSemester={selectedSemester !== "all" ? selectedSemester : undefined} />
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+            <SelectTrigger className="w-48" data-testid="select-semester-filter">
+              <SelectValue placeholder="All semesters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Semesters</SelectItem>
+              {semesters.map((sem) => (
+                <SelectItem key={sem} value={sem}>
+                  {sem}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Button
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+            data-testid="button-toggle-archived"
+          >
+            <Archive className="w-4 h-4 mr-2" />
+            {showArchived ? "Showing Archived" : "Show Archived"}
           </Button>
         </div>
 
@@ -43,31 +114,59 @@ export default function Studies() {
               <div key={i} className="h-40 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
-        ) : courses && courses.length > 0 ? (
+        ) : filteredCourses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {courses.map((course) => {
-              const completedLessons = course.lessons?.filter((l: any) => l.completed).length || 0;
+            {filteredCourses.map((course) => {
+              const completedLessons = course.lessons?.filter((l) => l.completed).length || 0;
               const totalLessons = course.lessons?.length || 0;
               const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
               return (
                 <Card
                   key={course.id}
-                  className="hover-elevate active-elevate-2 cursor-pointer"
+                  className={`hover-elevate active-elevate-2 cursor-pointer ${course.archived ? 'opacity-60' : ''}`}
                   onClick={() => setSelectedCourse(course.id)}
                   data-testid={`card-course-${course.id}`}
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1 flex-1">
-                        <CardTitle className="text-lg">{course.name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{course.name}</CardTitle>
+                          {course.archived && (
+                            <Badge variant="secondary" className="text-xs">Archived</Badge>
+                          )}
+                        </div>
                         {course.description && (
                           <CardDescription className="text-sm line-clamp-2">
                             {course.description}
                           </CardDescription>
                         )}
+                        {course.semester && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {course.semester}
+                          </Badge>
+                        )}
                       </div>
-                      <GraduationCap className="w-5 h-5 text-chart-1" />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            archiveMutation.mutate({ id: course.id, archived: !course.archived });
+                          }}
+                          data-testid={`button-archive-${course.id}`}
+                        >
+                          {course.archived ? (
+                            <ArchiveRestore className="w-4 h-4" />
+                          ) : (
+                            <Archive className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <GraduationCap className="w-5 h-5 text-chart-1" />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -96,20 +195,23 @@ export default function Studies() {
         ) : (
           <div className="text-center py-12">
             <GraduationCap className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No courses yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {showArchived ? "No archived courses" : "No courses yet"}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Start tracking your academic courses
+              {showArchived 
+                ? "Archive completed courses to see them here"
+                : "Start tracking your academic courses"
+              }
             </p>
-            <Button data-testid="button-create-course">
-              Add Course
-            </Button>
+            {!showArchived && <AddCourseDialog />}
           </div>
         )}
 
         {selectedCourse && lessons && (
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <CardTitle>Lessons</CardTitle>
                   <CardDescription>Course curriculum and progress</CardDescription>

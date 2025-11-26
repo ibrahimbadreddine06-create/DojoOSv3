@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Brain, BookOpen, FileText, Link as LinkIcon, Video } from "lucide-react";
+import { Brain, BookOpen, FileText, Link as LinkIcon, Video } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
+import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 
 export default function SecondBrain() {
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -39,10 +39,7 @@ export default function SecondBrain() {
               Track knowledge acquisition and readiness across themes
             </p>
           </div>
-          <Button size="sm" data-testid="button-add-theme">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Theme
-          </Button>
+          <AddThemeDialog type="second_brain" />
         </div>
 
         <Card>
@@ -134,9 +131,7 @@ export default function SecondBrain() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Create your first theme to start tracking knowledge
                 </p>
-                <Button data-testid="button-create-theme">
-                  Create Theme
-                </Button>
+                <AddThemeDialog type="second_brain" />
               </div>
             )}
           </TabsContent>

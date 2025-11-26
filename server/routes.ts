@@ -145,55 +145,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== KNOWLEDGE TRACKING =====
-  app.get("/api/knowledge-themes/:type", async (req, res) => {
+  app.get("/api/knowledge-themes/:type", isAuthenticated, async (req, res) => {
     const themes = await storage.getKnowledgeThemes(req.params.type);
     res.json(themes);
   });
 
-  app.get("/api/knowledge-themes/detail/:id", async (req, res) => {
+  app.get("/api/knowledge-themes/detail/:id", isAuthenticated, async (req, res) => {
     const theme = await storage.getKnowledgeTheme(req.params.id);
     res.json(theme);
   });
 
-  app.post("/api/knowledge-themes", async (req, res) => {
+  app.post("/api/knowledge-themes", isAuthenticated, async (req, res) => {
     const data = insertKnowledgeThemeSchema.parse(req.body);
     const theme = await storage.createKnowledgeTheme(data);
     res.json(theme);
   });
 
-  app.get("/api/learn-plan-items/:themeId", async (req, res) => {
+  app.get("/api/learn-plan-items/:themeId", isAuthenticated, async (req, res) => {
     const items = await storage.getLearnPlanItems(req.params.themeId);
     res.json(items);
   });
 
-  app.post("/api/learn-plan-items", async (req, res) => {
+  app.post("/api/learn-plan-items", isAuthenticated, async (req, res) => {
     const data = insertLearnPlanItemSchema.parse(req.body);
     const item = await storage.createLearnPlanItem(data);
     res.json(item);
   });
 
-  app.patch("/api/learn-plan-items/:id", async (req, res) => {
+  app.patch("/api/learn-plan-items/:id", isAuthenticated, async (req, res) => {
     const item = await storage.updateLearnPlanItem(req.params.id, req.body);
     res.json(item);
   });
 
-  app.get("/api/materials/:themeId", async (req, res) => {
+  app.get("/api/materials/:themeId", isAuthenticated, async (req, res) => {
     const materials = await storage.getMaterials(req.params.themeId);
     res.json(materials);
   });
 
-  app.post("/api/materials", async (req, res) => {
+  app.post("/api/materials", isAuthenticated, async (req, res) => {
     const data = insertMaterialSchema.parse(req.body);
     const material = await storage.createMaterial(data);
     res.json(material);
   });
 
-  app.get("/api/flashcards/:materialId", async (req, res) => {
+  app.get("/api/flashcards/:materialId", isAuthenticated, async (req, res) => {
     const flashcards = await storage.getFlashcards(req.params.materialId);
     res.json(flashcards);
   });
 
-  app.post("/api/flashcards", async (req, res) => {
+  app.post("/api/flashcards", isAuthenticated, async (req, res) => {
     const data = insertFlashcardSchema.parse(req.body);
     const flashcard = await storage.createFlashcard(data);
     res.json(flashcard);
@@ -359,34 +359,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== STUDIES =====
-  app.get("/api/courses", async (req, res) => {
+  app.get("/api/courses", isAuthenticated, async (req, res) => {
     const courses = await storage.getCourses();
     res.json(courses);
   });
 
-  app.post("/api/courses", async (req, res) => {
+  app.post("/api/courses", isAuthenticated, async (req, res) => {
     const data = insertCourseSchema.parse(req.body);
     const course = await storage.createCourse(data);
     res.json(course);
   });
 
-  app.get("/api/courses/:id/lessons", async (req, res) => {
+  app.patch("/api/courses/:id", isAuthenticated, async (req, res) => {
+    const course = await storage.updateCourse(req.params.id, req.body);
+    res.json(course);
+  });
+
+  app.get("/api/courses/:id/lessons", isAuthenticated, async (req, res) => {
     const lessons = await storage.getLessons(req.params.id);
     res.json(lessons);
   });
 
-  app.post("/api/lessons", async (req, res) => {
+  app.post("/api/lessons", isAuthenticated, async (req, res) => {
     const data = insertLessonSchema.parse(req.body);
     const lesson = await storage.createLesson(data);
     res.json(lesson);
   });
 
-  app.get("/api/lessons/:id/exercises", async (req, res) => {
+  app.get("/api/lessons/:id/exercises", isAuthenticated, async (req, res) => {
     const exercises = await storage.getCourseExercises(req.params.id);
     res.json(exercises);
   });
 
-  app.post("/api/course-exercises", async (req, res) => {
+  app.post("/api/course-exercises", isAuthenticated, async (req, res) => {
     const data = insertCourseExerciseSchema.parse(req.body);
     const exercise = await storage.createCourseExercise(data);
     res.json(exercise);
