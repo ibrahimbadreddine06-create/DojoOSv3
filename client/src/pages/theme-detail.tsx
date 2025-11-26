@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2, GripVertical } from "lucide-react";
+import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { TodaySessions } from "@/components/today-sessions";
+import { ChapterContentArea } from "@/components/chapter-content-area";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { KnowledgeTheme, LearnPlanItem } from "@shared/schema";
 
@@ -192,10 +193,7 @@ function AddChapterDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: { themeId: string; parentId?: string | null; title: string; importance: number }) => {
-      return apiRequest("/api/learn-plan-items", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", "/api/learn-plan-items", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
@@ -275,10 +273,7 @@ export default function ThemeDetail() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string; completed?: boolean; importance?: number; notes?: string }) => {
-      return apiRequest(`/api/learn-plan-items/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PATCH", `/api/learn-plan-items/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
@@ -287,9 +282,7 @@ export default function ThemeDetail() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/learn-plan-items/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/learn-plan-items/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
@@ -432,46 +425,14 @@ export default function ThemeDetail() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {selectedChapter ? (
             <div className="flex-1 p-6 overflow-y-auto">
-              <div className="max-w-3xl mx-auto space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold" data-testid="text-chapter-title">
-                      {selectedChapter.title}
-                    </h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        Importance: {selectedChapter.importance}/5
-                      </Badge>
-                      {selectedChapter.completed && (
-                        <Badge variant="secondary" className="text-xs">
-                          Completed
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Card className="p-4">
-                    <h3 className="font-medium text-sm mb-3">Materials</h3>
-                    <p className="text-sm text-muted-foreground text-center py-6">
-                      Materials will be added in Task 8
-                    </p>
-                  </Card>
-                  <Card className="p-4">
-                    <h3 className="font-medium text-sm mb-3">Flashcards</h3>
-                    <p className="text-sm text-muted-foreground text-center py-6">
-                      Flashcards will be added in Task 9
-                    </p>
-                  </Card>
-                </div>
-
-                <Card className="p-4">
-                  <h3 className="font-medium text-sm mb-3">Notes</h3>
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    Rich text editor will be added in Task 8
-                  </p>
-                </Card>
+              <div className="max-w-3xl mx-auto">
+                <ChapterContentArea 
+                  chapter={selectedChapter} 
+                  themeId={themeId}
+                  onNotesChange={() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
+                  }}
+                />
               </div>
             </div>
           ) : (

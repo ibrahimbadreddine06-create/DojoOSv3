@@ -189,6 +189,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // Materials routes - more specific routes first
+  app.get("/api/materials/chapter/:chapterId", isAuthenticated, async (req, res) => {
+    const materials = await storage.getMaterialsByChapter(req.params.chapterId);
+    res.json(materials);
+  });
+
+  app.get("/api/materials/course/:courseId", isAuthenticated, async (req, res) => {
+    const materials = await storage.getMaterialsByCourse(req.params.courseId);
+    res.json(materials);
+  });
+
   app.get("/api/materials/:themeId", isAuthenticated, async (req, res) => {
     const materials = await storage.getMaterials(req.params.themeId);
     res.json(materials);
@@ -200,8 +211,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(material);
   });
 
-  app.get("/api/flashcards/:materialId", isAuthenticated, async (req, res) => {
-    const flashcards = await storage.getFlashcards(req.params.materialId);
+  app.patch("/api/materials/:id", isAuthenticated, async (req, res) => {
+    const material = await storage.updateMaterial(req.params.id, req.body);
+    res.json(material);
+  });
+
+  app.delete("/api/materials/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteMaterial(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Flashcards routes - more specific routes first
+  app.get("/api/flashcards/chapter/:chapterId", isAuthenticated, async (req, res) => {
+    const flashcards = await storage.getFlashcardsByChapter(req.params.chapterId);
+    res.json(flashcards);
+  });
+
+  app.get("/api/flashcards/course/:courseId", isAuthenticated, async (req, res) => {
+    const flashcards = await storage.getFlashcardsByCourse(req.params.courseId);
+    res.json(flashcards);
+  });
+
+  app.get("/api/flashcards/theme/:themeId", isAuthenticated, async (req, res) => {
+    const flashcards = await storage.getFlashcardsByTheme(req.params.themeId);
     res.json(flashcards);
   });
 
@@ -209,6 +241,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = insertFlashcardSchema.parse(req.body);
     const flashcard = await storage.createFlashcard(data);
     res.json(flashcard);
+  });
+
+  app.patch("/api/flashcards/:id", isAuthenticated, async (req, res) => {
+    const flashcard = await storage.updateFlashcard(req.params.id, req.body);
+    res.json(flashcard);
+  });
+
+  app.delete("/api/flashcards/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteFlashcard(req.params.id);
+    res.json({ success: true });
   });
 
   // ===== BODY =====

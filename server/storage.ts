@@ -62,9 +62,17 @@ export interface IStorage {
   updateLearnPlanItem(id: string, data: Partial<InsertLearnPlanItem>): Promise<LearnPlanItem>;
   deleteLearnPlanItem(id: string): Promise<void>;
   getMaterials(themeId: string): Promise<Material[]>;
+  getMaterialsByCourse(courseId: string): Promise<Material[]>;
+  getMaterialsByChapter(chapterId: string): Promise<Material[]>;
   createMaterial(data: InsertMaterial): Promise<Material>;
-  getFlashcards(materialId: string): Promise<Flashcard[]>;
+  updateMaterial(id: string, data: Partial<InsertMaterial>): Promise<Material>;
+  deleteMaterial(id: string): Promise<void>;
+  getFlashcardsByTheme(themeId: string): Promise<Flashcard[]>;
+  getFlashcardsByCourse(courseId: string): Promise<Flashcard[]>;
+  getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]>;
   createFlashcard(data: InsertFlashcard): Promise<Flashcard>;
+  updateFlashcard(id: string, data: Partial<InsertFlashcard>): Promise<Flashcard>;
+  deleteFlashcard(id: string): Promise<void>;
 
   // Body
   getWorkouts(date: string): Promise<Workout[]>;
@@ -284,18 +292,52 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(materials).where(eq(materials.themeId, themeId));
   }
 
+  async getMaterialsByCourse(courseId: string): Promise<Material[]> {
+    return await db.select().from(materials).where(eq(materials.courseId, courseId));
+  }
+
+  async getMaterialsByChapter(chapterId: string): Promise<Material[]> {
+    return await db.select().from(materials).where(eq(materials.chapterId, chapterId));
+  }
+
   async createMaterial(data: InsertMaterial): Promise<Material> {
     const [material] = await db.insert(materials).values(data).returning();
     return material;
   }
 
-  async getFlashcards(materialId: string): Promise<Flashcard[]> {
-    return await db.select().from(flashcards).where(eq(flashcards.materialId, materialId));
+  async updateMaterial(id: string, data: Partial<InsertMaterial>): Promise<Material> {
+    const [material] = await db.update(materials).set(data).where(eq(materials.id, id)).returning();
+    return material;
+  }
+
+  async deleteMaterial(id: string): Promise<void> {
+    await db.delete(materials).where(eq(materials.id, id));
+  }
+
+  async getFlashcardsByTheme(themeId: string): Promise<Flashcard[]> {
+    return await db.select().from(flashcards).where(eq(flashcards.themeId, themeId));
+  }
+
+  async getFlashcardsByCourse(courseId: string): Promise<Flashcard[]> {
+    return await db.select().from(flashcards).where(eq(flashcards.courseId, courseId));
+  }
+
+  async getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]> {
+    return await db.select().from(flashcards).where(eq(flashcards.chapterId, chapterId));
   }
 
   async createFlashcard(data: InsertFlashcard): Promise<Flashcard> {
     const [flashcard] = await db.insert(flashcards).values(data).returning();
     return flashcard;
+  }
+
+  async updateFlashcard(id: string, data: Partial<InsertFlashcard>): Promise<Flashcard> {
+    const [flashcard] = await db.update(flashcards).set(data).where(eq(flashcards.id, id)).returning();
+    return flashcard;
+  }
+
+  async deleteFlashcard(id: string): Promise<void> {
+    await db.delete(flashcards).where(eq(flashcards.id, id));
   }
 
   // Body
