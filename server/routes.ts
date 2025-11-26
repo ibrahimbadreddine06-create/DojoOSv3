@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== TIME BLOCKS & PRESETS =====
   // Note: /linked route must come BEFORE /:date to avoid matching "linked" as a date
-  app.get("/api/time-blocks/linked", async (req, res) => {
+  app.get("/api/time-blocks/linked", isAuthenticated, async (req, res) => {
     const { date, module, itemId } = req.query;
     if (!date || !module) {
       return res.status(400).json({ message: "date and module are required" });
@@ -58,12 +58,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(blocks);
   });
 
-  app.get("/api/time-blocks/:date", async (req, res) => {
+  app.get("/api/time-blocks/:date", isAuthenticated, async (req, res) => {
     const blocks = await storage.getTimeBlocks(req.params.date);
     res.json(blocks);
   });
 
-  app.post("/api/time-blocks", async (req, res) => {
+  app.post("/api/time-blocks", isAuthenticated, async (req, res) => {
     const data = insertTimeBlockSchema.parse(req.body);
     
     if (data.parentId) {
@@ -80,33 +80,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(block);
   });
 
-  app.patch("/api/time-blocks/:id", async (req, res) => {
+  app.patch("/api/time-blocks/:id", isAuthenticated, async (req, res) => {
     const block = await storage.updateTimeBlock(req.params.id, req.body);
     res.json(block);
   });
 
-  app.delete("/api/time-blocks/:id", async (req, res) => {
+  app.delete("/api/time-blocks/:id", isAuthenticated, async (req, res) => {
     await storage.deleteTimeBlock(req.params.id);
     res.json({ success: true });
   });
 
-  app.get("/api/day-presets", async (req, res) => {
+  app.get("/api/day-presets", isAuthenticated, async (req, res) => {
     const presets = await storage.getDayPresets();
     res.json(presets);
   });
 
-  app.post("/api/day-presets", async (req, res) => {
+  app.post("/api/day-presets", isAuthenticated, async (req, res) => {
     const data = insertDayPresetSchema.parse(req.body);
     const preset = await storage.createDayPreset(data);
     res.json(preset);
   });
 
-  app.get("/api/activity-presets/:module", async (req, res) => {
+  app.delete("/api/day-presets/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteDayPreset(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/activity-presets/:module", isAuthenticated, async (req, res) => {
     const presets = await storage.getActivityPresets(req.params.module);
     res.json(presets);
   });
 
-  app.post("/api/activity-presets", async (req, res) => {
+  app.post("/api/activity-presets", isAuthenticated, async (req, res) => {
     const data = insertActivityPresetSchema.parse(req.body);
     const preset = await storage.createActivityPreset(data);
     res.json(preset);

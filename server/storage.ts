@@ -41,6 +41,7 @@ export interface IStorage {
   deleteTimeBlock(id: string): Promise<void>;
   getDayPresets(): Promise<DayPreset[]>;
   createDayPreset(data: InsertDayPreset): Promise<DayPreset>;
+  deleteDayPreset(id: string): Promise<void>;
   getActivityPresets(module: string): Promise<ActivityPreset[]>;
   createActivityPreset(data: InsertActivityPreset): Promise<ActivityPreset>;
 
@@ -198,6 +199,10 @@ export class DatabaseStorage implements IStorage {
   async createDayPreset(data: InsertDayPreset): Promise<DayPreset> {
     const [preset] = await db.insert(dayPresets).values(data).returning();
     return preset;
+  }
+
+  async deleteDayPreset(id: string): Promise<void> {
+    await db.delete(dayPresets).where(eq(dayPresets.id, id));
   }
 
   async getActivityPresets(module: string): Promise<ActivityPreset[]> {

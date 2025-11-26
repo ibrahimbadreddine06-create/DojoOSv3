@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play } from "lucide-react";
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
+import { CreatePresetDialog } from "@/components/dialogs/create-preset-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { TimeBlock } from "@shared/schema";
+import type { TimeBlock, DayPreset } from "@shared/schema";
 
 const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
 const HOUR_HEIGHT = 60;
@@ -73,6 +74,54 @@ export default function Planner() {
 
   const { data: dailyMetrics } = useQuery<{ plannerCompletion?: string }>({
     queryKey: ["/api/daily-metrics", dateStr],
+  });
+
+  const { data: presets, isLoading: presetsLoading } = useQuery<DayPreset[]>({
+    queryKey: ["/api/day-presets"],
+  });
+
+  const applyPresetMutation = useMutation({
+    mutationFn: async (preset: DayPreset) => {
+      const results = [];
+      for (const block of preset.blocks) {
+        const result = await apiRequest("POST", "/api/time-blocks", {
+          date: dateStr,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          title: block.title,
+          tasks: block.tasks?.map(t => ({
+            id: crypto.randomUUID(),
+            text: t.text,
+            importance: t.importance,
+            completed: false,
+          })) || [],
+          linkedModule: block.linkedModule,
+          linkedItemId: block.linkedItemId,
+        });
+        results.push(result);
+      }
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Preset applied successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to apply preset", variant: "destructive" });
+    },
+  });
+
+  const deletePresetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/day-presets/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/day-presets"] });
+      toast({ title: "Preset deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete preset", variant: "destructive" });
+    },
   });
 
   const toggleBlockMutation = useMutation({
@@ -478,16 +527,59 @@ export default function Planner() {
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-sm font-medium">Presets</CardTitle>
-                <Button variant="ghost" size="icon" className="h-6 w-6" data-testid="button-add-preset">
-                  <Plus className="w-4 h-4" />
-                </Button>
+                <CreatePresetDialog />
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-3">
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <p className="text-sm">No presets saved</p>
-                <p className="text-xs mt-1">Create a preset to quickly add common schedules</p>
-              </div>
+              {presetsLoading ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  Loading...
+                </div>
+              ) : presets && presets.length > 0 ? (
+                <div className="space-y-2">
+                  {presets.map((preset) => (
+                    <div
+                      key={preset.id}
+                      className="group border rounded-md p-2 bg-card hover-elevate"
+                      data-testid={`preset-${preset.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-sm truncate">{preset.name}</span>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => applyPresetMutation.mutate(preset)}
+                            disabled={applyPresetMutation.isPending}
+                            data-testid={`button-apply-preset-${preset.id}`}
+                          >
+                            <Play className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => deletePresetMutation.mutate(preset.id)}
+                            disabled={deletePresetMutation.isPending}
+                            data-testid={`button-delete-preset-${preset.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {preset.blocks.length} block{preset.blocks.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                  <p className="text-sm">No presets saved</p>
+                  <p className="text-xs mt-1">Create a preset to quickly add common schedules</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
