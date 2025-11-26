@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { LearningSession } from "@/components/learning-session";
 import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 interface ChapterContentAreaProps {
@@ -282,6 +283,7 @@ function AddFlashcardDialog({
 export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }: ChapterContentAreaProps) {
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
+  const [learningSessionOpen, setLearningSessionOpen] = useState(false);
   const [notes, setNotes] = useState(chapter.notes || "");
 
   const { data: materials = [], isLoading: materialsLoading } = useQuery<Material[]>({
@@ -445,7 +447,12 @@ export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }
             <div className="flex flex-col items-center gap-3">
               <FlashcardCircleChart flashcards={flashcards} />
               {flashcards.length > 0 && (
-                <Button size="sm" className="w-full" data-testid="button-start-learning">
+                <Button 
+                  size="sm" 
+                  className="w-full" 
+                  onClick={() => setLearningSessionOpen(true)}
+                  data-testid="button-start-learning"
+                >
                   <GraduationCap className="h-4 w-4 mr-2" />
                   Start Learning
                 </Button>
@@ -461,6 +468,15 @@ export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }
           )}
         </Card>
       </div>
+
+      <LearningSession
+        flashcards={flashcards}
+        chapterId={chapter.id}
+        themeId={themeId}
+        courseId={courseId}
+        open={learningSessionOpen}
+        onClose={() => setLearningSessionOpen(false)}
+      />
 
       <Card className="p-4">
         <h3 className="font-medium text-sm mb-3">Notes</h3>

@@ -244,7 +244,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.patch("/api/flashcards/:id", isAuthenticated, async (req, res) => {
-    const flashcard = await storage.updateFlashcard(req.params.id, req.body);
+    const data = { ...req.body };
+    if (data.lastReviewed && typeof data.lastReviewed === 'string') {
+      data.lastReviewed = new Date(data.lastReviewed);
+    }
+    if (data.nextReview && typeof data.nextReview === 'string') {
+      data.nextReview = new Date(data.nextReview);
+    }
+    const flashcard = await storage.updateFlashcard(req.params.id, data);
     res.json(flashcard);
   });
 
