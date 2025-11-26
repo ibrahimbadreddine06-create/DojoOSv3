@@ -1,30 +1,81 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
-import { format, addDays, subDays } from "date-fns";
+import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical } from "lucide-react";
+import { format, addDays, subDays, isToday, isYesterday, isTomorrow } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { TimeBlock } from "@shared/schema";
+
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
+const HOUR_HEIGHT = 60;
+const SNAP_MINUTES = 30;
+
+function getDateLabel(date: Date): string {
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  if (isTomorrow(date)) return "Tomorrow";
+  return format(date, "EEEE, MMMM d");
+}
+
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+function snapToGrid(minutes: number): number {
+  return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+}
+
+function getBlockStyle(block: TimeBlock): { top: number; height: number } {
+  const startMinutes = timeToMinutes(block.startTime);
+  const endMinutes = timeToMinutes(block.endTime);
+  const startOffset = Math.max(0, startMinutes - 6 * 60);
+  const duration = endMinutes - startMinutes;
+  return {
+    top: (startOffset / 60) * HOUR_HEIGHT,
+    height: Math.max((duration / 60) * HOUR_HEIGHT, 30),
+  };
+}
+
+interface DragState {
+  blockId: string;
+  type: 'move' | 'resize';
+  startY: number;
+  originalStartMinutes: number;
+  originalEndMinutes: number;
+}
 
 export default function Planner() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [clickedTime, setClickedTime] = useState<{ start: string; end: string } | null>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [tempBlock, setTempBlock] = useState<{ id: string; startTime: string; endTime: string } | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const gridRef = useRef<HTMLDivElement>(null);
 
-  const { data: blocks, isLoading } = useQuery<any[]>({
+  const { data: blocks, isLoading } = useQuery<TimeBlock[]>({
     queryKey: ["/api/time-blocks", dateStr],
   });
 
-  const { data: dailyMetrics } = useQuery<any>({
+  const { data: dailyMetrics } = useQuery<{ plannerCompletion?: string }>({
     queryKey: ["/api/daily-metrics", dateStr],
   });
 
   const toggleBlockMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       return await apiRequest("PATCH", `/api/time-blocks/${id}`, { completed });
     },
     onSuccess: () => {
@@ -36,182 +87,335 @@ export default function Planner() {
     },
   });
 
+  const updateBlockMutation = useMutation({
+    mutationFn: async ({ id, startTime, endTime }: { id: string; startTime: string; endTime: string }) => {
+      return await apiRequest("PATCH", `/api/time-blocks/${id}`, { startTime, endTime });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Block updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update block", variant: "destructive" });
+    },
+  });
+
   const handlePrevDay = () => setSelectedDate(subDays(selectedDate, 1));
   const handleNextDay = () => setSelectedDate(addDays(selectedDate, 1));
   const handleToday = () => setSelectedDate(new Date());
 
-  const importanceColors: Record<number, string> = {
-    1: "bg-muted text-muted-foreground",
-    2: "bg-chart-2/20 text-chart-2",
-    3: "bg-chart-1/20 text-chart-1",
-    4: "bg-chart-4/20 text-chart-4",
-    5: "bg-destructive/20 text-destructive",
+  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (dragState) return;
+    if (!gridRef.current) return;
+    if ((e.target as HTMLElement).closest('[data-block-id]')) return;
+    
+    const rect = gridRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top + gridRef.current.scrollTop;
+    const hourIndex = Math.floor(y / HOUR_HEIGHT);
+    const hour = Math.min(Math.max(hourIndex + 6, 6), 23);
+    const startHour = hour.toString().padStart(2, "0");
+    const endHour = Math.min(hour + 1, 24).toString().padStart(2, "0");
+    setClickedTime({ start: `${startHour}:00`, end: `${endHour}:00` });
+    setAddDialogOpen(true);
+  };
+
+  const handleDragStart = useCallback((
+    e: React.MouseEvent,
+    block: TimeBlock,
+    type: 'move' | 'resize'
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDragState({
+      blockId: block.id,
+      type,
+      startY: e.clientY,
+      originalStartMinutes: timeToMinutes(block.startTime),
+      originalEndMinutes: timeToMinutes(block.endTime),
+    });
+    setTempBlock({
+      id: block.id,
+      startTime: block.startTime,
+      endTime: block.endTime,
+    });
+  }, []);
+
+  const handleDragMove = useCallback((e: React.MouseEvent) => {
+    if (!dragState || !gridRef.current) return;
+    
+    const deltaY = e.clientY - dragState.startY;
+    const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
+    
+    if (dragState.type === 'move') {
+      const newStartMinutes = snapToGrid(dragState.originalStartMinutes + deltaMinutes);
+      const duration = dragState.originalEndMinutes - dragState.originalStartMinutes;
+      const newEndMinutes = newStartMinutes + duration;
+      
+      if (newStartMinutes >= 6 * 60 && newEndMinutes <= 24 * 60) {
+        setTempBlock({
+          id: dragState.blockId,
+          startTime: minutesToTime(newStartMinutes),
+          endTime: minutesToTime(newEndMinutes),
+        });
+      }
+    } else {
+      const newEndMinutes = snapToGrid(dragState.originalEndMinutes + deltaMinutes);
+      const minEnd = dragState.originalStartMinutes + 30;
+      
+      if (newEndMinutes >= minEnd && newEndMinutes <= 24 * 60) {
+        setTempBlock({
+          id: dragState.blockId,
+          startTime: minutesToTime(dragState.originalStartMinutes),
+          endTime: minutesToTime(newEndMinutes),
+        });
+      }
+    }
+  }, [dragState]);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragState && tempBlock) {
+      const block = blocks?.find(b => b.id === dragState.blockId);
+      if (block && (block.startTime !== tempBlock.startTime || block.endTime !== tempBlock.endTime)) {
+        updateBlockMutation.mutate({
+          id: tempBlock.id,
+          startTime: tempBlock.startTime,
+          endTime: tempBlock.endTime,
+        });
+      }
+    }
+    setDragState(null);
+    setTempBlock(null);
+  }, [dragState, tempBlock, blocks, updateBlockMutation]);
+
+  const completionPercent = dailyMetrics?.plannerCompletion 
+    ? parseFloat(dailyMetrics.plannerCompletion) 
+    : 0;
+
+  const showTodayButton = !isToday(selectedDate);
+
+  const getDisplayBlock = (block: TimeBlock) => {
+    if (tempBlock && tempBlock.id === block.id) {
+      return { ...block, startTime: tempBlock.startTime, endTime: tempBlock.endTime };
+    }
+    return block;
   };
 
   return (
-    <div className="container mx-auto p-8 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight" data-testid="text-planner-title">
-              Daily Planner
+    <div 
+      className="container mx-auto p-4 md:p-6 max-w-7xl h-[calc(100vh-80px)] overflow-hidden"
+      onMouseMove={dragState ? handleDragMove : undefined}
+      onMouseUp={dragState ? handleDragEnd : undefined}
+      onMouseLeave={dragState ? handleDragEnd : undefined}
+    >
+      <div className="flex flex-col h-full gap-4">
+        <div className="flex items-center justify-between gap-4 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePrevDay}
+              data-testid="button-prev-day"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold" data-testid="text-selected-date">
+              {getDateLabel(selectedDate)}
+              {!isToday(selectedDate) && !isYesterday(selectedDate) && !isTomorrow(selectedDate) && (
+                <span className="text-muted-foreground font-normal text-lg ml-2">
+                  {format(selectedDate, "yyyy")}
+                </span>
+              )}
             </h1>
-            <p className="text-muted-foreground">
-              Manage your time blocks and track daily completion
-            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNextDay}
+              data-testid="button-next-day"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
-              Today
-            </Button>
-            <Button variant="outline" size="sm" data-testid="button-add-preset">
-              <Plus className="w-4 h-4 mr-2" />
-              Preset
-            </Button>
-            <AddTimeBlockDialog date={dateStr} />
+            {showTodayButton && (
+              <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
+                Today
+              </Button>
+            )}
+            <AddTimeBlockDialog 
+              date={dateStr} 
+              open={addDialogOpen}
+              onOpenChange={setAddDialogOpen}
+              defaultStartTime={clickedTime?.start}
+              defaultEndTime={clickedTime?.end}
+            />
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevDay}
-                data-testid="button-prev-day"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
+        <Card className="flex-shrink-0">
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle className="text-sm font-medium">Completion History</CardTitle>
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-2xl font-semibold" data-testid="text-selected-date">
-                  {format(selectedDate, "EEEE, MMMM d, yyyy")}
-                </h2>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNextDay}
-                data-testid="button-next-day"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </Button>
-            </div>
-            {dailyMetrics?.plannerCompletion !== undefined && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Completion:</span>
-                <span className="text-lg font-semibold font-mono" data-testid="text-completion-score">
-                  {dailyMetrics.plannerCompletion}%
+                <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+                <span className="text-sm font-mono font-medium" data-testid="text-completion-score">
+                  {completionPercent.toFixed(0)}%
                 </span>
               </div>
-            )}
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
-                ))}
-              </div>
-            ) : blocks && blocks.length > 0 ? (
-              blocks.map((block) => (
-                <Card key={block.id} className="hover-elevate" data-testid={`card-block-${block.id}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">{block.title}</CardTitle>
-                          <Badge
-                            variant="outline"
-                            className={importanceColors[block.importance] || importanceColors[3]}
-                            data-testid={`badge-importance-${block.id}`}
-                          >
-                            Importance {block.importance}
-                          </Badge>
-                        </div>
-                        <CardDescription className="font-mono text-sm">
-                          {block.startTime} - {block.endTime}
-                        </CardDescription>
-                      </div>
-                      <Button
-                        variant={block.completed ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => toggleBlockMutation.mutate({ id: block.id, completed: !block.completed })}
-                        disabled={toggleBlockMutation.isPending}
-                        data-testid={`button-complete-${block.id}`}
-                      >
-                        {block.completed ? "Completed" : "Mark Complete"}
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {(block.associatedModules?.length > 0 || block.tasks?.length > 0) && (
-                    <CardContent className="pt-0 space-y-3">
-                      {block.associatedModules?.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {block.associatedModules.map((module: string) => (
-                            <Badge key={module} variant="secondary" data-testid={`badge-module-${module}`}>
-                              {module}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      {block.tasks?.length > 0 && (
-                        <div className="space-y-2">
-                          {block.tasks.map((task: any) => (
-                            <div
-                              key={task.id}
-                              className="flex items-center gap-2 text-sm"
-                              data-testid={`task-${task.id}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={task.completed}
-                                className="w-4 h-4 rounded"
-                                data-testid={`checkbox-task-${task.id}`}
-                              />
-                              <span className={task.completed ? "line-through text-muted-foreground" : ""}>
-                                {task.text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  )}
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">No time blocks yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Start by creating a time block or applying a preset
-                </p>
-                <div className="flex justify-center gap-2">
-                  <Button variant="outline" data-testid="button-apply-preset">
-                    Apply Preset
-                  </Button>
-                  <AddTimeBlockDialog date={dateStr} />
-                </div>
-              </div>
-            )}
+          <CardContent className="py-2 px-4">
+            <div className="h-16 flex items-center justify-center text-sm text-muted-foreground">
+              Scrollable daily completion chart coming soon
+            </div>
           </CardContent>
         </Card>
 
-        {blocks && blocks.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Completion History</CardTitle>
-              <CardDescription>Track your daily completion over time</CardDescription>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
+          <Card className="lg:col-span-3 overflow-hidden flex flex-col">
+            <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Schedule
+                </CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  Click to add, drag to move/resize
+                </span>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                Chart will be implemented in integration phase
+            <div 
+              ref={gridRef}
+              className={`flex-1 overflow-y-auto relative ${dragState ? 'cursor-grabbing select-none' : ''}`}
+              onClick={handleGridClick}
+              data-testid="planner-grid"
+            >
+              <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
+                {HOURS.map((hour) => (
+                  <div 
+                    key={hour} 
+                    className="absolute left-0 right-0 border-t border-border/50"
+                    style={{ top: (hour - 6) * HOUR_HEIGHT }}
+                  >
+                    <span className="absolute -top-3 left-2 text-xs text-muted-foreground font-mono bg-card px-1">
+                      {hour.toString().padStart(2, "0")}:00
+                    </span>
+                  </div>
+                ))}
+
+                {isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-pulse text-muted-foreground">Loading...</div>
+                  </div>
+                ) : blocks && blocks.length > 0 ? (
+                  blocks.map((originalBlock) => {
+                    const block = getDisplayBlock(originalBlock);
+                    const { top, height } = getBlockStyle(block);
+                    const isDragging = dragState?.blockId === block.id;
+                    
+                    return (
+                      <div
+                        key={block.id}
+                        data-block-id={block.id}
+                        className={`absolute left-12 right-4 rounded-md border transition-shadow ${
+                          isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
+                        } ${
+                          block.completed 
+                            ? "bg-primary/10 border-primary/30" 
+                            : "bg-card border-border"
+                        }`}
+                        style={{ top, height }}
+                        data-testid={`block-${block.id}`}
+                      >
+                        <div 
+                          className="absolute top-0 left-0 right-0 flex items-center justify-center h-5 cursor-grab active:cursor-grabbing"
+                          onMouseDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                          data-testid={`block-drag-handle-${block.id}`}
+                        >
+                          <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                        </div>
+                        
+                        <div 
+                          className="p-2 pt-5 h-full flex flex-col overflow-hidden cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!dragState) {
+                              toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                            }
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className={`font-medium text-sm truncate ${
+                              block.completed ? "line-through text-muted-foreground" : ""
+                            }`}>
+                              {block.title}
+                            </span>
+                            {block.completed && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                Done
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {block.startTime} - {block.endTime}
+                          </span>
+                          {block.associatedModules && block.associatedModules.length > 0 && height > 60 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {block.associatedModules.slice(0, 2).map((module: string) => (
+                                <Badge key={module} variant="secondary" className="text-xs px-1 py-0">
+                                  {module}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                          {block.tasks && block.tasks.length > 0 && height > 90 && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {block.tasks.filter((t: any) => t.completed).length}/{block.tasks.length} tasks
+                            </div>
+                          )}
+                        </div>
+
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-b-md"
+                          onMouseDown={(e) => handleDragStart(e, originalBlock, 'resize')}
+                          data-testid={`block-resize-handle-${block.id}`}
+                        />
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center">
+                      <p className="text-muted-foreground text-sm">No blocks yet</p>
+                      <p className="text-muted-foreground text-xs">Click on the grid to add one</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden flex flex-col">
+            <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-sm font-medium">Presets</CardTitle>
+                <Button variant="ghost" size="icon" className="h-6 w-6" data-testid="button-add-preset">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-3">
+              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                <p className="text-sm">No presets saved</p>
+                <p className="text-xs mt-1">Create a preset to quickly add common schedules</p>
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
       </div>
     </div>
   );

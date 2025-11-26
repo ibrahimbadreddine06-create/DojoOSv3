@@ -1,10 +1,11 @@
 // Referenced from javascript_database blueprint - comprehensive storage for all Dojo OS modules
 import {
-  timeBlocks, dayPresets, activityPresets, goals, knowledgeThemes, learnPlanItems,
+  users, timeBlocks, dayPresets, activityPresets, goals, knowledgeThemes, learnPlanItems,
   materials, flashcards, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, businesses, workProjects, tasks,
   socialActivities, people, pageSettings, dailyMetrics,
+  type User, type UpsertUser,
   type TimeBlock, type InsertTimeBlock, type DayPreset, type InsertDayPreset,
   type ActivityPreset, type InsertActivityPreset, type Goal, type InsertGoal,
   type KnowledgeTheme, type InsertKnowledgeTheme, type LearnPlanItem, type InsertLearnPlanItem,
@@ -26,6 +27,11 @@ import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (mandatory for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  deleteUser(id: string): Promise<void>;
+
   // Time Blocks & Presets
   getTimeBlocks(date: string): Promise<TimeBlock[]>;
   createTimeBlock(data: InsertTimeBlock): Promise<TimeBlock>;
@@ -123,6 +129,31 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations (mandatory for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
   // Time Blocks & Presets
   async getTimeBlocks(date: string): Promise<TimeBlock[]> {
     return await db.select().from(timeBlocks).where(eq(timeBlocks.date, date));

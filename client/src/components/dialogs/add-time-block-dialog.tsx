@@ -21,19 +21,33 @@ type FormData = z.infer<typeof formSchema>;
 
 interface AddTimeBlockDialogProps {
   date: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultStartTime?: string;
+  defaultEndTime?: string;
 }
 
-export function AddTimeBlockDialog({ date }: AddTimeBlockDialogProps) {
-  const [open, setOpen] = useState(false);
+export function AddTimeBlockDialog({ 
+  date, 
+  open: controlledOpen, 
+  onOpenChange: controlledOnOpenChange,
+  defaultStartTime = "09:00",
+  defaultEndTime = "10:00"
+}: AddTimeBlockDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       date,
-      startTime: "09:00",
-      endTime: "10:00",
+      startTime: defaultStartTime,
+      endTime: defaultEndTime,
       title: "",
       importance: 3,
       completed: false,
@@ -43,17 +57,19 @@ export function AddTimeBlockDialog({ date }: AddTimeBlockDialogProps) {
   });
 
   useEffect(() => {
-    form.reset({
-      date,
-      startTime: "09:00",
-      endTime: "10:00",
-      title: "",
-      importance: 3,
-      completed: false,
-      associatedModules: [],
-      tasks: [],
-    });
-  }, [date, form]);
+    if (open) {
+      form.reset({
+        date,
+        startTime: defaultStartTime,
+        endTime: defaultEndTime,
+        title: "",
+        importance: 3,
+        completed: false,
+        associatedModules: [],
+        tasks: [],
+      });
+    }
+  }, [date, open, defaultStartTime, defaultEndTime, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData) => {

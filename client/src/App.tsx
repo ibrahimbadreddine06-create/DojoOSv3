@@ -5,7 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2 } from "lucide-react";
 
+import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Planner from "@/pages/planner";
 import Goals from "@/pages/goals";
@@ -22,10 +25,10 @@ import Business from "@/pages/business";
 import Work from "@/pages/work";
 import SocialPurpose from "@/pages/social-purpose";
 import UltimateTest from "@/pages/ultimate-test";
-import Settings from "@/pages/settings";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
-function Router() {
+function AuthenticatedRouter() {
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -45,39 +48,79 @@ function Router() {
       <Route path="/work" component={Work} />
       <Route path="/social-purpose" component={SocialPurpose} />
       <Route path="/ultimate-test" component={UltimateTest} />
-      <Route path="/settings" component={Settings} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-export default function App() {
+function UnauthenticatedRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={Landing} />
+      <Route component={Landing} />
+    </Switch>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+function AuthenticatedApp() {
   const style = {
     "--sidebar-width": "20rem",
     "--sidebar-width-icon": "4rem",
   };
 
   return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between p-4 border-b bg-background">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Dojo OS
+              </span>
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto bg-background">
+            <AuthenticatedRouter />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <UnauthenticatedRouter />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+export default function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <header className="flex items-center justify-between p-4 border-b bg-background">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Dojo OS
-                  </span>
-                </div>
-              </header>
-              <main className="flex-1 overflow-y-auto bg-background">
-                <Router />
-              </main>
-            </div>
-          </div>
-        </SidebarProvider>
+        <AppContent />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
