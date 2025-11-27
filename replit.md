@@ -1,8 +1,26 @@
-# Dojo OS
+# Dojo OS V2
 
 ## Overview
 
-Dojo OS is a comprehensive personal productivity and life management system designed to replace complex Notion setups. It provides a unified platform for tracking daily activities, long-term goals, knowledge acquisition, physical wellness, spiritual practices, finances, creative projects, and social impact.
+Dojo OS V2 is a focused personal operating system with 6 core active modules (Homepage, Daily Planner, Goals, Second Brain, Languages, Studies) and 10+ locked "Coming Soon" modules. It provides a unified platform for tracking daily activities, long-term goals, and knowledge acquisition with beautiful UI, mobile responsiveness, and Replit Auth integration.
+
+## Recent Changes (November 2024)
+
+### Completed Features
+1. **Authentication & Onboarding**: Beautiful landing page, Replit Auth integration, Profile page
+2. **Locked Modules**: Coming Soon states for Body, Worship, Finances, Masterpieces, Possessions, Business, Work, Social Purpose, Disciplines, Ultimate Test
+3. **Daily Planner**: Google Calendar-style hour grid (6am-midnight), click-to-add, drag-to-move/resize blocks with Pointer Events for touch support
+4. **Block System**: Cross-page linking, nested sub-blocks (max 2 levels), tasks with importance (1-5)
+5. **Preset System**: Create and apply day presets with blocks and tasks
+6. **Knowledge Tracking**: Second Brain, Languages, Studies with shared structure (themes/courses, chapters, flashcards, materials)
+7. **Learning System**: Notion-style nested chapters (infinite depth), Anki-style flashcards with spaced repetition
+8. **Homepage Dashboard**: Customizable bento boxes with key metrics per module
+9. **Charts & Metrics**: Completion/readiness charts with decay calculation
+10. **Mobile Responsive**: Pointer events with touch-action:none, responsive layouts, sidebar overlay on sub-pages
+11. **API Security**: All routes protected with isAuthenticated middleware
+
+### Known Limitations
+- Per-user data scoping not implemented (storage methods don't filter by userId) - suitable for single-user deployment
 
 The application features two top-level spaces:
 - **Dojo**: Active workspace with real-time tracking and input across multiple life domains

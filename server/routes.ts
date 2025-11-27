@@ -118,28 +118,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== GOALS =====
-  app.get("/api/goals", async (req, res) => {
+  app.get("/api/goals", isAuthenticated, async (req, res) => {
     const goals = await storage.getGoals();
     res.json(goals);
   });
 
-  app.get("/api/goals/:id", async (req, res) => {
+  app.get("/api/goals/:id", isAuthenticated, async (req, res) => {
     const goal = await storage.getGoal(req.params.id);
     res.json(goal);
   });
 
-  app.post("/api/goals", async (req, res) => {
+  app.post("/api/goals", isAuthenticated, async (req, res) => {
     const data = insertGoalSchema.parse(req.body);
     const goal = await storage.createGoal(data);
     res.json(goal);
   });
 
-  app.patch("/api/goals/:id", async (req, res) => {
+  app.patch("/api/goals/:id", isAuthenticated, async (req, res) => {
     const goal = await storage.updateGoal(req.params.id, req.body);
     res.json(goal);
   });
 
-  app.delete("/api/goals/:id", async (req, res) => {
+  app.delete("/api/goals/:id", isAuthenticated, async (req, res) => {
     await storage.deleteGoal(req.params.id);
     res.json({ success: true });
   });
@@ -261,159 +261,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== BODY =====
-  app.get("/api/workouts/:date", async (req, res) => {
+  app.get("/api/workouts/:date", isAuthenticated, async (req, res) => {
     const workouts = await storage.getWorkouts(req.params.date);
     res.json(workouts);
   });
 
-  app.post("/api/workouts", async (req, res) => {
+  app.post("/api/workouts", isAuthenticated, async (req, res) => {
     const data = insertWorkoutSchema.parse(req.body);
     const workout = await storage.createWorkout(data);
     res.json(workout);
   });
 
-  app.get("/api/exercises/:workoutId", async (req, res) => {
+  app.get("/api/exercises/:workoutId", isAuthenticated, async (req, res) => {
     const exercises = await storage.getExercises(req.params.workoutId);
     res.json(exercises);
   });
 
-  app.post("/api/exercises", async (req, res) => {
+  app.post("/api/exercises", isAuthenticated, async (req, res) => {
     const data = insertExerciseSchema.parse(req.body);
     const exercise = await storage.createExercise(data);
     res.json(exercise);
   });
 
-  app.get("/api/intake-logs/:date", async (req, res) => {
+  app.get("/api/intake-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getIntakeLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/intake-logs", async (req, res) => {
+  app.post("/api/intake-logs", isAuthenticated, async (req, res) => {
     const data = insertIntakeLogSchema.parse(req.body);
     const log = await storage.createIntakeLog(data);
     res.json(log);
   });
 
-  app.get("/api/sleep-logs/:date", async (req, res) => {
+  app.get("/api/sleep-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getSleepLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/sleep-logs", async (req, res) => {
+  app.post("/api/sleep-logs", isAuthenticated, async (req, res) => {
     const data = insertSleepLogSchema.parse(req.body);
     const log = await storage.createSleepLog(data);
     res.json(log);
   });
 
-  app.get("/api/hygiene-routines/:date", async (req, res) => {
+  app.get("/api/hygiene-routines/:date", isAuthenticated, async (req, res) => {
     const routines = await storage.getHygieneRoutines(req.params.date);
     res.json(routines);
   });
 
-  app.post("/api/hygiene-routines", async (req, res) => {
+  app.post("/api/hygiene-routines", isAuthenticated, async (req, res) => {
     const data = insertHygieneRoutineSchema.parse(req.body);
     const routine = await storage.createHygieneRoutine(data);
     res.json(routine);
   });
 
   // ===== WORSHIP =====
-  app.get("/api/salah-logs/:date", async (req, res) => {
+  app.get("/api/salah-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getSalahLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/salah-logs", async (req, res) => {
+  app.post("/api/salah-logs", isAuthenticated, async (req, res) => {
     const data = insertSalahLogSchema.parse(req.body);
     const log = await storage.createSalahLog(data);
     res.json(log);
   });
 
-  app.get("/api/quran-logs/:date", async (req, res) => {
+  app.get("/api/quran-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getQuranLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/quran-logs", async (req, res) => {
+  app.post("/api/quran-logs", isAuthenticated, async (req, res) => {
     const data = insertQuranLogSchema.parse(req.body);
     const log = await storage.createQuranLog(data);
     res.json(log);
   });
 
-  app.get("/api/dhikr-logs/:date", async (req, res) => {
+  app.get("/api/dhikr-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getDhikrLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/dhikr-logs", async (req, res) => {
+  app.post("/api/dhikr-logs", isAuthenticated, async (req, res) => {
     const data = insertDhikrLogSchema.parse(req.body);
     const log = await storage.createDhikrLog(data);
     res.json(log);
   });
 
-  app.get("/api/dua-logs/:date", async (req, res) => {
+  app.get("/api/dua-logs/:date", isAuthenticated, async (req, res) => {
     const logs = await storage.getDuaLogs(req.params.date);
     res.json(logs);
   });
 
-  app.post("/api/dua-logs", async (req, res) => {
+  app.post("/api/dua-logs", isAuthenticated, async (req, res) => {
     const data = insertDuaLogSchema.parse(req.body);
     const log = await storage.createDuaLog(data);
     res.json(log);
   });
 
   // ===== FINANCES =====
-  app.get("/api/transactions", async (req, res) => {
+  app.get("/api/transactions", isAuthenticated, async (req, res) => {
     const transactions = await storage.getTransactions();
     res.json(transactions);
   });
 
-  app.post("/api/transactions", async (req, res) => {
+  app.post("/api/transactions", isAuthenticated, async (req, res) => {
     const data = insertTransactionSchema.parse(req.body);
     const transaction = await storage.createTransaction(data);
     res.json(transaction);
   });
 
   // ===== MASTERPIECES =====
-  app.get("/api/masterpieces", async (req, res) => {
+  app.get("/api/masterpieces", isAuthenticated, async (req, res) => {
     const masterpieces = await storage.getMasterpieces();
     res.json(masterpieces);
   });
 
-  app.post("/api/masterpieces", async (req, res) => {
+  app.post("/api/masterpieces", isAuthenticated, async (req, res) => {
     const data = insertMasterpieceSchema.parse(req.body);
     const masterpiece = await storage.createMasterpiece(data);
     res.json(masterpiece);
   });
 
-  app.get("/api/masterpieces/:id/sections", async (req, res) => {
+  app.get("/api/masterpieces/:id/sections", isAuthenticated, async (req, res) => {
     const sections = await storage.getMasterpieceSections(req.params.id);
     res.json(sections);
   });
 
-  app.post("/api/masterpiece-sections", async (req, res) => {
+  app.post("/api/masterpiece-sections", isAuthenticated, async (req, res) => {
     const data = insertMasterpieceSectionSchema.parse(req.body);
     const section = await storage.createMasterpieceSection(data);
     res.json(section);
   });
 
   // ===== POSSESSIONS =====
-  app.get("/api/possessions", async (req, res) => {
+  app.get("/api/possessions", isAuthenticated, async (req, res) => {
     const possessions = await storage.getPossessions();
     res.json(possessions);
   });
 
-  app.post("/api/possessions", async (req, res) => {
+  app.post("/api/possessions", isAuthenticated, async (req, res) => {
     const data = insertPossessionSchema.parse(req.body);
     const possession = await storage.createPossession(data);
     res.json(possession);
   });
 
-  app.get("/api/outfits", async (req, res) => {
+  app.get("/api/outfits", isAuthenticated, async (req, res) => {
     const outfits = await storage.getOutfits();
     res.json(outfits);
   });
 
-  app.post("/api/outfits", async (req, res) => {
+  app.post("/api/outfits", isAuthenticated, async (req, res) => {
     const data = insertOutfitSchema.parse(req.body);
     const outfit = await storage.createOutfit(data);
     res.json(outfit);
@@ -469,85 +469,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== BUSINESS & WORK =====
-  app.get("/api/businesses", async (req, res) => {
+  app.get("/api/businesses", isAuthenticated, async (req, res) => {
     const businesses = await storage.getBusinesses();
     res.json(businesses);
   });
 
-  app.post("/api/businesses", async (req, res) => {
+  app.post("/api/businesses", isAuthenticated, async (req, res) => {
     const data = insertBusinessSchema.parse(req.body);
     const business = await storage.createBusiness(data);
     res.json(business);
   });
 
-  app.get("/api/work-projects/:type", async (req, res) => {
+  app.get("/api/work-projects/:type", isAuthenticated, async (req, res) => {
     const relatedId = req.query.relatedId as string | undefined;
     const projects = await storage.getWorkProjects(req.params.type, relatedId);
     res.json(projects);
   });
 
-  app.post("/api/work-projects", async (req, res) => {
+  app.post("/api/work-projects", isAuthenticated, async (req, res) => {
     const data = insertWorkProjectSchema.parse(req.body);
     const project = await storage.createWorkProject(data);
     res.json(project);
   });
 
-  app.get("/api/tasks/:projectId", async (req, res) => {
+  app.get("/api/tasks/:projectId", isAuthenticated, async (req, res) => {
     const tasks = await storage.getTasks(req.params.projectId);
     res.json(tasks);
   });
 
-  app.post("/api/tasks", async (req, res) => {
+  app.post("/api/tasks", isAuthenticated, async (req, res) => {
     const data = insertTaskSchema.parse(req.body);
     const task = await storage.createTask(data);
     res.json(task);
   });
 
   // ===== SOCIAL PURPOSE =====
-  app.get("/api/social-activities", async (req, res) => {
+  app.get("/api/social-activities", isAuthenticated, async (req, res) => {
     const activities = await storage.getSocialActivities();
     res.json(activities);
   });
 
-  app.post("/api/social-activities", async (req, res) => {
+  app.post("/api/social-activities", isAuthenticated, async (req, res) => {
     const data = insertSocialActivitySchema.parse(req.body);
     const activity = await storage.createSocialActivity(data);
     res.json(activity);
   });
 
-  app.get("/api/people", async (req, res) => {
+  app.get("/api/people", isAuthenticated, async (req, res) => {
     const people = await storage.getPeople();
     res.json(people);
   });
 
-  app.post("/api/people", async (req, res) => {
+  app.post("/api/people", isAuthenticated, async (req, res) => {
     const data = insertPersonSchema.parse(req.body);
     const person = await storage.createPerson(data);
     res.json(person);
   });
 
   // ===== SETTINGS & METRICS =====
-  app.get("/api/page-settings", async (req, res) => {
+  app.get("/api/page-settings", isAuthenticated, async (req, res) => {
     const settings = await storage.getPageSettings();
     res.json(settings);
   });
 
-  app.patch("/api/page-settings/:module", async (req, res) => {
+  app.patch("/api/page-settings/:module", isAuthenticated, async (req, res) => {
     const setting = await storage.updatePageSetting(req.params.module, req.body.active);
     res.json(setting);
   });
 
-  app.get("/api/daily-metrics/:date", async (req, res) => {
+  app.get("/api/daily-metrics/:date", isAuthenticated, async (req, res) => {
     const metric = await storage.getDailyMetric(req.params.date);
     res.json(metric);
   });
 
-  app.get("/api/daily-metrics", async (req, res) => {
+  app.get("/api/daily-metrics", isAuthenticated, async (req, res) => {
     const metrics = await storage.getAllDailyMetrics();
     res.json(metrics);
   });
 
-  app.post("/api/daily-metrics", async (req, res) => {
+  app.post("/api/daily-metrics", isAuthenticated, async (req, res) => {
     const data = insertDailyMetricSchema.parse(req.body);
     const metric = await storage.createDailyMetric(data);
     res.json(metric);
@@ -559,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metric);
   });
 
-  app.get("/api/knowledge-metrics/:themeId", async (req, res) => {
+  app.get("/api/knowledge-metrics/:themeId", isAuthenticated, async (req, res) => {
     const metrics = await storage.getKnowledgeMetrics(req.params.themeId);
     res.json(metrics);
   });
@@ -571,9 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== ULTIMATE TEST =====
-  app.get("/api/ultimate-test/metrics", async (req, res) => {
-    // Placeholder for pluggable metrics system
-    // In future, this will aggregate metrics from various modules
+  app.get("/api/ultimate-test/metrics", isAuthenticated, async (req, res) => {
     res.json({
       worship: 0,
       beneficial: 0,

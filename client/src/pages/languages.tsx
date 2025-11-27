@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { Languages as LanguagesIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, XAxis, YAxis, Legend } from "recharts";
 
 export default function Languages() {
   const [, navigate] = useLocation();
@@ -14,6 +17,27 @@ export default function Languages() {
   const { data: languages, isLoading } = useQuery<any[]>({
     queryKey: ["/api/knowledge-themes", "language"],
   });
+
+  const chartData = useMemo(() => {
+    if (!languages || languages.length === 0) return [];
+    return languages.map(lang => ({
+      name: lang.name.length > 15 ? lang.name.substring(0, 12) + "..." : lang.name,
+      fullName: lang.name,
+      completion: lang.completion || 0,
+      readiness: lang.readiness || 0,
+    }));
+  }, [languages]);
+
+  const chartConfig = {
+    completion: {
+      label: "Completion",
+      color: "hsl(var(--chart-1))",
+    },
+    readiness: {
+      label: "Readiness",
+      color: "hsl(var(--chart-2))",
+    },
+  };
 
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
@@ -33,12 +57,55 @@ export default function Languages() {
         <Card>
           <CardHeader>
             <CardTitle>Overall Metrics</CardTitle>
-            <CardDescription>Aggregate completion and readiness across all languages</CardDescription>
+            <CardDescription>Completion and readiness across all languages</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              Aggregate chart will be implemented in integration phase
-            </div>
+            {languages && languages.length > 0 ? (
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: Math.max(300, chartData.length * 120) }}>
+                  <ChartContainer config={chartConfig} className="h-64 w-full">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 40 }}>
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                      <ChartTooltip 
+                        content={
+                          <ChartTooltipContent 
+                            formatter={(value, name, item) => (
+                              <span>
+                                {item.payload.fullName}: {value}%
+                              </span>
+                            )}
+                          />
+                        } 
+                      />
+                      <Legend />
+                      <Bar 
+                        dataKey="completion" 
+                        fill="var(--color-completion)" 
+                        name="Completion"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar 
+                        dataKey="readiness" 
+                        fill="var(--color-readiness)" 
+                        name="Readiness"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-muted-foreground">
+                Add languages to see metrics chart
+              </div>
+            )}
           </CardContent>
         </Card>
 
