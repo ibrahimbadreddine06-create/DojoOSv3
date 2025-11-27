@@ -110,10 +110,10 @@ const Page1 = () => (
 
 // Page 2: Master Your Modules
 const Page2 = () => {
-  const features = [
-    { name: "Daily Planner", desc: "Master your time" },
-    { name: "Knowledge", desc: "Organize & learn" },
-    { name: "Growth", desc: "Track progress" },
+  const pillars = [
+    { name: "Daily Planner", desc: "Master your time", height: "h-48" },
+    { name: "Knowledge", desc: "Organize & learn", height: "h-64" },
+    { name: "Growth", desc: "Track progress", height: "h-56" },
   ];
 
   return (
@@ -138,36 +138,65 @@ const Page2 = () => {
           <span className="text-gray-400 dark:text-gray-600">Modules</span>
         </motion.h2>
 
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          {features.map((feature, idx) => (
+        {/* Pillars Container */}
+        <div className="flex items-flex-end gap-8 md:gap-12 justify-center mt-8 h-80">
+          {pillars.map((pillar, idx) => (
             <motion.div
               key={idx}
-              className="flex flex-col items-center gap-3 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 + idx * 0.1 }}
+              className="flex flex-col items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 + idx * 0.15 }}
             >
-              <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800" />
-              <h3 className="font-semibold text-black dark:text-white">
-                {feature.name}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                {feature.desc}
-              </p>
+              {/* Pillar */}
+              <motion.div
+                className={`${pillar.height} w-16 md:w-20 bg-gradient-to-t from-gray-900 via-gray-800 to-gray-700 dark:from-gray-100 dark:via-gray-200 dark:to-gray-300 rounded-t-lg border border-gray-600 dark:border-gray-400 relative`}
+                initial={{ scaleY: 0, originY: 1 }}
+                animate={{ scaleY: 1 }}
+                transition={{
+                  duration: 0.8,
+                  delay: 0.3 + idx * 0.15,
+                  ease: "easeOut",
+                }}
+              >
+                {/* Pillar glow effect */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent dark:from-white/30 dark:to-transparent rounded-t-lg"
+                  animate={{ opacity: [0.5, 0.8, 0.5] }}
+                  transition={{
+                    duration: 3,
+                    delay: idx * 0.2,
+                    repeat: Infinity,
+                  }}
+                />
+              </motion.div>
+
+              {/* Label */}
+              <motion.div
+                className="mt-6 text-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.6,
+                  delay: 0.5 + idx * 0.15,
+                }}
+              >
+                <h3 className="font-semibold text-black dark:text-white text-sm md:text-base">
+                  {pillar.name}
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  {pillar.desc}
+                </p>
+              </motion.div>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
         <motion.p
           className="text-gray-500 dark:text-gray-500 text-center mt-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.8 }}
         >
           Six active modules. Ten more coming soon.
         </motion.p>
