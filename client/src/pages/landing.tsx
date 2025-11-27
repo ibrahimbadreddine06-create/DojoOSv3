@@ -1,22 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Calendar, Brain, TrendingUp } from "lucide-react";
+import { ChevronRight, ChevronLeft, Calendar, Brain, TrendingUp, Target } from "lucide-react";
 
-// Floating 3D shape components
-const FloatingHexagon = ({ delay }: { delay: number }) => (
+// Zen Circle animation
+const ZenCircle = ({ delay, size }: { delay: number; size: string }) => (
   <motion.div
-    className="absolute w-32 h-32 border-2 border-gray-600/30 dark:border-gray-400/30 rounded-lg"
-    style={{
-      transform: "rotateX(45deg) rotateY(45deg) rotateZ(20deg)",
-    }}
+    className={`absolute rounded-full border border-gray-300 dark:border-gray-700 ${size}`}
     animate={{
-      rotateX: [45, 50, 45],
-      rotateY: [45, 55, 45],
-      y: [0, -20, 0],
+      scale: [1, 1.1, 1],
+      opacity: [0.3, 0.5, 0.3],
     }}
     transition={{
-      duration: 6,
+      duration: 4,
       delay,
       repeat: Infinity,
       ease: "easeInOut",
@@ -24,28 +20,14 @@ const FloatingHexagon = ({ delay }: { delay: number }) => (
   />
 );
 
-const FloatingCircle = ({ delay, size }: { delay: number; size: string }) => (
+// Meditation dot
+const MeditationDot = ({ delay, position }: { delay: number; position: { x: string; y: string } }) => (
   <motion.div
-    className={`absolute rounded-full border border-gray-400/20 dark:border-gray-600/20 ${size}`}
+    className="absolute w-1 h-1 bg-gray-400 dark:bg-gray-600 rounded-full"
+    style={{ left: position.x, top: position.y }}
     animate={{
-      y: [0, -30, 0],
-      scale: [1, 1.05, 1],
-    }}
-    transition={{
-      duration: 8,
-      delay,
-      repeat: Infinity,
-      ease: "easeInOut",
-    }}
-  />
-);
-
-const FloatingLine = ({ delay }: { delay: number }) => (
-  <motion.div
-    className="absolute h-1 bg-gradient-to-r from-transparent via-gray-400/30 to-transparent dark:via-gray-600/30 w-48"
-    animate={{
-      x: [0, 50, 0],
-      opacity: [0.3, 0.6, 0.3],
+      y: [0, -15, 0],
+      opacity: [0.4, 0.8, 0.4],
     }}
     transition={{
       duration: 5,
@@ -56,205 +38,44 @@ const FloatingLine = ({ delay }: { delay: number }) => (
   />
 );
 
-// Ionic Capital with Spirals
-const IonicCapital = ({ delay }: { delay: number }) => (
-  <motion.svg
-    width="120"
-    height="50"
-    viewBox="0 0 120 50"
-    className="overflow-visible"
-    initial={{ scaleX: 0 }}
-    animate={{ scaleX: 1 }}
-    transition={{ duration: 0.7, delay, ease: "easeOut" }}
-  >
-    {/* Top abacus */}
-    <rect x="5" y="5" width="110" height="8" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
-    
-    {/* Echinus (curved part) */}
-    <path d="M 10 13 Q 10 25 15 25" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
-    <path d="M 110 13 Q 110 25 105 25" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
-    
-    {/* Left volute (spiral) */}
-    <path d="M 15 25 Q 15 35 25 35 Q 35 35 40 30" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-700 dark:text-gray-400" strokeLinecap="round" />
-    
-    {/* Right volute (spiral) */}
-    <path d="M 105 25 Q 105 35 95 35 Q 85 35 80 30" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-700 dark:text-gray-400" strokeLinecap="round" />
-    
-    {/* Connecting band */}
-    <line x1="20" y1="42" x2="100" y2="42" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
-  </motion.svg>
-);
-
-// Rubble stones at base
-const RubbleStones = () => (
-  <div className="absolute -bottom-6 w-full flex justify-center gap-2">
-    {[
-      { size: "w-3 h-3", left: "-16px" },
-      { size: "w-4 h-3", left: "-8px" },
-      { size: "w-3 h-4", left: "12px" },
-      { size: "w-3 h-3", left: "20px" },
-    ].map((stone, i) => (
-      <motion.div
-        key={i}
-        className={`absolute ${stone.size} bg-gray-500 dark:bg-gray-600 rounded-sm`}
-        style={{ left: stone.left }}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.6 + i * 0.05 }}
-      />
-    ))}
-  </div>
-);
-
-// Ionic Pillar Component
-const IonicPillar = ({
-  icon: Icon,
-  name,
-  desc,
-  delay,
-  isCenter = false,
-  lean = 0,
-}: {
-  icon: typeof Calendar;
-  name: string;
-  desc: string;
-  delay: number;
-  isCenter?: boolean;
-  lean?: number;
-}) => {
-  return (
-    <motion.div
-      className="flex flex-col items-center relative"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, delay }}
-      style={{ transform: `rotateZ(${lean}deg)` }}
-    >
-      {/* Capital */}
-      <motion.div
-        initial={{ scaleY: 0, originY: 1 }}
-        animate={{ scaleY: 1 }}
-        transition={{ duration: 0.6, delay: delay + 0.1, ease: "easeOut" }}
-      >
-        <IonicCapital delay={delay + 0.15} />
-      </motion.div>
-
-      {/* Pillar Shaft */}
-      <motion.div
-        className="w-16 md:w-20 bg-gradient-to-b from-gray-300 via-gray-200 to-gray-300 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 relative border-l-2 border-r-2 border-gray-600 dark:border-gray-500 shadow-lg h-64"
-        initial={{ scaleY: 0, originY: 1 }}
-        animate={{ scaleY: 1 }}
-        transition={{ duration: 0.9, delay: delay + 0.2, ease: "easeOut" }}
-      >
-        {/* Vertical Fluting (grooves) */}
-        <div className="absolute inset-0 flex opacity-60">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-gradient-to-r from-transparent via-gray-500 dark:via-gray-400 to-transparent"
-              style={{
-                backgroundImage: `linear-gradient(to right, transparent, rgba(0,0,0,0.1) 30%, transparent)`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Weathered cracks */}
-        <div className="absolute inset-0 opacity-30">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-px h-24 bg-gradient-to-b from-black/30 dark:from-white/20 to-transparent"
-              style={{
-                left: `${30 + i * 25}%`,
-                top: `${20 + i * 15}%`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Engraved Icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            className="text-gray-600 dark:text-gray-400 opacity-40"
-            animate={{ opacity: [0.35, 0.5, 0.35] }}
-            transition={{
-              duration: 3,
-              delay: delay,
-              repeat: Infinity,
-            }}
-          >
-            <Icon className="w-14 h-14 md:w-16 md:h-16" strokeWidth={1.2} />
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* Base */}
-      <motion.div
-        className="w-24 md:w-28 h-5 bg-gradient-to-b from-gray-400 to-gray-600 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-600 dark:border-gray-700 relative"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.7, delay: delay + 0.35, ease: "easeOut" }}
-      >
-        <div className="absolute inset-0 border-t-2 border-gray-700 dark:border-gray-600"></div>
-      </motion.div>
-
-      {/* Rubble */}
-      <div className="relative w-full h-6">
-        <RubbleStones />
-      </div>
-
-      {/* Label */}
-      <motion.div
-        className="mt-10 text-center"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: delay + 0.6 }}
-      >
-        <h3 className="font-semibold text-black dark:text-white text-sm md:text-base">
-          {name}
-        </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          {desc}
-        </p>
-      </motion.div>
-    </motion.div>
-  );
-};
-
 // Page 1: Enter the Dojo
 const Page1 = () => (
   <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950">
-    {/* Background shapes */}
+    {/* Background zen elements */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <FloatingHexagon delay={0} />
-      <FloatingCircle delay={0.5} size="w-48 h-48" />
-      <FloatingLine delay={1} />
+      <ZenCircle delay={0} size="w-48 h-48" />
+      <ZenCircle delay={0.5} size="w-64 h-64" />
+      <ZenCircle delay={1} size="w-80 h-80" />
+      <MeditationDot delay={0} position={{ x: "20%", y: "30%" }} />
+      <MeditationDot delay={0.3} position={{ x: "75%", y: "60%" }} />
+      <MeditationDot delay={0.6} position={{ x: "40%", y: "75%" }} />
     </div>
 
     {/* Content */}
-    <div className="relative z-10 flex flex-col items-center gap-6 px-4 max-w-2xl">
-      <motion.h1
-        className="text-6xl md:text-8xl font-bold text-black dark:text-white text-center"
+    <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl">
+      <motion.div
+        className="text-center"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2 }}
       >
-        Enter the
-      </motion.h1>
-
-      <motion.div
-        className="text-6xl md:text-8xl font-bold text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
-      >
-        <span className="text-gray-400 dark:text-gray-600">D</span>
-        <span className="text-black dark:text-white">ojo</span>
+        <p className="text-sm uppercase tracking-widest text-gray-600 dark:text-gray-400 font-light">
+          Your Personal Operating System
+        </p>
       </motion.div>
 
+      <motion.h1
+        className="text-6xl md:text-8xl font-light text-center"
+        style={{ fontFamily: "Georgia, serif" }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, delay: 0.4 }}
+      >
+        <span className="text-gray-400 dark:text-gray-600">dojo</span>
+      </motion.h1>
+
       <motion.p
-        className="text-xl text-gray-600 dark:text-gray-400 text-center mt-4"
+        className="text-lg text-gray-600 dark:text-gray-400 text-center max-w-md font-light"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
@@ -263,70 +84,134 @@ const Page1 = () => (
       </motion.p>
 
       <motion.div
-        className="mt-8 text-sm text-gray-500 dark:text-gray-500"
+        className="mt-8 text-xs text-gray-500 dark:text-gray-500 tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.8 }}
       >
-        A place to transform
+        A place of discipline, growth, and mastery
       </motion.div>
     </div>
   </div>
 );
 
+// Bento Box Component
+const BentoBox = ({
+  icon: Icon,
+  title,
+  desc,
+  delay,
+  size = "medium",
+}: {
+  icon: typeof Calendar;
+  title: string;
+  desc: string;
+  delay: number;
+  size?: "small" | "medium" | "large";
+}) => {
+  const sizeClasses = {
+    small: "col-span-1 row-span-1",
+    medium: "col-span-1 md:col-span-2 row-span-1 md:row-span-2",
+    large: "col-span-2 row-span-2",
+  };
+
+  return (
+    <motion.div
+      className={`${sizeClasses[size]} bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-800 rounded-lg p-6 md:p-8 flex flex-col justify-between`}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, delay }}
+      whileHover={{ scale: 1.02 }}
+    >
+      <div className="flex flex-col gap-3 md:gap-4">
+        <Icon className="w-6 h-6 md:w-8 md:h-8 text-gray-600 dark:text-gray-400" />
+        <h3 className="text-sm md:text-lg font-light text-gray-900 dark:text-gray-100">
+          {title}
+        </h3>
+      </div>
+      <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 font-light">
+        {desc}
+      </p>
+    </motion.div>
+  );
+};
+
 // Page 2: Master Your Modules
 const Page2 = () => {
-  const pillars = [
-    { icon: Calendar, name: "Daily Planner", desc: "Master your time", lean: -8 },
-    { icon: Brain, name: "Knowledge", desc: "Organize & learn", lean: 0, isCenter: true },
-    { icon: TrendingUp, name: "Growth", desc: "Track progress", lean: 8 },
+  const boxes = [
+    {
+      icon: Calendar,
+      title: "Daily Planner",
+      desc: "Master your time with structured blocks",
+      size: "medium",
+    },
+    {
+      icon: Brain,
+      title: "Knowledge",
+      desc: "Organize learning",
+      size: "small",
+    },
+    {
+      icon: TrendingUp,
+      title: "Growth",
+      desc: "Track progress",
+      size: "small",
+    },
+    {
+      icon: Target,
+      title: "Goals",
+      desc: "Set and achieve your ambitions",
+      size: "medium",
+    },
   ];
 
   return (
-    <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950">
-      {/* Background shapes */}
+    <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950 p-4 md:p-8">
+      {/* Background zen elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <FloatingCircle delay={0} size="w-64 h-64" />
-        <FloatingHexagon delay={1} />
-        <FloatingLine delay={0.5} />
+        <ZenCircle delay={0.5} size="w-96 h-96" />
+        <MeditationDot delay={0.2} position={{ x: "10%", y: "20%" }} />
+        <MeditationDot delay={0.5} position={{ x: "85%", y: "75%" }} />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center gap-12 px-4 w-full">
+      <div className="relative z-10 w-full max-w-4xl">
         <motion.h2
-          className="text-5xl md:text-7xl font-bold text-black dark:text-white text-center"
+          className="text-4xl md:text-6xl font-light text-center mb-4 md:mb-8 text-gray-900 dark:text-gray-100"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          Master Your
-          <br />
-          <span className="text-gray-400 dark:text-gray-600">Modules</span>
+          Your Modules
         </motion.h2>
 
-        {/* Pillars - Greek Temple Style */}
-        <div className="flex items-flex-end gap-4 md:gap-8 justify-center mt-8 h-96">
-          {pillars.map((pillar, idx) => (
-            <IonicPillar
-              key={idx}
-              icon={pillar.icon}
-              name={pillar.name}
-              desc={pillar.desc}
-              delay={0.3 + idx * 0.15}
-              isCenter={pillar.isCenter}
-              lean={pillar.lean}
-            />
-          ))}
-        </div>
-
         <motion.p
-          className="text-gray-500 dark:text-gray-500 text-center mt-8 text-sm"
+          className="text-center text-sm text-gray-600 dark:text-gray-400 mb-8 md:mb-12 font-light"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
         >
-          Six active modules. Ten more coming soon.
+          Six core disciplines. More unlocking soon.
         </motion.p>
+
+        {/* Bento Grid */}
+        <motion.div
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          {boxes.map((box, idx) => (
+            <BentoBox
+              key={idx}
+              icon={box.icon}
+              title={box.title}
+              desc={box.desc}
+              size={box.size as "small" | "medium" | "large"}
+              delay={0.3 + idx * 0.1}
+            />
+          ))}
+        </motion.div>
       </div>
     </div>
   );
@@ -335,33 +220,32 @@ const Page2 = () => {
 // Page 3: Begin Your Journey
 const Page3 = () => (
   <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950">
-    {/* Background shapes */}
+    {/* Background zen elements */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <FloatingHexagon delay={0.5} />
-      <FloatingCircle delay={0} size="w-56 h-56" />
-      <FloatingLine delay={1.5} />
+      <ZenCircle delay={0} size="w-72 h-72" />
+      <ZenCircle delay={0.4} size="w-96 h-96" />
+      <MeditationDot delay={0} position={{ x: "25%", y: "40%" }} />
+      <MeditationDot delay={0.4} position={{ x: "70%", y: "65%" }} />
     </div>
 
     {/* Content */}
-    <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl">
+    <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl text-center">
       <motion.h2
-        className="text-6xl md:text-7xl font-bold text-black dark:text-white text-center"
+        className="text-5xl md:text-7xl font-light text-gray-900 dark:text-gray-100"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
       >
-        Begin Your
-        <br />
-        <span className="text-gray-400 dark:text-gray-600">Journey</span>
+        Begin Your Journey
       </motion.h2>
 
       <motion.p
-        className="text-lg text-gray-600 dark:text-gray-400 text-center mt-4"
+        className="text-gray-600 dark:text-gray-400 font-light"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
       >
-        Sign in and start mastering yourself today. Your personal operating system awaits.
+        Start mastering yourself today. Your personal operating system awaits.
       </motion.p>
 
       <motion.div
@@ -371,21 +255,21 @@ const Page3 = () => (
       >
         <Button
           size="lg"
-          className="text-lg px-8 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black"
+          className="px-12 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-light"
           onClick={() => (window.location.href = "/api/login")}
           data-testid="button-start-adventure"
         >
-          Enter Your Dojo
+          Enter Dojo
         </Button>
       </motion.div>
 
       <motion.p
-        className="text-sm text-gray-500 dark:text-gray-500 mt-8"
+        className="text-xs text-gray-500 dark:text-gray-500 tracking-wide mt-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
       >
-        Sign in with Google, Apple, or Email
+        SIGN IN WITH GOOGLE, APPLE, OR EMAIL
       </motion.p>
     </div>
   </div>
@@ -454,7 +338,7 @@ export default function Landing() {
           transition={{ duration: 0.3 }}
           data-testid="button-previous-page"
         >
-          <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-black dark:text-white" />
+          <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-gray-700 dark:text-gray-300" />
         </motion.button>
       )}
 
@@ -468,7 +352,7 @@ export default function Landing() {
           transition={{ duration: 0.3 }}
           data-testid="button-next-page"
         >
-          <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-black dark:text-white" />
+          <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-gray-700 dark:text-gray-300" />
         </motion.button>
       )}
 
@@ -487,8 +371,8 @@ export default function Landing() {
               onClick={() => handleProgressDot(idx)}
               className={`w-2 h-2 rounded-full transition-all ${
                 idx === currentPage
-                  ? "bg-black dark:bg-white w-8"
-                  : "bg-gray-400 dark:bg-gray-600 hover:bg-gray-500 dark:hover:bg-gray-500"
+                  ? "bg-gray-800 dark:bg-gray-200 w-8"
+                  : "bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600"
               }`}
               data-testid={`button-progress-dot-${idx}`}
             />
