@@ -59,16 +59,15 @@ const Page1 = () => (
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
       >
-        <p className="text-lg md:text-2xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+        <p className="text-2xl md:text-4xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
           Enter Your
         </p>
         <h1
           className="text-8xl md:text-9xl"
           style={{
-            fontFamily: "'Dancing Script', cursive",
+            fontFamily: "'Fredoka', sans-serif",
             fontWeight: "700",
             color: "rgb(55, 65, 81)",
-            textShadow: "2px 2px 4px rgba(0,0,0,0.1)",
             letterSpacing: "-0.02em",
           }}
         >
@@ -77,7 +76,7 @@ const Page1 = () => (
       </motion.div>
 
       <motion.p
-        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md font-semibold"
+        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.4 }}
