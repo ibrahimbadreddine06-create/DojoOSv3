@@ -52,20 +52,32 @@ const Page1 = () => (
     </div>
 
     {/* Content */}
-    <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl">
-      <motion.h1
-        className="text-6xl md:text-8xl font-bold text-center"
+    <div className="relative z-10 flex flex-col items-center gap-6 px-4 max-w-2xl">
+      <motion.div
+        className="text-center"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
       >
-        <span className="text-gray-600 dark:text-gray-500">Enter Your</span>
-        <br />
-        <span className="text-gray-800 dark:text-gray-300">Dojo</span>
-      </motion.h1>
+        <p className="text-lg md:text-2xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+          Enter Your
+        </p>
+        <h1
+          className="text-8xl md:text-9xl"
+          style={{
+            fontFamily: "'Dancing Script', cursive",
+            fontWeight: "700",
+            color: "rgb(55, 65, 81)",
+            textShadow: "2px 2px 4px rgba(0,0,0,0.1)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Dojo
+        </h1>
+      </motion.div>
 
       <motion.p
-        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md font-semibold mt-4"
+        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md font-semibold"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.4 }}
