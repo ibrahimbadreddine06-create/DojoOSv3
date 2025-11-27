@@ -305,7 +305,7 @@ export default function Landing() {
     <motion.div
       className="relative w-full h-screen overflow-hidden"
       drag="x"
-      dragElastic={0.3}
+      dragElastic={0.2}
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: "grabbing" }}
       style={{ touchAction: "none" }}
