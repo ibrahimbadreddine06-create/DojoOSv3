@@ -56,89 +56,160 @@ const FloatingLine = ({ delay }: { delay: number }) => (
   />
 );
 
-// Roman Pillar Component
-const RomanPillar = ({ 
-  icon: Icon, 
-  name, 
-  desc, 
-  delay 
-}: { 
+// Ionic Capital with Spirals
+const IonicCapital = ({ delay }: { delay: number }) => (
+  <motion.svg
+    width="120"
+    height="50"
+    viewBox="0 0 120 50"
+    className="overflow-visible"
+    initial={{ scaleX: 0 }}
+    animate={{ scaleX: 1 }}
+    transition={{ duration: 0.7, delay, ease: "easeOut" }}
+  >
+    {/* Top abacus */}
+    <rect x="5" y="5" width="110" height="8" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
+    
+    {/* Echinus (curved part) */}
+    <path d="M 10 13 Q 10 25 15 25" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
+    <path d="M 110 13 Q 110 25 105 25" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
+    
+    {/* Left volute (spiral) */}
+    <path d="M 15 25 Q 15 35 25 35 Q 35 35 40 30" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-700 dark:text-gray-400" strokeLinecap="round" />
+    
+    {/* Right volute (spiral) */}
+    <path d="M 105 25 Q 105 35 95 35 Q 85 35 80 30" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-700 dark:text-gray-400" strokeLinecap="round" />
+    
+    {/* Connecting band */}
+    <line x1="20" y1="42" x2="100" y2="42" stroke="currentColor" strokeWidth="2" className="text-gray-700 dark:text-gray-400" />
+  </motion.svg>
+);
+
+// Rubble stones at base
+const RubbleStones = () => (
+  <div className="absolute -bottom-6 w-full flex justify-center gap-2">
+    {[
+      { size: "w-3 h-3", left: "-16px" },
+      { size: "w-4 h-3", left: "-8px" },
+      { size: "w-3 h-4", left: "12px" },
+      { size: "w-3 h-3", left: "20px" },
+    ].map((stone, i) => (
+      <motion.div
+        key={i}
+        className={`absolute ${stone.size} bg-gray-500 dark:bg-gray-600 rounded-sm`}
+        style={{ left: stone.left }}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.6 + i * 0.05 }}
+      />
+    ))}
+  </div>
+);
+
+// Ionic Pillar Component
+const IonicPillar = ({
+  icon: Icon,
+  name,
+  desc,
+  delay,
+  isCenter = false,
+  lean = 0,
+}: {
   icon: typeof Calendar;
   name: string;
   desc: string;
   delay: number;
+  isCenter?: boolean;
+  lean?: number;
 }) => {
   return (
     <motion.div
-      className="flex flex-col items-center"
+      className="flex flex-col items-center relative"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, delay }}
+      style={{ transform: `rotateZ(${lean}deg)` }}
     >
-      {/* Capital (top decoration) */}
+      {/* Capital */}
       <motion.div
-        className="w-24 md:w-32 h-6 bg-gradient-to-b from-amber-700 to-amber-600 dark:from-amber-500 dark:to-amber-400 relative"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.7, delay: delay + 0.1, ease: "easeOut" }}
+        initial={{ scaleY: 0, originY: 1 }}
+        animate={{ scaleY: 1 }}
+        transition={{ duration: 0.6, delay: delay + 0.1, ease: "easeOut" }}
       >
-        <div className="absolute inset-0 border-b-2 border-amber-900 dark:border-amber-600"></div>
-        <div className="absolute inset-0 flex items-center justify-center gap-1">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="w-1 h-1 bg-amber-900 dark:bg-amber-800 rounded-full"></div>
-          ))}
-        </div>
+        <IonicCapital delay={delay + 0.15} />
       </motion.div>
 
-      {/* Pillar shaft with engraved icon */}
+      {/* Pillar Shaft */}
       <motion.div
-        className="w-20 md:w-28 h-64 bg-gradient-to-b from-stone-300 via-stone-200 to-stone-400 dark:from-stone-700 dark:via-stone-600 dark:to-stone-800 relative shadow-2xl"
+        className="w-16 md:w-20 bg-gradient-to-b from-gray-300 via-gray-200 to-gray-300 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 relative border-l-2 border-r-2 border-gray-600 dark:border-gray-500 shadow-lg h-64"
         initial={{ scaleY: 0, originY: 1 }}
         animate={{ scaleY: 1 }}
         transition={{ duration: 0.9, delay: delay + 0.2, ease: "easeOut" }}
       >
-        {/* Pillar texture */}
-        <div className="absolute inset-0 opacity-40">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="absolute w-full h-px bg-gradient-to-r from-transparent via-gray-400 dark:via-gray-500 to-transparent" style={{ top: `${(i + 1) * 8}%` }} />
+        {/* Vertical Fluting (grooves) */}
+        <div className="absolute inset-0 flex opacity-60">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="flex-1 bg-gradient-to-r from-transparent via-gray-500 dark:via-gray-400 to-transparent"
+              style={{
+                backgroundImage: `linear-gradient(to right, transparent, rgba(0,0,0,0.1) 30%, transparent)`,
+              }}
+            />
           ))}
         </div>
 
-        {/* Engraved icon (recessed into pillar) */}
+        {/* Weathered cracks */}
+        <div className="absolute inset-0 opacity-30">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-px h-24 bg-gradient-to-b from-black/30 dark:from-white/20 to-transparent"
+              style={{
+                left: `${30 + i * 25}%`,
+                top: `${20 + i * 15}%`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Engraved Icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="text-amber-900 dark:text-amber-700 opacity-30"
-            animate={{ opacity: [0.25, 0.35, 0.25] }}
+            className="text-gray-600 dark:text-gray-400 opacity-40"
+            animate={{ opacity: [0.35, 0.5, 0.35] }}
             transition={{
               duration: 3,
               delay: delay,
               repeat: Infinity,
             }}
           >
-            <Icon className="w-12 h-12 md:w-16 md:h-16" strokeWidth={1.5} />
+            <Icon className="w-14 h-14 md:w-16 md:h-16" strokeWidth={1.2} />
           </motion.div>
         </div>
-
-        {/* Shadow lines for depth */}
-        <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-black/20 to-transparent dark:from-white/10"></div>
       </motion.div>
 
-      {/* Base (pedestal) */}
+      {/* Base */}
       <motion.div
-        className="w-28 md:w-36 h-4 bg-gradient-to-b from-stone-400 to-stone-600 dark:from-stone-800 dark:to-stone-900 relative"
+        className="w-24 md:w-28 h-5 bg-gradient-to-b from-gray-400 to-gray-600 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-600 dark:border-gray-700 relative"
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
-        transition={{ duration: 0.7, delay: delay + 0.3, ease: "easeOut" }}
+        transition={{ duration: 0.7, delay: delay + 0.35, ease: "easeOut" }}
       >
-        <div className="absolute inset-0 border-t-2 border-stone-700 dark:border-stone-600"></div>
+        <div className="absolute inset-0 border-t-2 border-gray-700 dark:border-gray-600"></div>
       </motion.div>
+
+      {/* Rubble */}
+      <div className="relative w-full h-6">
+        <RubbleStones />
+      </div>
 
       {/* Label */}
       <motion.div
-        className="mt-8 text-center"
+        className="mt-10 text-center"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: delay + 0.5 }}
+        transition={{ duration: 0.6, delay: delay + 0.6 }}
       >
         <h3 className="font-semibold text-black dark:text-white text-sm md:text-base">
           {name}
@@ -203,12 +274,12 @@ const Page1 = () => (
   </div>
 );
 
-// Page 2: Master Your Modules (with Roman Pillars)
+// Page 2: Master Your Modules
 const Page2 = () => {
   const pillars = [
-    { icon: Calendar, name: "Daily Planner", desc: "Master your time" },
-    { icon: Brain, name: "Knowledge", desc: "Organize & learn" },
-    { icon: TrendingUp, name: "Growth", desc: "Track progress" },
+    { icon: Calendar, name: "Daily Planner", desc: "Master your time", lean: -8 },
+    { icon: Brain, name: "Knowledge", desc: "Organize & learn", lean: 0, isCenter: true },
+    { icon: TrendingUp, name: "Growth", desc: "Track progress", lean: 8 },
   ];
 
   return (
@@ -233,15 +304,17 @@ const Page2 = () => {
           <span className="text-gray-400 dark:text-gray-600">Modules</span>
         </motion.h2>
 
-        {/* Pillars */}
-        <div className="flex items-flex-end gap-6 md:gap-12 justify-center mt-8 h-96 flex-wrap md:flex-nowrap">
+        {/* Pillars - Greek Temple Style */}
+        <div className="flex items-flex-end gap-4 md:gap-8 justify-center mt-8 h-96">
           {pillars.map((pillar, idx) => (
-            <RomanPillar
+            <IonicPillar
               key={idx}
               icon={pillar.icon}
               name={pillar.name}
               desc={pillar.desc}
               delay={0.3 + idx * 0.15}
+              isCenter={pillar.isCenter}
+              lean={pillar.lean}
             />
           ))}
         </div>
@@ -350,7 +423,7 @@ export default function Landing() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="relative w-full overflow-hidden h-screen"
       drag="x"
       dragElastic={0.2}
