@@ -293,7 +293,7 @@ export default function Landing() {
 
   const handleDragEnd = (info: any) => {
     if (!info?.offset) return;
-    const swipeThreshold = 50;
+    const swipeThreshold = 30;
     if (info.offset.x > swipeThreshold && currentPage > 0) {
       handlePrevious();
     } else if (info.offset.x < -swipeThreshold && currentPage < pages.length - 1) {
@@ -305,8 +305,7 @@ export default function Landing() {
     <motion.div
       className="relative w-full h-screen overflow-hidden"
       drag="x"
-      dragElastic={0.2}
-      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.3}
       onDragEnd={handleDragEnd}
       whileDrag={{ cursor: "grabbing" }}
       style={{ touchAction: "none" }}
