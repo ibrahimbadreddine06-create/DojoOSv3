@@ -617,3 +617,4 @@ export type PageSetting = typeof pageSettings.$inferSelect;
 export type InsertPageSetting = z.infer<typeof insertPageSettingSchema>;
 export type DailyMetric = typeof dailyMetrics.$inferSelect;
 export type InsertDailyMetric = z.infer<typeof insertDailyMetricSchema>;
+export type KnowledgeMetric = typeof knowledgeMetrics.$inferSelect;

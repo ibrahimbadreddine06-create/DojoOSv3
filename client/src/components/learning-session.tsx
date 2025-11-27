@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { X, RotateCcw, BookOpen, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,7 +13,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Flashcard } from "@shared/schema";
+import { format } from "date-fns";
+import { calculateReadinessWithDecay } from "@/lib/readiness";
+import type { Flashcard, LearnPlanItem } from "@shared/schema";
 
 interface LearningSesionProps {
   flashcards: Flashcard[];
@@ -185,13 +187,34 @@ export function LearningSession({
     mutationFn: async (data: { id: string; updates: Partial<Flashcard> }) => {
       return apiRequest("PATCH", `/api/flashcards/${data.id}`, data.updates);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flashcards/chapter", chapterId] });
-      if (themeId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/flashcards/theme", themeId] });
-      }
-      if (courseId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/flashcards/course", courseId] });
+      
+      const entityId = themeId || courseId;
+      if (entityId) {
+        if (themeId) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/theme", themeId] });
+        }
+        if (courseId) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/course", courseId] });
+        }
+        
+        const chaptersKey = themeId ? ["/api/learn-plan-items", themeId] : ["/api/learn-plan-items/course", courseId];
+        const flashcardsKey = themeId ? ["/api/flashcards/theme", themeId] : ["/api/flashcards/course", courseId];
+        
+        const chapters = queryClient.getQueryData<LearnPlanItem[]>(chaptersKey);
+        const allFlashcards = queryClient.getQueryData<Flashcard[]>(flashcardsKey) || [];
+        
+        if (chapters && chapters.length > 0) {
+          const total = chapters.length;
+          const completed = chapters.filter(c => c.completed).length;
+          const completion = Math.round((completed / total) * 100);
+          const readiness = calculateReadinessWithDecay(allFlashcards);
+          
+          const today = format(new Date(), "yyyy-MM-dd");
+          await apiRequest("PUT", `/api/knowledge-metrics/${entityId}/${today}`, { completion, readiness });
+          queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", entityId] });
+        }
       }
     },
   });

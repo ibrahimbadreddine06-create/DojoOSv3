@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2 } from "lucide-react";
+import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,10 +16,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { TodaySessions } from "@/components/today-sessions";
 import { ChapterContentArea } from "@/components/chapter-content-area";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Course, LearnPlanItem } from "@shared/schema";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { format, parseISO } from "date-fns";
+import { calculateReadinessWithDecay } from "@/lib/readiness";
+import type { Course, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
 
 interface ChapterWithChildren extends LearnPlanItem {
   children: ChapterWithChildren[];
@@ -267,12 +276,62 @@ export default function CourseDetail() {
     enabled: !!courseId,
   });
 
+  const { data: flashcards = [] } = useQuery<Flashcard[]>({
+    queryKey: ["/api/flashcards/course", courseId],
+    enabled: !!courseId,
+  });
+
+  const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({
+    queryKey: ["/api/knowledge-metrics", courseId],
+    enabled: !!courseId,
+  });
+
+  const [metricsOpen, setMetricsOpen] = useState(false);
+
+  const readinessPercent = useMemo(() => {
+    return calculateReadinessWithDecay(flashcards);
+  }, [flashcards]);
+
+  const chartData = useMemo(() => {
+    if (!knowledgeMetrics || knowledgeMetrics.length === 0) return [];
+    return knowledgeMetrics.map(m => ({
+      date: format(parseISO(m.date), "MMM d"),
+      fullDate: m.date,
+      completion: parseFloat(m.completion),
+      readiness: parseFloat(m.readiness),
+    }));
+  }, [knowledgeMetrics]);
+
+  const chartConfig = {
+    completion: {
+      label: "Completion",
+      color: "hsl(var(--primary))",
+    },
+    readiness: {
+      label: "Readiness",
+      color: "hsl(var(--chart-2))",
+    },
+  };
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string; completed?: boolean; importance?: number; notes?: string }) => {
       return apiRequest("PATCH", `/api/learn-plan-items/${id}`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
+      const updatedChapters = queryClient.getQueryData<LearnPlanItem[]>(["/api/learn-plan-items/course", courseId]);
+      const updatedFlashcards = queryClient.getQueryData<Flashcard[]>(["/api/flashcards/course", courseId]) || [];
+      
+      if (updatedChapters && updatedChapters.length > 0 && courseId) {
+        const total = updatedChapters.length;
+        const completed = updatedChapters.filter(c => c.completed).length;
+        const completion = Math.round((completed / total) * 100);
+        const readiness = calculateReadinessWithDecay(updatedFlashcards);
+        
+        const today = format(new Date(), "yyyy-MM-dd");
+        await apiRequest("PUT", `/api/knowledge-metrics/${courseId}/${today}`, { completion, readiness });
+        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", courseId] });
+      }
     },
   });
 
@@ -344,11 +403,74 @@ export default function CourseDetail() {
           <Badge variant="outline" data-testid="badge-completion">
             {completionPercent}% Complete
           </Badge>
+          <Badge variant="outline" data-testid="badge-readiness">
+            {readinessPercent}% Ready
+          </Badge>
           <Badge variant="secondary" data-testid="badge-chapter-count">
             {completedChapters}/{totalChapters} Chapters
           </Badge>
+          <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" data-testid="button-toggle-metrics">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                Metrics
+                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${metricsOpen ? "rotate-180" : ""}`} />
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
         </div>
       </div>
+
+      <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
+        <CollapsibleContent>
+          <div className="px-4 py-3 border-b bg-muted/20">
+            {chartData.length === 0 ? (
+              <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
+                Complete chapters and review flashcards to start tracking progress
+              </div>
+            ) : (
+              <ChartContainer config={chartConfig} className="h-32 w-full">
+                <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                  <XAxis 
+                    dataKey="date" 
+                    tickLine={false} 
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                    width={30}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="completion" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--primary))", r: 3 }}
+                    name="Completion"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="readiness" 
+                    stroke="hsl(var(--chart-2))" 
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
+                    name="Readiness"
+                  />
+                  <Legend />
+                </LineChart>
+              </ChartContainer>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-72 border-r flex flex-col bg-muted/30">

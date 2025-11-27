@@ -4,7 +4,7 @@ import {
   materials, flashcards, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, businesses, workProjects, tasks,
-  socialActivities, people, pageSettings, dailyMetrics,
+  socialActivities, people, pageSettings, dailyMetrics, knowledgeMetrics,
   type User, type UpsertUser,
   type TimeBlock, type InsertTimeBlock, type DayPreset, type InsertDayPreset,
   type ActivityPreset, type InsertActivityPreset, type Goal, type InsertGoal,
@@ -21,7 +21,8 @@ import {
   type CourseExercise, type InsertCourseExercise, type Business, type InsertBusiness,
   type WorkProject, type InsertWorkProject, type Task, type InsertTask,
   type SocialActivity, type InsertSocialActivity, type Person, type InsertPerson,
-  type PageSetting, type InsertPageSetting, type DailyMetric, type InsertDailyMetric
+  type PageSetting, type InsertPageSetting, type DailyMetric, type InsertDailyMetric,
+  type KnowledgeMetric
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -141,7 +142,11 @@ export interface IStorage {
   getPageSettings(): Promise<PageSetting[]>;
   updatePageSetting(module: string, active: boolean): Promise<PageSetting>;
   getDailyMetric(date: string): Promise<DailyMetric | undefined>;
+  getAllDailyMetrics(): Promise<DailyMetric[]>;
+  upsertDailyMetric(date: string, completion: number): Promise<DailyMetric>;
   createDailyMetric(data: InsertDailyMetric): Promise<DailyMetric>;
+  getKnowledgeMetrics(themeId: string): Promise<KnowledgeMetric[]>;
+  upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -588,6 +593,47 @@ export class DatabaseStorage implements IStorage {
   async createDailyMetric(data: InsertDailyMetric): Promise<DailyMetric> {
     const [metric] = await db.insert(dailyMetrics).values(data).returning();
     return metric;
+  }
+
+  async getAllDailyMetrics(): Promise<DailyMetric[]> {
+    return await db.select().from(dailyMetrics).orderBy(asc(dailyMetrics.date));
+  }
+
+  async upsertDailyMetric(date: string, plannerCompletion: number): Promise<DailyMetric> {
+    const existing = await this.getDailyMetric(date);
+    if (existing) {
+      const [updated] = await db.update(dailyMetrics)
+        .set({ plannerCompletion: plannerCompletion.toString() })
+        .where(eq(dailyMetrics.date, date))
+        .returning();
+      return updated;
+    } else {
+      return await this.createDailyMetric({ date, plannerCompletion: plannerCompletion.toString() });
+    }
+  }
+
+  async getKnowledgeMetrics(themeId: string): Promise<KnowledgeMetric[]> {
+    return await db.select().from(knowledgeMetrics)
+      .where(eq(knowledgeMetrics.themeId, themeId))
+      .orderBy(asc(knowledgeMetrics.date));
+  }
+
+  async upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric> {
+    const [existing] = await db.select().from(knowledgeMetrics)
+      .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)));
+    
+    if (existing) {
+      const [updated] = await db.update(knowledgeMetrics)
+        .set({ completion: completion.toString(), readiness: readiness.toString() })
+        .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(knowledgeMetrics)
+        .values({ themeId, date, completion: completion.toString(), readiness: readiness.toString() })
+        .returning();
+      return created;
+    }
   }
 }
 

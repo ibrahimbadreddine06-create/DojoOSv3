@@ -542,9 +542,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metric);
   });
 
+  app.get("/api/daily-metrics", async (req, res) => {
+    const metrics = await storage.getAllDailyMetrics();
+    res.json(metrics);
+  });
+
   app.post("/api/daily-metrics", async (req, res) => {
     const data = insertDailyMetricSchema.parse(req.body);
     const metric = await storage.createDailyMetric(data);
+    res.json(metric);
+  });
+
+  app.put("/api/daily-metrics/:date", isAuthenticated, async (req, res) => {
+    const { plannerCompletion } = req.body;
+    const metric = await storage.upsertDailyMetric(req.params.date, plannerCompletion);
+    res.json(metric);
+  });
+
+  app.get("/api/knowledge-metrics/:themeId", async (req, res) => {
+    const metrics = await storage.getKnowledgeMetrics(req.params.themeId);
+    res.json(metrics);
+  });
+
+  app.put("/api/knowledge-metrics/:themeId/:date", isAuthenticated, async (req, res) => {
+    const { completion, readiness } = req.body;
+    const metric = await storage.upsertKnowledgeMetric(req.params.themeId, req.params.date, completion, readiness);
     res.json(metric);
   });
 

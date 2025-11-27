@@ -1,15 +1,17 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play } from "lucide-react";
-import { format, addDays, subDays, isToday, isYesterday, isTomorrow } from "date-fns";
+import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { CreatePresetDialog } from "@/components/dialogs/create-preset-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { TimeBlock, DayPreset } from "@shared/schema";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
 const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
 const HOUR_HEIGHT = 60;
@@ -76,9 +78,29 @@ export default function Planner() {
     queryKey: ["/api/daily-metrics", dateStr],
   });
 
+  const { data: allMetrics } = useQuery<DailyMetric[]>({
+    queryKey: ["/api/daily-metrics"],
+  });
+
   const { data: presets, isLoading: presetsLoading } = useQuery<DayPreset[]>({
     queryKey: ["/api/day-presets"],
   });
+
+  const chartData = useMemo(() => {
+    if (!allMetrics || allMetrics.length === 0) return [];
+    return allMetrics.map(m => ({
+      date: format(parseISO(m.date), "MMM d"),
+      fullDate: m.date,
+      completion: parseFloat(m.plannerCompletion || "0"),
+    }));
+  }, [allMetrics]);
+
+  const chartConfig = {
+    completion: {
+      label: "Completion",
+      color: "hsl(var(--primary))",
+    },
+  };
 
   const applyPresetMutation = useMutation({
     mutationFn: async (preset: DayPreset) => {
@@ -128,9 +150,17 @@ export default function Planner() {
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
       return await apiRequest("PATCH", `/api/time-blocks/${id}`, { completed });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
-      queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      const updatedBlocks = queryClient.getQueryData<TimeBlock[]>(["/api/time-blocks", dateStr]);
+      if (updatedBlocks && updatedBlocks.length > 0) {
+        const parentBlocks = updatedBlocks.filter(b => !b.parentId);
+        const completedCount = parentBlocks.filter(b => b.completed).length;
+        const plannerCompletion = Math.round((completedCount / parentBlocks.length) * 100);
+        await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+      }
     },
     onError: () => {
       toast({ title: "Failed to update time block", variant: "destructive" });
@@ -323,9 +353,60 @@ export default function Planner() {
             </div>
           </CardHeader>
           <CardContent className="py-2 px-4">
-            <div className="h-16 flex items-center justify-center text-sm text-muted-foreground">
-              Scrollable daily completion chart coming soon
-            </div>
+            {chartData.length === 0 ? (
+              <div className="h-16 flex items-center justify-center text-sm text-muted-foreground">
+                Start tracking to see your completion history
+              </div>
+            ) : (
+              <div className="h-16 overflow-x-auto">
+                <ChartContainer 
+                  config={chartConfig} 
+                  className="h-full aspect-auto"
+                  style={{ minWidth: Math.max(300, chartData.length * 40) }}
+                >
+                  <AreaChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 12 }}>
+                    <defs>
+                      <linearGradient id="completionGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      tickLine={false} 
+                      axisLine={false}
+                      tick={{ fontSize: 10 }}
+                      width={25}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      labelFormatter={(_, payload) => {
+                        if (payload && payload[0]) {
+                          return payload[0].payload.fullDate;
+                        }
+                        return "";
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="completion"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fill="url(#completionGradient)"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
