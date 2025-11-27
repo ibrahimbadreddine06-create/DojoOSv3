@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft, Calendar, Brain, TrendingUp, Target } from "lucide-react";
+import { Calendar, Brain, TrendingUp, Target } from "lucide-react";
 
 // Zen Circle animation
 const ZenCircle = ({ delay, size }: { delay: number; size: string }) => (
@@ -318,33 +318,6 @@ export default function Landing() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Left Arrow (Previous) */}
-      {currentPage > 0 && (
-        <motion.button
-          className="fixed left-4 md:left-8 top-1/2 transform -translate-y-1/2 z-40 p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-full transition"
-          onClick={handlePrevious}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          data-testid="button-previous-page"
-        >
-          <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-gray-700 dark:text-gray-300" />
-        </motion.button>
-      )}
-
-      {/* Right Arrow (Next) */}
-      {currentPage < pages.length - 1 && (
-        <motion.button
-          className="fixed right-4 md:right-8 top-1/2 transform -translate-y-1/2 z-40 p-2 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-full transition"
-          onClick={handleContinue}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          data-testid="button-next-page"
-        >
-          <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-gray-700 dark:text-gray-300" />
-        </motion.button>
-      )}
 
       {/* Navigation Controls (Bottom) */}
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-6">
