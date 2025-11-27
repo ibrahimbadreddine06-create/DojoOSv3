@@ -297,26 +297,28 @@ export default function Landing() {
   };
 
   return (
-    <motion.div
-      className="relative w-full overflow-hidden h-screen"
-      drag="x"
-      dragElastic={0.2}
-      dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={handleDragEnd}
-      onDrag={(_, info) => setDragX(info.offset.x)}
-    >
-      {/* Pages */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPage}
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -100 }}
-          transition={{ duration: 0.5 }}
-        >
-          {pages[currentPage]}
-        </motion.div>
-      </AnimatePresence>
+    <div className="relative w-full overflow-hidden h-screen touch-none">
+      <motion.div
+        className="w-full h-full"
+        drag="x"
+        dragElastic={0.2}
+        dragConstraints={{ left: 0, right: 0 }}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ cursor: "grabbing" }}
+      >
+        {/* Pages */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentPage}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.5 }}
+          >
+            {pages[currentPage]}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
 
 
       {/* Navigation Controls (Bottom) */}
@@ -362,6 +364,6 @@ export default function Landing() {
           </motion.div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
