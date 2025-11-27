@@ -239,25 +239,10 @@ const Page3 = () => (
       </motion.p>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-      >
-        <Button
-          size="lg"
-          className="px-12 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black font-light"
-          onClick={() => (window.location.href = "/api/login")}
-          data-testid="button-start-adventure"
-        >
-          Enter Dojo
-        </Button>
-      </motion.div>
-
-      <motion.div
-        className="flex gap-4 mt-8"
+        className="flex gap-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
       >
         <Button
           size="icon"
@@ -317,15 +302,15 @@ export default function Landing() {
   };
 
   return (
-    <div className="relative w-full overflow-hidden h-screen touch-none">
-      <motion.div
-        className="w-full h-full"
-        drag="x"
-        dragElastic={0.2}
-        dragConstraints={{ left: 0, right: 0 }}
-        onDragEnd={handleDragEnd}
-        whileDrag={{ cursor: "grabbing" }}
-      >
+    <motion.div
+      className="relative w-full h-screen overflow-hidden"
+      drag="x"
+      dragElastic={0.2}
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+      whileDrag={{ cursor: "grabbing" }}
+      style={{ touchAction: "none" }}
+    >
         {/* Pages */}
         <AnimatePresence mode="wait">
           <motion.div
@@ -338,8 +323,6 @@ export default function Landing() {
             {pages[currentPage]}
           </motion.div>
         </AnimatePresence>
-      </motion.div>
-
 
       {/* Navigation Controls (Bottom) */}
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-6">
@@ -384,6 +367,6 @@ export default function Landing() {
           </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
