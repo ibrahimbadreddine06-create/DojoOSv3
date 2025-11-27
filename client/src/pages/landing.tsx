@@ -302,26 +302,29 @@ export default function Landing() {
   };
 
   return (
-    <motion.div
-      className="relative w-full h-screen overflow-hidden"
-      drag="x"
-      dragElastic={0.2}
-      onDragEnd={handleDragEnd}
-      whileDrag={{ cursor: "grabbing" }}
-      style={{ touchAction: "none" }}
-    >
-        {/* Pages */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentPage}
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            transition={{ duration: 0.5 }}
-          >
-            {pages[currentPage]}
-          </motion.div>
-        </AnimatePresence>
+    <div className="relative w-full h-screen overflow-hidden">
+      {/* Pages */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPage}
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -100 }}
+          transition={{ duration: 0.5 }}
+        >
+          {pages[currentPage]}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Swipe Overlay */}
+      <motion.div
+        className="absolute inset-0 z-40"
+        drag="x"
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ cursor: "grabbing" }}
+        style={{ touchAction: "none", pointerEvents: "auto" }}
+      />
 
       {/* Navigation Controls (Bottom) */}
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-6">
@@ -366,6 +369,6 @@ export default function Landing() {
           </motion.div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
