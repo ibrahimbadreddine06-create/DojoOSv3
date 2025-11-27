@@ -298,6 +298,7 @@ export default function Landing() {
   };
 
   const handleDragEnd = (info: any) => {
+    if (!info?.offset) return;
     const swipeThreshold = 50;
     if (info.offset.x > swipeThreshold && currentPage > 0) {
       handlePrevious();
