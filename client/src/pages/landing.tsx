@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Calendar, Brain, TrendingUp, Target } from "lucide-react";
+import { SiGoogle, SiApple } from "react-icons/si";
 
 // Zen Circle animation
 const ZenCircle = ({ delay, size }: { delay: number; size: string }) => (
@@ -252,14 +253,33 @@ const Page3 = () => (
         </Button>
       </motion.div>
 
-      <motion.p
-        className="text-xs text-gray-500 dark:text-gray-500 tracking-wide mt-8"
+      <motion.div
+        className="flex gap-4 mt-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
       >
-        SIGN IN WITH REPLIT
-      </motion.p>
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => (window.location.href = "/api/login?provider=google")}
+          data-testid="button-signin-google"
+          className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
+          title="Sign in with Google"
+        >
+          <SiGoogle className="w-5 h-5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => (window.location.href = "/api/login?provider=apple")}
+          data-testid="button-signin-apple"
+          className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
+          title="Sign in with Apple"
+        >
+          <SiApple className="w-5 h-5" />
+        </Button>
+      </motion.div>
     </div>
   </div>
 );
