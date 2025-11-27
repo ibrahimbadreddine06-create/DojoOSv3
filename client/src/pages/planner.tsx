@@ -56,6 +56,8 @@ interface DragState {
   startY: number;
   originalStartMinutes: number;
   originalEndMinutes: number;
+  pointerId: number;
+  targetElement: HTMLElement;
 }
 
 export default function Planner() {
@@ -200,18 +202,22 @@ export default function Planner() {
   };
 
   const handleDragStart = useCallback((
-    e: React.MouseEvent,
+    e: React.PointerEvent,
     block: TimeBlock,
     type: 'move' | 'resize'
   ) => {
     e.stopPropagation();
     e.preventDefault();
+    const target = e.target as HTMLElement;
+    target.setPointerCapture(e.pointerId);
     setDragState({
       blockId: block.id,
       type,
       startY: e.clientY,
       originalStartMinutes: timeToMinutes(block.startTime),
       originalEndMinutes: timeToMinutes(block.endTime),
+      pointerId: e.pointerId,
+      targetElement: target,
     });
     setTempBlock({
       id: block.id,
@@ -220,7 +226,7 @@ export default function Planner() {
     });
   }, []);
 
-  const handleDragMove = useCallback((e: React.MouseEvent) => {
+  const handleDragMove = useCallback((e: React.PointerEvent) => {
     if (!dragState || !gridRef.current) return;
     
     const deltaY = e.clientY - dragState.startY;
@@ -253,14 +259,21 @@ export default function Planner() {
   }, [dragState]);
 
   const handleDragEnd = useCallback(() => {
-    if (dragState && tempBlock) {
-      const block = blocks?.find(b => b.id === dragState.blockId);
-      if (block && (block.startTime !== tempBlock.startTime || block.endTime !== tempBlock.endTime)) {
-        updateBlockMutation.mutate({
-          id: tempBlock.id,
-          startTime: tempBlock.startTime,
-          endTime: tempBlock.endTime,
-        });
+    if (dragState) {
+      try {
+        dragState.targetElement.releasePointerCapture(dragState.pointerId);
+      } catch {
+      }
+      
+      if (tempBlock) {
+        const block = blocks?.find(b => b.id === dragState.blockId);
+        if (block && (block.startTime !== tempBlock.startTime || block.endTime !== tempBlock.endTime)) {
+          updateBlockMutation.mutate({
+            id: tempBlock.id,
+            startTime: tempBlock.startTime,
+            endTime: tempBlock.endTime,
+          });
+        }
       }
     }
     setDragState(null);
@@ -283,9 +296,10 @@ export default function Planner() {
   return (
     <div 
       className="container mx-auto p-4 md:p-6 max-w-7xl h-[calc(100vh-80px)] overflow-hidden"
-      onMouseMove={dragState ? handleDragMove : undefined}
-      onMouseUp={dragState ? handleDragEnd : undefined}
-      onMouseLeave={dragState ? handleDragEnd : undefined}
+      onPointerMove={dragState ? handleDragMove : undefined}
+      onPointerUp={dragState ? handleDragEnd : undefined}
+      onPointerLeave={dragState ? handleDragEnd : undefined}
+      onPointerCancel={dragState ? handleDragEnd : undefined}
     >
       <div className="flex flex-col h-full gap-4">
         <div className="flex items-center justify-between gap-4 flex-shrink-0">
@@ -411,15 +425,18 @@ export default function Planner() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
-          <Card className="lg:col-span-3 overflow-hidden flex flex-col">
+          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none">
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Schedule
                 </CardTitle>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground hidden sm:block">
                   Click to add, drag to move/resize
+                </span>
+                <span className="text-xs text-muted-foreground sm:hidden">
+                  Tap to add blocks
                 </span>
               </div>
             </CardHeader>
@@ -475,7 +492,8 @@ export default function Planner() {
                           >
                             <div 
                               className="flex-1 flex justify-center cursor-grab active:cursor-grabbing"
-                              onMouseDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                              style={{ touchAction: 'none' }}
+                              onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
                               data-testid={`block-drag-handle-${block.id}`}
                             >
                               <GripVertical className="w-4 h-4 text-muted-foreground/50" />
@@ -536,7 +554,8 @@ export default function Planner() {
 
                           <div 
                             className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-b-md"
-                            onMouseDown={(e) => handleDragStart(e, originalBlock, 'resize')}
+                            style={{ touchAction: 'none' }}
+                            onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
                           />
                         </div>

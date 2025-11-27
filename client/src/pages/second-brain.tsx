@@ -16,14 +16,14 @@ export default function SecondBrain() {
   });
 
   return (
-    <div className="container mx-auto p-8 max-w-7xl">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight" data-testid="text-second-brain-title">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" data-testid="text-second-brain-title">
               Second Brain
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Track knowledge acquisition and readiness across themes
             </p>
           </div>

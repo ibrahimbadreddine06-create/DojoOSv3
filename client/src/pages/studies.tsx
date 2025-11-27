@@ -64,21 +64,21 @@ export default function Studies() {
   }) || [];
 
   return (
-    <div className="container mx-auto p-8 max-w-7xl">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-semibold tracking-tight" data-testid="text-studies-title">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" data-testid="text-studies-title">
               Studies
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Track courses, lessons, and academic performance
             </p>
           </div>
           <AddCourseDialog defaultSemester={selectedSemester !== "all" ? selectedSemester : undefined} />
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <Select value={selectedSemester} onValueChange={setSelectedSemester}>
             <SelectTrigger className="w-48" data-testid="select-semester-filter">
               <SelectValue placeholder="All semesters" />

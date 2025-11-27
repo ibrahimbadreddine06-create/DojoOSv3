@@ -386,33 +386,33 @@ export default function ThemeDetail() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 gap-3 border-b">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(backPath)} data-testid="button-back">
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold" data-testid="text-theme-title">{theme.name}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold truncate" data-testid="text-theme-title">{theme.name}</h1>
             {theme.description && (
-              <p className="text-sm text-muted-foreground">{theme.description}</p>
+              <p className="text-sm text-muted-foreground truncate">{theme.description}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" data-testid="badge-completion">
+        <div className="flex items-center gap-2 flex-wrap pl-11 sm:pl-0">
+          <Badge variant="outline" className="text-xs" data-testid="badge-completion">
             {completionPercent}% Complete
           </Badge>
-          <Badge variant="outline" data-testid="badge-readiness">
+          <Badge variant="outline" className="text-xs" data-testid="badge-readiness">
             {readinessPercent}% Ready
           </Badge>
-          <Badge variant="secondary" data-testid="badge-chapter-count">
+          <Badge variant="secondary" className="text-xs" data-testid="badge-chapter-count">
             {completedChapters}/{totalChapters} Chapters
           </Badge>
           <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" data-testid="button-toggle-metrics">
                 <TrendingUp className="h-4 w-4 mr-1" />
-                Metrics
+                <span className="hidden sm:inline">Metrics</span>
                 <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${metricsOpen ? "rotate-180" : ""}`} />
               </Button>
             </CollapsibleTrigger>
@@ -471,8 +471,8 @@ export default function ThemeDetail() {
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-72 border-r flex flex-col bg-muted/30">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="w-full md:w-72 border-b md:border-b-0 md:border-r flex-shrink-0 flex flex-col bg-muted/30 max-h-[40vh] md:max-h-none overflow-auto md:overflow-visible">
           <div className="p-3 border-b flex items-center justify-between">
             <h3 className="font-medium text-sm">Learning Trajectory</h3>
             <Dialog open={addChapterOpen} onOpenChange={(open) => {
