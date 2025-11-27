@@ -52,23 +52,20 @@ const Page1 = () => (
     </div>
 
     {/* Content */}
-    <div className="relative z-10 flex flex-col items-center gap-6 px-4 max-w-2xl">
+    <div className="relative z-10 flex flex-col items-center gap-8 px-6 max-w-2xl">
       <motion.div
         className="text-center"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
       >
-        <p className="text-2xl md:text-4xl text-gray-700 dark:text-gray-300 font-semibold mb-4">
+        <p className="text-3xl md:text-5xl text-gray-900 dark:text-gray-100 mb-6">
           Enter Your
         </p>
         <h1
-          className="text-8xl md:text-9xl"
+          className="text-8xl md:text-9xl text-black dark:text-white"
           style={{
-            fontFamily: "'Fredoka', sans-serif",
-            fontWeight: "700",
-            color: "rgb(55, 65, 81)",
-            letterSpacing: "-0.02em",
+            fontFamily: "'Amanojaku', sans-serif",
           }}
         >
           Dojo
@@ -76,7 +73,7 @@ const Page1 = () => (
       </motion.div>
 
       <motion.p
-        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md"
+        className="text-lg md:text-xl text-gray-600 dark:text-gray-400 text-center max-w-md font-light mt-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.4 }}
@@ -158,7 +155,7 @@ const Page2 = () => {
   ];
 
   return (
-    <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950 p-4 md:p-8">
+    <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-white dark:bg-slate-950 p-6 md:p-8">
       {/* Background zen elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <ZenCircle delay={0.5} size="w-96 h-96" />
@@ -169,7 +166,7 @@ const Page2 = () => {
       {/* Content */}
       <div className="relative z-10 w-full max-w-4xl">
         <motion.h2
-          className="text-5xl md:text-7xl font-bold text-center mb-4 md:mb-8 text-gray-900 dark:text-gray-100"
+          className="text-4xl md:text-6xl text-center mb-4 md:mb-8 text-black dark:text-white"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
@@ -178,7 +175,7 @@ const Page2 = () => {
         </motion.h2>
 
         <motion.p
-          className="text-center text-lg text-gray-600 dark:text-gray-400 mb-8 md:mb-12 font-semibold"
+          className="text-center text-base md:text-lg text-gray-600 dark:text-gray-400 mb-8 md:mb-12 font-light"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.1 }}
@@ -221,9 +218,9 @@ const Page3 = () => (
     </div>
 
     {/* Content */}
-    <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl text-center">
+    <div className="relative z-10 flex flex-col items-center gap-8 px-6 max-w-2xl text-center">
       <motion.h2
-        className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-gray-100"
+        className="text-4xl md:text-6xl text-black dark:text-white"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
@@ -232,7 +229,7 @@ const Page3 = () => (
       </motion.h2>
 
       <motion.p
-        className="text-lg md:text-xl text-gray-700 dark:text-gray-300 font-semibold"
+        className="text-base md:text-lg text-gray-600 dark:text-gray-400 font-light"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
@@ -247,7 +244,7 @@ const Page3 = () => (
       >
         <Button
           size="lg"
-          className="px-12 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 font-light"
+          className="px-12 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black font-light"
           onClick={() => (window.location.href = "/api/login")}
           data-testid="button-start-adventure"
         >
@@ -261,7 +258,7 @@ const Page3 = () => (
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.6 }}
       >
-        SIGN IN WITH GOOGLE, APPLE, OR EMAIL
+        SIGN IN WITH REPLIT
       </motion.p>
     </div>
   </div>
