@@ -62,17 +62,23 @@ export default function SecondBrain() {
           <CardContent>
             {themes && themes.length > 0 ? (
               <div className="overflow-x-auto">
-                <div style={{ minWidth: Math.max(300, chartData.length * 120) }}>
-                  <ChartContainer config={chartConfig} className="h-64 w-full">
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 40 }}>
+                <div style={{ minWidth: Math.max(400, chartData.length * 150) }}>
+                  <ChartContainer config={chartConfig} className="h-96 w-full">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 12, bottom: 40 }}>
                       <XAxis 
                         dataKey="name" 
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 14 }}
                         angle={-45}
                         textAnchor="end"
-                        height={60}
+                        height={80}
                       />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
+                      <YAxis 
+                        domain={[0, 100]} 
+                        ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                        tick={{ fontSize: 14 }} 
+                        width={50}
+                        tickFormatter={(v) => `${v}%`}
+                      />
                       <ChartTooltip 
                         content={
                           <ChartTooltipContent 
@@ -84,7 +90,7 @@ export default function SecondBrain() {
                           />
                         } 
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 14 }} />
                       <Bar 
                         dataKey="completion" 
                         fill="var(--color-completion)" 
@@ -102,7 +108,7 @@ export default function SecondBrain() {
                 </div>
               </div>
             ) : (
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
+              <div className="h-96 flex items-center justify-center text-muted-foreground">
                 Add themes to see metrics chart
               </div>
             )}

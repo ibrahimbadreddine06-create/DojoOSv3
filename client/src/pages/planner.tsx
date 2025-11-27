@@ -366,19 +366,19 @@ export default function Planner() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="py-2 px-4">
+          <CardContent className="py-4 px-4">
             {chartData.length === 0 ? (
-              <div className="h-16 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-96 flex items-center justify-center text-sm text-muted-foreground">
                 Start tracking to see your completion history
               </div>
             ) : (
-              <div className="h-16 overflow-x-auto">
+              <div className="h-96 overflow-x-auto">
                 <ChartContainer 
                   config={chartConfig} 
                   className="h-full aspect-auto"
-                  style={{ minWidth: Math.max(300, chartData.length * 40) }}
+                  style={{ minWidth: Math.max(400, chartData.length * 60) }}
                 >
-                  <AreaChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 12 }}>
+                  <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                     <defs>
                       <linearGradient id="completionGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -390,15 +390,16 @@ export default function Planner() {
                       dataKey="date" 
                       tickLine={false} 
                       axisLine={false}
-                      tick={{ fontSize: 10 }}
+                      tick={{ fontSize: 12 }}
                       interval="preserveStartEnd"
                     />
                     <YAxis 
                       domain={[0, 100]} 
+                      ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
                       tickLine={false} 
                       axisLine={false}
-                      tick={{ fontSize: 10 }}
-                      width={25}
+                      tick={{ fontSize: 12 }}
+                      width={40}
                       tickFormatter={(v) => `${v}%`}
                     />
                     <ChartTooltip
@@ -414,8 +415,10 @@ export default function Planner() {
                       type="monotone"
                       dataKey="completion"
                       stroke="hsl(var(--primary))"
-                      strokeWidth={2}
+                      strokeWidth={3}
                       fill="url(#completionGradient)"
+                      dot={{ fill: "hsl(var(--primary))", r: 5 }}
+                      activeDot={{ r: 7 }}
                     />
                   </AreaChart>
                 </ChartContainer>
