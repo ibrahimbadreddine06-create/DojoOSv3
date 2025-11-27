@@ -53,44 +53,25 @@ const Page1 = () => (
 
     {/* Content */}
     <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl">
-      <motion.div
-        className="text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-      >
-        <p className="text-sm uppercase tracking-widest text-gray-600 dark:text-gray-400 font-light">
-          Your Personal Operating System
-        </p>
-      </motion.div>
-
       <motion.h1
-        className="text-6xl md:text-8xl font-light text-center"
-        style={{ fontFamily: "Georgia, serif" }}
+        className="text-6xl md:text-8xl font-bold text-center"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, delay: 0.4 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
       >
-        <span className="text-gray-400 dark:text-gray-600">dojo</span>
+        <span className="text-gray-600 dark:text-gray-500">Enter Your</span>
+        <br />
+        <span className="text-gray-800 dark:text-gray-300">Dojo</span>
       </motion.h1>
 
       <motion.p
-        className="text-lg text-gray-600 dark:text-gray-400 text-center max-w-md font-light"
+        className="text-xl md:text-2xl text-gray-700 dark:text-gray-300 text-center max-w-md font-semibold mt-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.6 }}
+        transition={{ duration: 0.8, delay: 0.4 }}
       >
         Where you master yourself
       </motion.p>
-
-      <motion.div
-        className="mt-8 text-xs text-gray-500 dark:text-gray-500 tracking-wide"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.8 }}
-      >
-        A place of discipline, growth, and mastery
-      </motion.div>
     </div>
   </div>
 );
@@ -177,7 +158,7 @@ const Page2 = () => {
       {/* Content */}
       <div className="relative z-10 w-full max-w-4xl">
         <motion.h2
-          className="text-4xl md:text-6xl font-light text-center mb-4 md:mb-8 text-gray-900 dark:text-gray-100"
+          className="text-5xl md:text-7xl font-bold text-center mb-4 md:mb-8 text-gray-900 dark:text-gray-100"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
@@ -186,7 +167,7 @@ const Page2 = () => {
         </motion.h2>
 
         <motion.p
-          className="text-center text-sm text-gray-600 dark:text-gray-400 mb-8 md:mb-12 font-light"
+          className="text-center text-lg text-gray-600 dark:text-gray-400 mb-8 md:mb-12 font-semibold"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.1 }}
@@ -231,7 +212,7 @@ const Page3 = () => (
     {/* Content */}
     <div className="relative z-10 flex flex-col items-center gap-8 px-4 max-w-2xl text-center">
       <motion.h2
-        className="text-5xl md:text-7xl font-light text-gray-900 dark:text-gray-100"
+        className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-gray-100"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
@@ -240,7 +221,7 @@ const Page3 = () => (
       </motion.h2>
 
       <motion.p
-        className="text-gray-600 dark:text-gray-400 font-light"
+        className="text-lg md:text-xl text-gray-700 dark:text-gray-300 font-semibold"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
