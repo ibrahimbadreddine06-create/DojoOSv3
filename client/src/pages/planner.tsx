@@ -301,52 +301,7 @@ export default function Planner() {
       onPointerCancel={dragState ? handleDragEnd : undefined}
     >
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevDay}
-              data-testid="button-prev-day"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-2xl font-bold" data-testid="text-selected-date">
-              {getDateLabel(selectedDate)}
-              {!isToday(selectedDate) && !isYesterday(selectedDate) && !isTomorrow(selectedDate) && (
-                <span className="text-muted-foreground font-normal text-lg ml-2">
-                  {format(selectedDate, "yyyy")}
-                </span>
-              )}
-            </h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNextDay}
-              data-testid="button-next-day"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            {showTodayButton && (
-              <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
-                Today
-              </Button>
-            )}
-            <AddTimeBlockDialog 
-              date={dateStr} 
-              open={addDialogOpen}
-              onOpenChange={(open) => {
-                setAddDialogOpen(open);
-                if (!open) setAddSubBlockParentId(null);
-              }}
-              defaultStartTime={clickedTime?.start}
-              defaultEndTime={clickedTime?.end}
-              parentId={addSubBlockParentId || undefined}
-            />
-          </div>
-        </div>
+        <h1 className="text-2xl font-bold">Daily Planner</h1>
 
         <Card className="flex-shrink-0">
           <CardHeader className="py-3 px-4">
@@ -429,16 +384,50 @@ export default function Planner() {
           <Card className="lg:col-span-3 order-1 lg:order-none">
             <CardHeader className="py-3 px-4 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Schedule
-                </CardTitle>
-                <span className="text-xs text-muted-foreground hidden sm:block">
-                  Click to add, drag to move/resize
-                </span>
-                <span className="text-xs text-muted-foreground sm:hidden">
-                  Tap to add blocks
-                </span>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrevDay}
+                    data-testid="button-prev-day"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-medium" data-testid="text-selected-date">
+                    {getDateLabel(selectedDate)}
+                    {!isToday(selectedDate) && !isYesterday(selectedDate) && !isTomorrow(selectedDate) && (
+                      <span className="text-muted-foreground font-normal ml-2">
+                        {format(selectedDate, "yyyy")}
+                      </span>
+                    )}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextDay}
+                    data-testid="button-next-day"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {showTodayButton && (
+                    <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
+                      Today
+                    </Button>
+                  )}
+                  <AddTimeBlockDialog 
+                    date={dateStr} 
+                    open={addDialogOpen}
+                    onOpenChange={(open) => {
+                      setAddDialogOpen(open);
+                      if (!open) setAddSubBlockParentId(null);
+                    }}
+                    defaultStartTime={clickedTime?.start}
+                    defaultEndTime={clickedTime?.end}
+                    parentId={addSubBlockParentId || undefined}
+                  />
+                </div>
               </div>
             </CardHeader>
             <div 
