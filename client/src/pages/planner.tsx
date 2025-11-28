@@ -428,7 +428,7 @@ export default function Planner() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
-          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none">
+          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none flex-1">
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -445,10 +445,9 @@ export default function Planner() {
             </CardHeader>
             <div 
               ref={gridRef}
-              className={`relative overflow-hidden ${dragState ? 'cursor-grabbing select-none' : ''}`}
+              className={`relative overflow-hidden flex-1 min-h-0 ${dragState ? 'cursor-grabbing select-none' : ''}`}
               onClick={handleGridClick}
               data-testid="planner-grid"
-              style={{ height: HOURS.length * HOUR_HEIGHT }}
             >
               <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                 {HOURS.map((hour) => (
