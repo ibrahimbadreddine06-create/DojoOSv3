@@ -427,7 +427,7 @@ export default function Planner() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <Card className="lg:col-span-3 overflow-visible flex flex-col order-1 lg:order-none">
+          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none">
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
