@@ -479,47 +479,18 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute left-2 right-2 rounded-md border transition-shadow ${
+                          className={`absolute left-2 right-2 rounded border transition-shadow ${
                             isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
                           } ${
                             block.completed 
                               ? "bg-primary/10 border-primary/30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height }}
+                          style={{ top, height, minHeight: '24px' }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
-                            className="absolute top-0 left-0 right-0 flex items-center justify-between h-4 px-1"
-                          >
-                            <div 
-                              className="flex-1 flex justify-center cursor-grab active:cursor-grabbing"
-                              style={{ touchAction: 'none' }}
-                              onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
-                              data-testid={`block-drag-handle-${block.id}`}
-                            >
-                              <GripVertical className="w-3 h-3 text-muted-foreground/50" />
-                            </div>
-                            {!block.parentId && height > 50 && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-4 w-4 shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setAddSubBlockParentId(block.id);
-                                  setClickedTime({ start: block.startTime, end: block.endTime });
-                                  setAddDialogOpen(true);
-                                }}
-                                data-testid={`button-add-sub-block-${block.id}`}
-                              >
-                                <Plus className="w-2 h-2" />
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <div 
-                            className="p-1 pt-4 h-full flex flex-col overflow-hidden cursor-pointer"
+                            className="w-full h-full flex flex-col px-1"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!dragState) {
@@ -527,35 +498,41 @@ export default function Planner() {
                               }
                             }}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className={`font-medium text-sm truncate ${
-                                block.completed ? "line-through text-muted-foreground" : ""
-                              }`}>
-                                {block.title}
-                              </span>
-                              {block.completed && (
-                                <Badge variant="outline" className="text-xs shrink-0">
-                                  Done
-                                </Badge>
-                              )}
-                            </div>
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {block.startTime} - {block.endTime}
+                            <span className={`text-xs truncate leading-tight ${
+                              block.completed ? "line-through text-muted-foreground" : ""
+                            }`}>
+                              {block.title}
                             </span>
-                            {block.linkedModule && height > 60 && (
-                              <Badge variant="secondary" className="text-xs px-1 py-0 mt-1">
-                                {block.linkedModule.replace('_', ' ')}
-                              </Badge>
-                            )}
-                            {block.tasks && block.tasks.length > 0 && height > 90 && (
-                              <div className="mt-1 text-xs text-muted-foreground">
-                                {block.tasks.filter((t: { completed: boolean }) => t.completed).length}/{block.tasks.length} tasks
-                              </div>
-                            )}
                           </div>
 
                           <div 
-                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-primary/20 rounded-b-md"
+                            className="absolute top-1 right-1 cursor-grab active:cursor-grabbing"
+                            style={{ touchAction: 'none' }}
+                            onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                            data-testid={`block-drag-handle-${block.id}`}
+                          >
+                            <GripVertical className="w-2 h-2 text-muted-foreground/50" />
+                          </div>
+
+                          {!block.parentId && height > 40 && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="absolute top-1 left-1 h-3 w-3"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAddSubBlockParentId(block.id);
+                                setClickedTime({ start: block.startTime, end: block.endTime });
+                                setAddDialogOpen(true);
+                              }}
+                              data-testid={`button-add-sub-block-${block.id}`}
+                            >
+                              <Plus className="w-2 h-2" />
+                            </Button>
+                          )}
+
+                          <div 
+                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-primary/20 rounded-b"
                             style={{ touchAction: 'none' }}
                             onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
