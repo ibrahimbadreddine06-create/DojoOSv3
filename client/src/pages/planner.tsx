@@ -14,7 +14,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
 const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 100;
 const SNAP_MINUTES = 30;
 
 function getDateLabel(date: Date): string {
@@ -445,9 +445,10 @@ export default function Planner() {
             </CardHeader>
             <div 
               ref={gridRef}
-              className={`flex-1 overflow-y-auto relative ${dragState ? 'cursor-grabbing select-none' : ''}`}
+              className={`relative overflow-hidden ${dragState ? 'cursor-grabbing select-none' : ''}`}
               onClick={handleGridClick}
               data-testid="planner-grid"
+              style={{ height: HOURS.length * HOUR_HEIGHT }}
             >
               <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                 {HOURS.map((hour) => (
