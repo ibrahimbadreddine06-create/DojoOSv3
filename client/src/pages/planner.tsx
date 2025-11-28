@@ -372,11 +372,10 @@ export default function Planner() {
                 Start tracking to see your completion history
               </div>
             ) : (
-              <div className="h-96 overflow-x-auto">
+              <div className="h-96">
                 <ChartContainer 
                   config={chartConfig} 
-                  className="h-full aspect-auto"
-                  style={{ minWidth: Math.max(400, chartData.length * 60) }}
+                  className="h-full w-full"
                 >
                   <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                     <defs>
