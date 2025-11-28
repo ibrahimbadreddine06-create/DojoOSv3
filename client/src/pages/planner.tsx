@@ -467,7 +467,7 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute left-4 right-4 rounded border transition-shadow ${
+                          className={`absolute left-4 right-4 rounded border transition-shadow flex flex-col ${
                             isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
                           } ${
                             block.completed 
@@ -478,7 +478,11 @@ export default function Planner() {
                           data-testid={`block-${block.id}`}
                         >
                           <div 
-                            className="w-full h-full flex flex-col px-1"
+                            className={`flex items-center justify-between px-1 py-0.5 border-b ${
+                              block.completed 
+                                ? "border-primary/20 bg-primary/5" 
+                                : "border-border/50 bg-muted/30"
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!dragState) {
@@ -486,38 +490,38 @@ export default function Planner() {
                               }
                             }}
                           >
-                            <span className={`text-xs truncate leading-tight ${
+                            <span className={`text-xs truncate leading-tight flex-1 ${
                               block.completed ? "line-through text-muted-foreground" : ""
                             }`}>
                               {block.title}
                             </span>
+                            <div className="flex items-center gap-0.5">
+                              {!block.parentId && height > 40 && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-3 w-3 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAddSubBlockParentId(block.id);
+                                    setClickedTime({ start: block.startTime, end: block.endTime });
+                                    setAddDialogOpen(true);
+                                  }}
+                                  data-testid={`button-add-sub-block-${block.id}`}
+                                >
+                                  <Plus className="w-2 h-2" />
+                                </Button>
+                              )}
+                              <div 
+                                className="cursor-grab active:cursor-grabbing shrink-0"
+                                style={{ touchAction: 'none' }}
+                                onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                                data-testid={`block-drag-handle-${block.id}`}
+                              >
+                                <GripVertical className="w-2 h-2 text-muted-foreground/50" />
+                              </div>
+                            </div>
                           </div>
-
-                          <div 
-                            className="absolute top-1 right-1 cursor-grab active:cursor-grabbing"
-                            style={{ touchAction: 'none' }}
-                            onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
-                            data-testid={`block-drag-handle-${block.id}`}
-                          >
-                            <GripVertical className="w-2 h-2 text-muted-foreground/50" />
-                          </div>
-
-                          {!block.parentId && height > 40 && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-1 left-1 h-3 w-3"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setAddSubBlockParentId(block.id);
-                                setClickedTime({ start: block.startTime, end: block.endTime });
-                                setAddDialogOpen(true);
-                              }}
-                              data-testid={`button-add-sub-block-${block.id}`}
-                            >
-                              <Plus className="w-2 h-2" />
-                            </Button>
-                          )}
 
                           <div 
                             className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-primary/20 rounded-b"
