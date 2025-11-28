@@ -467,14 +467,14 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute left-2 right-2 rounded border transition-shadow ${
+                          className={`absolute left-4 right-4 rounded border transition-shadow ${
                             isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
                           } ${
                             block.completed 
                               ? "bg-primary/10 border-primary/30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height, minHeight: '24px' }}
+                          style={{ top, height, minHeight: '20px' }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
