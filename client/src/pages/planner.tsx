@@ -449,7 +449,6 @@ export default function Planner() {
               data-testid="planner-grid"
               style={{ height: HOURS.length * HOUR_HEIGHT }}
             >
-              <div className="relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
                 {HOURS.map((hour) => (
                   <div 
                     key={hour} 
@@ -622,7 +621,6 @@ export default function Planner() {
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           </Card>
 
