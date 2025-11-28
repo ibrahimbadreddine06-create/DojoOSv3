@@ -14,7 +14,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
 const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
-const HOUR_HEIGHT = 55;
+const HOUR_HEIGHT = 38;
 const SNAP_MINUTES = 30;
 
 function getDateLabel(date: Date): string {
