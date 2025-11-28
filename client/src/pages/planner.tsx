@@ -426,8 +426,8 @@ export default function Planner() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 auto-rows-max lg:auto-rows-auto">
+          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none" style={{ height: HOURS.length * HOUR_HEIGHT + 100 }}>
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -624,14 +624,14 @@ export default function Planner() {
             </div>
           </Card>
 
-          <Card className="overflow-hidden flex flex-col">
+          <Card className="overflow-hidden flex flex-col order-2 lg:order-none" style={{ height: HOURS.length * HOUR_HEIGHT + 100 }}>
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-sm font-medium">Presets</CardTitle>
                 <CreatePresetDialog />
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-3">
+            <CardContent className="flex-1 overflow-y-auto p-3 min-h-0">
               {presetsLoading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                   Loading...
