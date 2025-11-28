@@ -301,7 +301,14 @@ export default function Landing() {
   };
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <motion.div 
+      className="relative w-full h-screen overflow-hidden"
+      drag="x"
+      dragElastic={0.1}
+      onDragEnd={handleDragEnd}
+      dragConstraints={{ left: 0, right: 0 }}
+      style={{ touchAction: "pan-y" }}
+    >
       {/* Pages */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -310,11 +317,6 @@ export default function Landing() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -100 }}
           transition={{ duration: 0.5 }}
-          drag="x"
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
-          whileDrag={{ cursor: "grabbing" }}
-          dragConstraints={{ left: 0, right: 0 }}
         >
           {pages[currentPage]}
         </motion.div>
@@ -363,6 +365,6 @@ export default function Landing() {
           </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
