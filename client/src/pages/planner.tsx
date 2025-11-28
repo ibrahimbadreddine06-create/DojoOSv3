@@ -13,7 +13,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
-const HOURS = Array.from({ length: 19 }, (_, i) => i + 6);
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 100;
 const SNAP_MINUTES = 30;
 
@@ -42,10 +42,9 @@ function snapToGrid(minutes: number): number {
 function getBlockStyle(block: TimeBlock): { top: number; height: number } {
   const startMinutes = timeToMinutes(block.startTime);
   const endMinutes = timeToMinutes(block.endTime);
-  const startOffset = Math.max(0, startMinutes - 6 * 60);
   const duration = endMinutes - startMinutes;
   return {
-    top: (startOffset / 60) * HOUR_HEIGHT,
+    top: (startMinutes / 60) * HOUR_HEIGHT,
     height: Math.max((duration / 60) * HOUR_HEIGHT, 30),
   };
 }
@@ -453,7 +452,7 @@ export default function Planner() {
                   <div 
                     key={hour} 
                     className="absolute left-0 right-0 border-t border-border/50"
-                    style={{ top: (hour - 6) * HOUR_HEIGHT }}
+                    style={{ top: hour * HOUR_HEIGHT }}
                   >
                     <span className="absolute -top-3 left-2 text-xs text-muted-foreground font-mono bg-card px-1">
                       {hour.toString().padStart(2, "0")}:00
