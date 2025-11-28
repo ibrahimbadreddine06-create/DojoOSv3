@@ -427,7 +427,7 @@ export default function Planner() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 auto-rows-max lg:auto-rows-auto">
-          <Card className="lg:col-span-3 overflow-hidden flex flex-col order-1 lg:order-none" style={{ height: HOURS.length * HOUR_HEIGHT + 120 }}>
+          <Card className="lg:col-span-3 flex flex-col order-1 lg:order-none">
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -442,9 +442,10 @@ export default function Planner() {
                 </span>
               </div>
             </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-0 min-h-0">
             <div 
               ref={gridRef}
-              className={`relative ${dragState ? 'cursor-grabbing select-none' : ''}`}
+              className={`relative w-full ${dragState ? 'cursor-grabbing select-none' : ''}`}
               onClick={handleGridClick}
               data-testid="planner-grid"
               style={{ height: HOURS.length * HOUR_HEIGHT }}
@@ -622,9 +623,10 @@ export default function Planner() {
                   </div>
                 )}
             </div>
+            </CardContent>
           </Card>
 
-          <Card className="overflow-hidden flex flex-col order-2 lg:order-none" style={{ height: HOURS.length * HOUR_HEIGHT + 120 }}>
+          <Card className="overflow-hidden flex flex-col order-2 lg:order-none" style={{ maxHeight: HOURS.length * HOUR_HEIGHT + 120 }}>
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-sm font-medium">Presets</CardTitle>
