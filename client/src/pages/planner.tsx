@@ -432,7 +432,7 @@ export default function Planner() {
             </CardHeader>
             <div 
               ref={gridRef}
-              className={`relative w-full ${dragState ? 'cursor-grabbing select-none' : ''}`}
+              className={`relative w-full pl-12 ${dragState ? 'cursor-grabbing select-none' : ''}`}
               onClick={handleGridClick}
               data-testid="planner-grid"
               style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}
@@ -467,14 +467,14 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute left-4 right-4 rounded border transition-shadow flex flex-col ${
+                          className={`absolute rounded border transition-shadow flex flex-col ${
                             isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
                           } ${
                             block.completed 
                               ? "bg-primary/10 border-primary/30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height, minHeight: '20px' }}
+                          style={{ top, height, minHeight: '20px', left: '12px', right: '4px' }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
