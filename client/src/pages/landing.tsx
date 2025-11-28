@@ -269,10 +269,9 @@ const Page3 = () => (
   </div>
 );
 
-// Main Landing Component with Swipe Support
+// Main Landing Component
 export default function Landing() {
   const [currentPage, setCurrentPage] = useState(0);
-  const [dragX, setDragX] = useState(0);
   const pages = [<Page1 key="page1" />, <Page2 key="page2" />, <Page3 key="page3" />];
 
   const handleContinue = () => {
@@ -291,16 +290,6 @@ export default function Landing() {
     setCurrentPage(index);
   };
 
-  const handleDragEnd = (info: any) => {
-    if (!info?.offset) return;
-    const swipeThreshold = 30;
-    if (info.offset.x > swipeThreshold && currentPage > 0) {
-      handlePrevious();
-    } else if (info.offset.x < -swipeThreshold && currentPage < pages.length - 1) {
-      handleContinue();
-    }
-  };
-
   return (
     <div className="relative w-full h-screen overflow-hidden">
       {/* Pages */}
@@ -311,11 +300,6 @@ export default function Landing() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -100 }}
           transition={{ duration: 0.5 }}
-          drag="x"
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
-          whileDrag={{ cursor: "grabbing" }}
-          style={{ touchAction: "pan-y" }}
         >
           {pages[currentPage]}
         </motion.div>
