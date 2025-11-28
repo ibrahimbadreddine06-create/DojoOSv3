@@ -349,7 +349,7 @@ export default function Planner() {
           </div>
         </div>
 
-        <Card className="flex-shrink-0">
+        <Card className="flex-shrink-0 h-40">
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between gap-4">
               <CardTitle className="text-sm font-medium">Completion History</CardTitle>
@@ -366,13 +366,13 @@ export default function Planner() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="py-4 px-4">
+          <CardContent className="py-2 px-4 h-24 overflow-hidden">
             {chartData.length === 0 ? (
-              <div className="h-96 flex items-center justify-center text-sm text-muted-foreground">
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                 Start tracking to see your completion history
               </div>
             ) : (
-              <div className="h-96 overflow-x-auto">
+              <div className="h-full overflow-x-auto">
                 <ChartContainer 
                   config={chartConfig} 
                   className="h-full aspect-auto"
