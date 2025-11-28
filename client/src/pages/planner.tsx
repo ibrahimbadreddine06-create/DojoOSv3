@@ -479,18 +479,18 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute left-12 rounded-md border transition-shadow ${
+                          className={`absolute left-2 right-2 rounded-md border transition-shadow ${
                             isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
                           } ${
                             block.completed 
                               ? "bg-primary/10 border-primary/30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height, right: isParent ? '40%' : '4px' }}
+                          style={{ top, height }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
-                            className="absolute top-0 left-0 right-0 flex items-center justify-between h-5 px-1"
+                            className="absolute top-0 left-0 right-0 flex items-center justify-between h-4 px-1"
                           >
                             <div 
                               className="flex-1 flex justify-center cursor-grab active:cursor-grabbing"
@@ -498,13 +498,13 @@ export default function Planner() {
                               onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
                               data-testid={`block-drag-handle-${block.id}`}
                             >
-                              <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+                              <GripVertical className="w-3 h-3 text-muted-foreground/50" />
                             </div>
                             {!block.parentId && height > 50 && (
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-5 w-5 shrink-0"
+                                className="h-4 w-4 shrink-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setAddSubBlockParentId(block.id);
@@ -513,13 +513,13 @@ export default function Planner() {
                                 }}
                                 data-testid={`button-add-sub-block-${block.id}`}
                               >
-                                <Plus className="w-3 h-3" />
+                                <Plus className="w-2 h-2" />
                               </Button>
                             )}
                           </div>
                           
                           <div 
-                            className="p-2 pt-5 h-full flex flex-col overflow-hidden cursor-pointer"
+                            className="p-1 pt-4 h-full flex flex-col overflow-hidden cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!dragState) {
