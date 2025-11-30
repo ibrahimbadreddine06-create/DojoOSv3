@@ -785,9 +785,9 @@ export default function Planner() {
 
                               {/* Add task button - opens form directly */}
                               <Button
-                                size="icon"
+                                size="sm"
                                 variant="ghost"
-                                className="h-5 w-5 self-start"
+                                className="w-full justify-start text-xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setAddTaskParentId(block.id);
@@ -795,7 +795,8 @@ export default function Planner() {
                                 }}
                                 data-testid={`button-add-task-${block.id}`}
                               >
-                                <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
+                                <Plus className="w-3 h-3 mr-1" style={{ color: `hsl(var(${colorVar}))` }} />
+                                Add Task
                               </Button>
 
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
@@ -961,22 +962,6 @@ export default function Planner() {
                               <div 
                                 className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0"
                               >
-                                {/* Add Sub-block button */}
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-5 w-5"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAddSubBlockParentId(block.id);
-                                    setClickedTime({ start: block.startTime, end: block.endTime });
-                                    setAddDialogOpen(true);
-                                  }}
-                                  data-testid={`button-add-sub-block-${block.id}`}
-                                >
-                                  <Layers className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
-                                </Button>
-                                <div className="flex-1" />
                                 {contentOverflows && (
                                   <Button
                                     size="icon"
