@@ -640,19 +640,18 @@ export default function Planner() {
                           {/* Content area - more translucent, hidden when collapsed */}
                           {!isCollapsed && (
                             <div 
-                              className={`flex-1 flex flex-col min-h-0 ${block.completed ? 'opacity-70' : ''}`}
+                              className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 ${block.completed ? 'opacity-70' : ''}`}
                               style={{ 
-                                backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.03 : 0.06})`,
+                                backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.08 : 0.12})`,
                               }}
                             >
                               {/* Tasks */}
                               {taskCount > 0 && (
-                                <div className="flex flex-col gap-0.5 px-2.5 py-1.5 overflow-y-auto flex-1">
+                                <div className="flex flex-col gap-1 overflow-y-auto flex-1">
                                   {block.tasks?.map((task) => (
                                     <div 
                                       key={task.id} 
-                                      className="flex items-center gap-1.5 px-1.5 py-0.5 rounded cursor-pointer hover-elevate" 
-                                      style={{ backgroundColor: `hsla(var(${colorVar}), 0.08)` }}
+                                      className="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover-elevate bg-background" 
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
@@ -675,40 +674,38 @@ export default function Planner() {
 
                               {/* Add task input */}
                               {addingTaskToBlock === block.id && (
-                                <div className="px-2.5 py-1.5 border-t" style={{ borderColor: `hsla(var(${colorVar}), 0.2)` }}>
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="text"
-                                      value={newTaskText}
-                                      onChange={(e) => setNewTaskText(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleAddTask(block.id);
-                                        if (e.key === 'Escape') {
-                                          setAddingTaskToBlock(null);
-                                          setNewTaskText("");
-                                        }
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setAddingTaskToBlock(null);
-                                          setNewTaskText("");
-                                        }, 150);
-                                      }}
-                                      placeholder="Task name..."
-                                      className="flex-1 text-xs bg-transparent border-none outline-none"
-                                      autoFocus
-                                      data-testid={`input-new-task-${block.id}`}
-                                    />
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-5 w-5"
-                                      onClick={() => handleAddTask(block.id)}
-                                      disabled={!newTaskText.trim()}
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                    </Button>
-                                  </div>
+                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-background">
+                                  <input
+                                    type="text"
+                                    value={newTaskText}
+                                    onChange={(e) => setNewTaskText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleAddTask(block.id);
+                                      if (e.key === 'Escape') {
+                                        setAddingTaskToBlock(null);
+                                        setNewTaskText("");
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        setAddingTaskToBlock(null);
+                                        setNewTaskText("");
+                                      }, 150);
+                                    }}
+                                    placeholder="Task name..."
+                                    className="flex-1 text-xs bg-transparent border-none outline-none"
+                                    autoFocus
+                                    data-testid={`input-new-task-${block.id}`}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5"
+                                    onClick={() => handleAddTask(block.id)}
+                                    disabled={!newTaskText.trim()}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
                                 </div>
                               )}
 
@@ -785,16 +782,15 @@ export default function Planner() {
                                         {/* Sub-block content */}
                                         {!subIsCollapsed && (
                                           <div 
-                                            className="flex flex-col gap-0.5 px-1.5 py-0.5"
-                                            style={{ backgroundColor: `hsla(var(${colorVar}), 0.04)` }}
+                                            className="flex flex-col gap-1 px-1.5 py-1"
+                                            style={{ backgroundColor: `hsla(var(${colorVar}), 0.1)` }}
                                           >
                                             {subTaskCount > 0 && (
                                               <div className="flex flex-col gap-0.5">
                                                 {subBlock.tasks?.map((task) => (
                                                   <div 
                                                     key={task.id} 
-                                                    className="flex items-center gap-1 px-1 py-0.5 rounded text-xs cursor-pointer hover-elevate" 
-                                                    style={{ backgroundColor: `hsla(var(${colorVar}), 0.06)` }}
+                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate bg-background/80" 
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
@@ -817,7 +813,7 @@ export default function Planner() {
                                             
                                             {/* Add task input for sub-block */}
                                             {addingTaskToBlock === subBlock.id && (
-                                              <div className="flex items-center gap-0.5 px-1 py-0.5">
+                                              <div className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-background/80">
                                                 <input
                                                   type="text"
                                                   value={newTaskText}
@@ -857,7 +853,7 @@ export default function Planner() {
                                               <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-3 w-3 self-start"
+                                                className="h-4 w-4 self-start"
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   setAddingTaskToBlock(subBlock.id);
@@ -865,7 +861,7 @@ export default function Planner() {
                                                 }}
                                                 data-testid={`button-add-task-sub-nested-${subBlock.id}`}
                                               >
-                                                <Plus className="w-1.5 h-1.5" style={{ color: `hsl(var(${colorVar}))` }} />
+                                                <Plus className="w-2 h-2" style={{ color: `hsl(var(${colorVar}))` }} />
                                               </Button>
                                             )}
                                           </div>
