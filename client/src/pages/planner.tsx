@@ -82,6 +82,25 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
   return totalImportance > 0 ? (completedImportance / totalImportance) * 100 : 0;
 }
 
+// Merge tasks and sub-blocks into one unified ordered list
+function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] | null | undefined): Array<{ type: 'task' | 'block'; data: any; order: number }> {
+  const content: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
+  
+  if (tasks) {
+    tasks.forEach(t => {
+      content.push({ type: 'task', data: t, order: t.order || 0 });
+    });
+  }
+  
+  if (subBlocks) {
+    subBlocks.forEach(b => {
+      content.push({ type: 'block', data: b, order: b.order || 0 });
+    });
+  }
+  
+  return content.sort((a, b) => a.order - b.order);
+}
+
 function getBlockStyle(block: TimeBlock): { top: number; height: number } {
   const startMinutes = timeToMinutes(block.startTime);
   const endMinutes = timeToMinutes(block.endTime);
@@ -259,6 +278,7 @@ export default function Planner() {
         text: taskText,
         completed: false,
         importance: importance || 3,
+        order: (block.tasks?.length || 0),
       };
       const updatedTasks = [...(block.tasks || []), newTask];
       return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
@@ -395,58 +415,57 @@ export default function Planner() {
     },
   });
 
-  const reorderSubBlocksMutation = useMutation({
-    mutationFn: async ({ parentId, draggedBlockId, targetBlockId }: { parentId: string; draggedBlockId: string; targetBlockId?: string }) => {
+  const moveContentMutation = useMutation({
+    mutationFn: async ({ parentId, itemId, direction }: { parentId: string; itemId: string; direction: 'up' | 'down' }) => {
       const allBlocks = blocks || [];
       const parentBlock = allBlocks.find(b => b.id === parentId);
       if (!parentBlock) throw new Error("Parent block not found");
       
       const subBlocks = allBlocks.filter(b => b.parentId === parentId);
-      const draggedIdx = subBlocks.findIndex(b => b.id === draggedBlockId);
-      if (draggedIdx === -1) throw new Error("Block not found");
+      const content = mergeContentByOrder(parentBlock.tasks, subBlocks);
       
-      // Reorder sub-blocks in memory
-      const [draggedBlock] = subBlocks.splice(draggedIdx, 1);
+      const idx = content.findIndex(item => 
+        (item.type === 'task' && item.data.id === itemId) || 
+        (item.type === 'block' && item.data.id === itemId)
+      );
       
-      if (targetBlockId) {
-        const targetIdx = subBlocks.findIndex(b => b.id === targetBlockId);
-        if (targetIdx !== -1) {
-          subBlocks.splice(targetIdx, 0, draggedBlock);
-        } else {
-          subBlocks.push(draggedBlock);
-        }
+      if (idx === -1) throw new Error("Item not found");
+      if (direction === 'up' && idx === 0) throw new Error("Already at top");
+      if (direction === 'down' && idx === content.length - 1) throw new Error("Already at bottom");
+      
+      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+      
+      // Swap order values
+      const updates = [];
+      const item1 = content[idx];
+      const item2 = content[newIdx];
+      
+      const order1 = item2.order;
+      const order2 = item1.order;
+      
+      if (item1.type === 'task') {
+        const updatedTask = { ...item1.data, order: order1 };
+        const updatedTasks = parentBlock.tasks!.map(t => t.id === itemId ? updatedTask : t);
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${parentId}`, { tasks: updatedTasks }));
       } else {
-        subBlocks.push(draggedBlock);
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${itemId}`, { order: order1 }));
       }
       
-      // Assign new startTimes to maintain order
-      const parentStart = timeToMinutes(parentBlock.startTime);
-      const newUpdates = [];
-      
-      for (let i = 0; i < subBlocks.length; i++) {
-        const subBlock = subBlocks[i];
-        // Calculate duration
-        const duration = timeToMinutes(subBlock.endTime) - timeToMinutes(subBlock.startTime);
-        // New start time: parent start + (i * 30 minutes for spacing)
-        const newStartMinutes = parentStart + (i * 30);
-        const newEndMinutes = newStartMinutes + duration;
-        
-        newUpdates.push(
-          apiRequest("PATCH", `/api/time-blocks/${subBlock.id}`, {
-            startTime: minutesToTime(newStartMinutes),
-            endTime: minutesToTime(newEndMinutes),
-          })
-        );
+      if (item2.type === 'task') {
+        const updatedTask = { ...item2.data, order: order2 };
+        const updatedTasks = parentBlock.tasks!.map(t => t.id === item2.data.id ? updatedTask : t);
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${parentId}`, { tasks: updatedTasks }));
+      } else {
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${item2.data.id}`, { order: order2 }));
       }
       
-      return Promise.all(newUpdates);
+      return Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
-      toast({ title: "Sub-block moved" });
     },
     onError: () => {
-      toast({ title: "Failed to move sub-block", variant: "destructive" });
+      toast({ title: "Failed to move content", variant: "destructive" });
     },
   });
 
@@ -939,8 +958,8 @@ export default function Planner() {
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {/* Tasks */}
-                              {taskCount > 0 && (
+                              {/* Unified Tasks and Sub-blocks - ordered together */}
+                              {(taskCount > 0 || subBlocks.length > 0) && (
                                 <div 
                                   className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit"
                                   data-task-container={block.id}
@@ -1034,18 +1053,6 @@ export default function Planner() {
                                 <div 
                                   className="flex flex-col gap-1" 
                                   onClick={(e) => e.stopPropagation()}
-                                  onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.dataTransfer!.dropEffect = "move";
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    const draggedBlockId = e.dataTransfer!.getData("draggedBlockId");
-                                    setDraggedSubBlockId(null);
-                                    if (draggedBlockId && block.id) {
-                                      reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId });
-                                    }
-                                  }}
                                 >
                                   {sortChronologically(subBlocks).map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
@@ -1153,11 +1160,7 @@ export default function Planner() {
                                             className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              const sortedSubs = sortChronologically(subBlocks);
-                                              const idx = sortedSubs.findIndex(b => b.id === subBlock.id);
-                                              if (idx > 0) {
-                                                reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId: subBlock.id, targetBlockId: sortedSubs[idx - 1].id });
-                                              }
+                                              moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'up' });
                                             }}
                                             data-testid={`button-move-up-sub-${subBlock.id}`}
                                           >
@@ -1169,11 +1172,7 @@ export default function Planner() {
                                             className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              const sortedSubs = sortChronologically(subBlocks);
-                                              const idx = sortedSubs.findIndex(b => b.id === subBlock.id);
-                                              if (idx < sortedSubs.length - 1) {
-                                                reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId: subBlock.id, targetBlockId: sortedSubs[idx + 1].id });
-                                              }
+                                              moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'down' });
                                             }}
                                             data-testid={`button-move-down-sub-${subBlock.id}`}
                                           >
