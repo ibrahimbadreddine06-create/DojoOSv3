@@ -408,8 +408,7 @@ export default function Planner() {
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
         await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
-        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/daily-metrics"] });
       }
     },
     onError: () => {
@@ -421,9 +420,15 @@ export default function Planner() {
     mutationFn: async ({ id, startTime, endTime }: { id: string; startTime: string; endTime: string }) => {
       return await apiRequest("PATCH", `/api/time-blocks/${id}`, { startTime, endTime });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
-      toast({ title: "Block updated" });
+    onSuccess: async () => {
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
+        queryKey: ["/api/time-blocks", dateStr] 
+      });
+      if (updatedBlocks && updatedBlocks.length > 0) {
+        const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
+        await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
+        await queryClient.refetchQueries({ queryKey: ["/api/daily-metrics"] });
+      }
     },
     onError: () => {
       toast({ title: "Failed to update block", variant: "destructive" });
@@ -501,8 +506,7 @@ export default function Planner() {
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
         await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
-        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/daily-metrics"] });
       }
     },
     onError: () => {
