@@ -151,10 +151,6 @@ function SecondBrainBox() {
     queryKey: ["/api/knowledge-themes", "second_brain"],
   });
 
-  const avgReadiness = themes.length > 0
-    ? themes.reduce((sum, t) => sum + parseFloat(String(t.readiness || 0)), 0) / themes.length
-    : 0;
-
   return (
     <Link href="/second-brain">
       <Card className="hover-elevate active-elevate-2 cursor-pointer h-full transition-all" data-testid="bento-second-brain">
@@ -180,12 +176,6 @@ function SecondBrainBox() {
                 <span className="text-3xl font-bold">{themes.length}</span>
                 <span className="text-sm text-muted-foreground">themes</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  {Math.round(avgReadiness)}% avg readiness
-                </span>
-              </div>
             </>
           )}
         </CardContent>
@@ -198,10 +188,6 @@ function LanguagesBox() {
   const { data: languages = [], isLoading } = useQuery<KnowledgeTheme[]>({
     queryKey: ["/api/knowledge-themes", "language"],
   });
-
-  const avgReadiness = languages.length > 0
-    ? languages.reduce((sum, l) => sum + parseFloat(String(l.readiness || 0)), 0) / languages.length
-    : 0;
 
   return (
     <Link href="/languages">
@@ -227,12 +213,6 @@ function LanguagesBox() {
               <div className="flex items-baseline justify-between">
                 <span className="text-3xl font-bold">{languages.length}</span>
                 <span className="text-sm text-muted-foreground">languages</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  {Math.round(avgReadiness)}% avg readiness
-                </span>
               </div>
             </>
           )}
