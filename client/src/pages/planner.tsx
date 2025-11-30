@@ -401,13 +401,15 @@ export default function Planner() {
       return await apiRequest("PATCH", `/api/time-blocks/${id}`, { completed });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
-      const updatedBlocks = queryClient.getQueryData<TimeBlock[]>(["/api/time-blocks", dateStr]);
+      // Fetch fresh data after mutation to get accurate completion
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
+        queryKey: ["/api/time-blocks", dateStr] 
+      });
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
         await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
-        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
-        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
       }
     },
     onError: () => {
@@ -492,14 +494,15 @@ export default function Planner() {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
-      // Update daily metrics with weighted completion
-      const updatedBlocks = queryClient.getQueryData<TimeBlock[]>(["/api/time-blocks", dateStr]);
+      // Fetch fresh data after mutation to get accurate completion
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
+        queryKey: ["/api/time-blocks", dateStr] 
+      });
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
         await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
-        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
-        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
       }
     },
     onError: () => {
