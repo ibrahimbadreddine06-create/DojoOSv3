@@ -650,7 +650,7 @@ export default function Planner() {
                             isDragging ? 'shadow-2xl z-20' : 'shadow-sm hover:shadow-md'
                           }`}
                           style={{ 
-                            top, 
+                            top: top + 2, 
                             height: typeof displayHeight === 'number' ? Math.max(displayHeight - 4, HEADER_HEIGHT) : displayHeight,
                             minHeight: isExpanded ? height - 4 : HEADER_HEIGHT,
                             left: '8px', 
