@@ -123,6 +123,78 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
   return totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
 }
 
+// Calculate overall day completion using weighted logic across all time blocks
+function calculateDayCompletion(allBlocks: any[]): number {
+  if (!allBlocks || allBlocks.length === 0) return 0;
+  
+  const parentBlocks = allBlocks.filter(b => !b.parentId);
+  if (parentBlocks.length === 0) return 0;
+  
+  let totalDayWeight = 0;
+  let completedDayWeight = 0;
+  
+  parentBlocks.forEach(block => {
+    const blockImportance = block.importance || DEFAULT_IMPORTANCE;
+    const subBlocks = allBlocks.filter(b => b.parentId === block.id);
+    
+    // Calculate this block's internal weight (tasks + sub-blocks)
+    let blockInternalWeight = 0;
+    let blockCompletedWeight = 0;
+    
+    // Add direct tasks
+    const tasks = block.tasks || [];
+    tasks.forEach((task: any) => {
+      const taskImportance = task.importance || DEFAULT_IMPORTANCE;
+      blockInternalWeight += taskImportance;
+      if (task.completed) {
+        blockCompletedWeight += taskImportance;
+      }
+    });
+    
+    // Add sub-blocks with their hierarchical weights
+    subBlocks.forEach(subBlock => {
+      const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
+      const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
+      const internal = getSubBlockInternalWeight(subBlock);
+      const subBlockWeight = internal.total * importanceMultiplier;
+      
+      blockInternalWeight += subBlockWeight;
+      
+      if (subBlock.completed) {
+        blockCompletedWeight += subBlockWeight;
+      } else if (internal.total > 0) {
+        const completionRatio = internal.completed / internal.total;
+        blockCompletedWeight += subBlockWeight * completionRatio;
+      }
+    });
+    
+    // If block has no content, use block importance as base weight
+    if (blockInternalWeight === 0) {
+      blockInternalWeight = blockImportance;
+      if (block.completed) {
+        blockCompletedWeight = blockImportance;
+      }
+    }
+    
+    // Apply block's importance as a multiplier to scale its contribution to the day
+    const blockMultiplier = blockImportance / DEFAULT_IMPORTANCE;
+    const finalBlockWeight = blockInternalWeight * blockMultiplier;
+    
+    totalDayWeight += finalBlockWeight;
+    
+    if (block.completed) {
+      // If block is manually marked complete, count full weight
+      completedDayWeight += finalBlockWeight;
+    } else if (blockInternalWeight > 0) {
+      // Otherwise use internal completion ratio
+      const blockCompletionRatio = blockCompletedWeight / blockInternalWeight;
+      completedDayWeight += finalBlockWeight * blockCompletionRatio;
+    }
+  });
+  
+  return totalDayWeight > 0 ? (completedDayWeight / totalDayWeight) * 100 : 0;
+}
+
 // Merge tasks and sub-blocks into one unified ordered list
 function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] | null | undefined): Array<{ type: 'task' | 'block'; data: any; order: number }> {
   const content: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
@@ -332,9 +404,7 @@ export default function Planner() {
       await queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
       const updatedBlocks = queryClient.getQueryData<TimeBlock[]>(["/api/time-blocks", dateStr]);
       if (updatedBlocks && updatedBlocks.length > 0) {
-        const parentBlocks = updatedBlocks.filter(b => !b.parentId);
-        const completedCount = parentBlocks.filter(b => b.completed).length;
-        const plannerCompletion = Math.round((completedCount / parentBlocks.length) * 100);
+        const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
         await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
         queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
         queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
@@ -421,8 +491,16 @@ export default function Planner() {
         return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: false });
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      // Update daily metrics with weighted completion
+      const updatedBlocks = queryClient.getQueryData<TimeBlock[]>(["/api/time-blocks", dateStr]);
+      if (updatedBlocks && updatedBlocks.length > 0) {
+        const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
+        await apiRequest("PUT", `/api/daily-metrics/${dateStr}`, { plannerCompletion });
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics", dateStr] });
+        queryClient.invalidateQueries({ queryKey: ["/api/daily-metrics"] });
+      }
     },
     onError: () => {
       toast({ title: "Failed to update task", variant: "destructive" });
