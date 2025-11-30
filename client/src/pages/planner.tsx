@@ -322,7 +322,7 @@ export default function Planner() {
 
   const handleAddTaskDialog = (data: { text: string; importance: number }) => {
     if (addTaskParentId) {
-      addTaskMutation.mutate({ blockId: addTaskParentId, taskText: data.text, importance: data.importance });
+      addTaskMutation.mutate({ blockId: addTaskParentId, taskText: data.text });
       setAddTaskDialogOpen(false);
       setAddTaskParentId(null);
     }
@@ -788,21 +788,50 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Add task button */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="w-full text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setAddTaskParentId(block.id);
-                                  setAddTaskDialogOpen(true);
-                                }}
-                                data-testid={`button-add-task-${block.id}`}
-                              >
-                                <Plus className="w-3 h-3 mr-1" />
-                                Add Task
-                              </Button>
+                              {/* Add task input - when plus button is clicked */}
+                              {addingTaskToBlock === block.id && (
+                                <div 
+                                  className="flex items-center gap-1 px-2 py-1 rounded" 
+                                  style={{ backgroundColor: `hsl(var(${colorVar}) / 0.12)` }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="text"
+                                    value={newTaskText}
+                                    onChange={(e) => setNewTaskText(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      e.stopPropagation();
+                                      if (e.key === 'Enter') handleAddTask(block.id);
+                                      if (e.key === 'Escape') {
+                                        setAddingTaskToBlock(null);
+                                        setNewTaskText("");
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        setAddingTaskToBlock(null);
+                                        setNewTaskText("");
+                                      }, 150);
+                                    }}
+                                    placeholder="Task name..."
+                                    className="flex-1 text-xs bg-transparent border-none outline-none"
+                                    autoFocus
+                                    data-testid={`input-new-task-${block.id}`}
+                                  />
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddTask(block.id);
+                                    }}
+                                    disabled={!newTaskText.trim()}
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
 
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
                               {subBlocks.length > 0 && (
@@ -913,7 +942,7 @@ export default function Planner() {
                                           >
                                             {subTaskCount > 0 && (
                                               <div className="flex flex-col gap-0.5">
-                                                {sortChronologically(subBlock.tasks || []).map((task) => (
+                                                {sortChronologically(subBlock.tasks || []).map((task: any) => (
                                                   <div 
                                                     key={task.id} 
                                                     className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all" 
