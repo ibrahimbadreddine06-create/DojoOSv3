@@ -651,11 +651,10 @@ export default function Planner() {
                           }`}
                           style={{ 
                             top, 
-                            height: displayHeight,
-                            minHeight: isExpanded ? height : HEADER_HEIGHT,
+                            height: typeof displayHeight === 'number' ? Math.max(displayHeight - 4, HEADER_HEIGHT) : displayHeight,
+                            minHeight: isExpanded ? height - 4 : HEADER_HEIGHT,
                             left: '8px', 
                             right: '8px',
-                            marginBottom: '4px',
                             borderColor: `hsl(var(${colorVar}) / 0.5)`,
                             backgroundColor: `hsl(var(${colorVar}) / 0.04)`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
