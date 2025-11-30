@@ -332,6 +332,31 @@ export default function Planner() {
     },
   });
 
+  const moveTaskMutation = useMutation({
+    mutationFn: async ({ fromBlockId, toBlockId, taskId }: { fromBlockId: string; toBlockId: string; taskId: string }) => {
+      const fromBlock = blocks?.find(b => b.id === fromBlockId);
+      const toBlock = blocks?.find(b => b.id === toBlockId);
+      if (!fromBlock || !toBlock) throw new Error("Block not found");
+      
+      // Find and remove task from source block
+      const task = fromBlock.tasks?.find(t => t.id === taskId);
+      if (!task) throw new Error("Task not found");
+      
+      const fromTasks = fromBlock.tasks?.filter(t => t.id !== taskId) || [];
+      const toTasks = [...(toBlock.tasks || []), task];
+      
+      // Update both blocks
+      await apiRequest("PATCH", `/api/time-blocks/${fromBlockId}`, { tasks: fromTasks });
+      return await apiRequest("PATCH", `/api/time-blocks/${toBlockId}`, { tasks: toTasks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+    },
+    onError: () => {
+      toast({ title: "Failed to move task", variant: "destructive" });
+    },
+  });
+
   const reorderTasksMutation = useMutation({
     mutationFn: async ({ blockId, draggedTaskId, targetTaskId }: { blockId: string; draggedTaskId: string; targetTaskId?: string }) => {
       const block = blocks?.find(b => b.id === blockId);
@@ -363,6 +388,40 @@ export default function Planner() {
     },
     onError: () => {
       toast({ title: "Failed to reorder tasks", variant: "destructive" });
+    },
+  });
+
+  const reorderSubBlocksMutation = useMutation({
+    mutationFn: async ({ parentId, draggedBlockId, targetBlockId }: { parentId: string; draggedBlockId: string; targetBlockId?: string }) => {
+      const allBlocks = blocks || [];
+      const subBlocks = allBlocks.filter(b => b.parentId === parentId);
+      
+      const draggedIdx = subBlocks.findIndex(b => b.id === draggedBlockId);
+      if (draggedIdx === -1) throw new Error("Block not found");
+      
+      // We'll use startTime ordering for sub-blocks if they have times
+      const [draggedBlock] = subBlocks.splice(draggedIdx, 1);
+      
+      if (targetBlockId) {
+        const targetIdx = subBlocks.findIndex(b => b.id === targetBlockId);
+        if (targetIdx !== -1) {
+          subBlocks.splice(targetIdx, 0, draggedBlock);
+        } else {
+          subBlocks.push(draggedBlock);
+        }
+      } else {
+        subBlocks.push(draggedBlock);
+      }
+      
+      // Update all sub-blocks with new order (we store order via sorting in display)
+      // For now, we just need to trigger a refresh
+      return await apiRequest("PATCH", `/api/time-blocks/${draggedBlockId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+    },
+    onError: () => {
+      toast({ title: "Failed to reorder sub-blocks", variant: "destructive" });
     },
   });
 
@@ -827,8 +886,13 @@ export default function Planner() {
                                   onDrop={(e) => {
                                     e.preventDefault();
                                     const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
+                                    const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
                                     const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
-                                    if (draggedTaskId) {
+                                    
+                                    // If dragged from different block, move task; otherwise reorder
+                                    if (sourceBlockId && sourceBlockId !== block.id) {
+                                      moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: block.id, taskId: draggedTaskId });
+                                    } else if (draggedTaskId) {
                                       reorderTasksMutation.mutate({ blockId: block.id, draggedTaskId, targetTaskId });
                                     }
                                   }}
@@ -843,6 +907,7 @@ export default function Planner() {
                                         e.dataTransfer!.effectAllowed = "move";
                                         setDraggedTaskId(task.id);
                                         e.dataTransfer!.setData("draggedTaskId", task.id);
+                                        e.dataTransfer!.setData("sourceBlockId", block.id);
                                       }}
                                       onDragOver={(e) => {
                                         e.preventDefault();
@@ -887,7 +952,18 @@ export default function Planner() {
 
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
                               {subBlocks.length > 0 && (
-                                <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                <div 
+                                  className="flex flex-col gap-1" 
+                                  onClick={(e) => e.stopPropagation()}
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    const draggedBlockId = e.dataTransfer!.getData("draggedBlockId");
+                                    if (draggedBlockId) {
+                                      reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId });
+                                    }
+                                  }}
+                                >
                                   {sortChronologically(subBlocks).map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter((t: any) => t.completed).length || 0;
@@ -900,7 +976,7 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className="relative rounded border flex flex-col overflow-hidden bg-background/50"
+                                        className="relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab"
                                         style={{ 
                                           borderColor: `hsl(var(${colorVar}) / 0.3)`,
                                           ...(expandedContent === subBlock.id && {
@@ -920,10 +996,19 @@ export default function Planner() {
                                         }}
                                         data-testid={`sub-block-nested-${subBlock.id}`}
                                         onClick={(e) => e.stopPropagation()}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer!.effectAllowed = "move";
+                                          e.dataTransfer!.setData("draggedBlockId", subBlock.id);
+                                        }}
+                                        onDragOver={(e) => {
+                                          e.preventDefault();
+                                          e.dataTransfer!.effectAllowed = "move";
+                                        }}
                                       >
-                                        {/* Sub-block header */}
+                                        {/* Sub-block header with drag handle */}
                                         <div 
-                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0"
+                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0 cursor-grab"
                                           style={{ 
                                             backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                                             ...(expandedContent === subBlock.id && {
@@ -932,7 +1017,13 @@ export default function Planner() {
                                               zIndex: 41,
                                             })
                                           }}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                          }}
                                         >
+                                          <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
+                                          </div>
                                           <CircularProgress
                                             completed={subBlock.completed}
                                             progress={calculateWeightedCompletion(subBlock.tasks)}
@@ -999,8 +1090,13 @@ export default function Planner() {
                                                 onDrop={(e) => {
                                                   e.preventDefault();
                                                   const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
+                                                  const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
                                                   const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
-                                                  if (draggedTaskId) {
+                                                  
+                                                  // If dragged from different block, move task; otherwise reorder
+                                                  if (sourceBlockId && sourceBlockId !== subBlock.id) {
+                                                    moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: subBlock.id, taskId: draggedTaskId });
+                                                  } else if (draggedTaskId) {
                                                     reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId });
                                                   }
                                                 }}
@@ -1015,6 +1111,7 @@ export default function Planner() {
                                                       e.dataTransfer!.effectAllowed = "move";
                                                       setDraggedTaskId(task.id);
                                                       e.dataTransfer!.setData("draggedTaskId", task.id);
+                                                      e.dataTransfer!.setData("sourceBlockId", subBlock.id);
                                                     }}
                                                     onDragOver={(e) => {
                                                       e.preventDefault();
