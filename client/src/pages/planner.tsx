@@ -615,8 +615,8 @@ export default function Planner() {
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute rounded-lg border-2 transition-all flex flex-col overflow-hidden ${
-                            isDragging ? 'shadow-xl z-20' : ''
+                          className={`absolute rounded-lg border flex flex-col overflow-hidden transition-all duration-200 ${
+                            isDragging ? 'shadow-2xl z-20' : 'shadow-sm hover:shadow-md'
                           }`}
                           style={{ 
                             top, 
@@ -624,19 +624,20 @@ export default function Planner() {
                             minHeight: isExpanded ? height : HEADER_HEIGHT,
                             left: '8px', 
                             right: '8px',
-                            borderColor: `hsl(var(${colorVar}))`,
+                            borderColor: `hsl(var(${colorVar}) / 0.5)`,
+                            backgroundColor: `hsl(var(${colorVar}) / 0.04)`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
                             ...(isDragging && { 
-                              boxShadow: `0 20px 25px -5px hsl(var(${colorVar}) / 0.3), 0 0 0 3px hsl(var(${colorVar}) / 0.1)`,
+                              boxShadow: `0 25px 50px -12px hsl(var(${colorVar}) / 0.4), 0 0 0 1px hsl(var(${colorVar}) / 0.2)`,
                             })
                           }}
                           data-testid={`block-${block.id}`}
                         >
                           {/* Header - ONLY checkbox, title, time, drag - 60% opacity */}
                           <div 
-                            className={`flex items-center gap-2 px-2.5 py-1.5 shrink-0 ${block.completed ? 'opacity-75' : ''}`}
+                            className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
                             style={{ 
-                              backgroundColor: `hsl(var(${colorVar}) / 0.6)`,
+                              backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -653,12 +654,12 @@ export default function Planner() {
                               style={{ accentColor: `hsl(var(${colorVar}))` }}
                               data-testid={`checkbox-block-${block.id}`}
                             />
-                            <span className={`text-sm font-semibold truncate flex-1 ${
-                              block.completed ? "line-through text-muted-foreground" : ""
+                            <span className={`text-sm font-medium truncate flex-1 ${
+                              block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
                             }`}>
                               {block.title}
                             </span>
-                            <span className="text-xs text-muted-foreground font-mono shrink-0">
+                            <span className="text-xs text-muted-foreground/70 font-mono shrink-0">
                               {block.startTime}–{block.endTime}
                             </span>
                             <div 
@@ -702,14 +703,14 @@ export default function Planner() {
                           </div>
 
                           {/* Dividing line */}
-                          <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}))` }} />
+                          <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}) / 0.4)` }} />
 
                           {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - 30% opacity */}
                           {!isCollapsed && (
                             <div 
-                              className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 overflow-y-auto ${block.completed ? 'opacity-70' : ''}`}
+                              className={`flex-1 flex flex-col gap-2 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
                               style={{ 
-                                backgroundColor: `hsl(var(${colorVar}) / 0.3)`,
+                                backgroundColor: `hsl(var(${colorVar}) / 0.25)`,
                                 ...(expandedContent === block.id && {
                                   position: 'fixed',
                                   inset: '0',
