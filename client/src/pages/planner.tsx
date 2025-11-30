@@ -577,6 +577,7 @@ export default function Planner() {
                 className={`relative flex-1 ${dragState ? 'cursor-grabbing select-none' : ''}`}
                 onClick={handleGridClick}
                 data-testid="planner-grid"
+                data-block-container
                 style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}
               >
                 {HOURS.map((hour) => (

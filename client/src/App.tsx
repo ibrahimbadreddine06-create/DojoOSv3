@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,9 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, Expand } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Loader2 } from "lucide-react";
 
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -84,7 +81,6 @@ function LoadingScreen() {
 
 function AuthenticatedApp() {
   const [location] = useLocation();
-  const [isExpanded, setIsExpanded] = useState(false);
   
   // Detect if we're on a sub-page (detail pages like /second-brain/:id, /languages/:id, /studies/:id)
   const isSubPage = /^\/(second-brain|languages|studies)\/[^/]+$/.test(location);
@@ -107,28 +103,9 @@ function AuthenticatedApp() {
               </span>
             </div>
           </header>
-          <main className="flex-1 relative bg-background overflow-hidden">
-            <div className="h-full overflow-hidden">
-              <AuthenticatedRouter />
-            </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setIsExpanded(true)}
-              className="absolute bottom-4 right-4 z-10"
-              data-testid="button-expand-content"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
+          <main className="flex-1 bg-background overflow-y-auto">
+            <AuthenticatedRouter />
           </main>
-
-          <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
-            <DialogContent className="max-w-full h-screen max-h-screen p-0 border-0 rounded-0">
-              <div className="overflow-y-auto h-full">
-                <AuthenticatedRouter />
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
     </SidebarProvider>
