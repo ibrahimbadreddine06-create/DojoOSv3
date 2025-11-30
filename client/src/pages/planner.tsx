@@ -655,7 +655,7 @@ export default function Planner() {
                           }}
                           data-testid={`block-${block.id}`}
                         >
-                          {/* Header - ONLY checkbox, title, time, drag - 60% opacity */}
+                          {/* Header - ONLY circular progress, title, time, drag - 60% opacity */}
                           <div 
                             className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
                             style={{ 
@@ -663,17 +663,17 @@ export default function Planner() {
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
-                            <input 
-                              type="checkbox" 
-                              checked={block.completed}
-                              onChange={(e) => {
+                            <CircularProgress
+                              completed={block.completed}
+                              progress={taskCount > 0 ? (completedTasks / taskCount) * 100 : 0}
+                              diameter={20}
+                              colorVar={colorVar}
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 if (!dragState) {
                                   toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
                                 }
                               }}
-                              className="w-3.5 h-3.5 shrink-0 cursor-pointer"
-                              style={{ accentColor: `hsl(var(${colorVar}))` }}
                               data-testid={`checkbox-block-${block.id}`}
                             />
                             <span className={`text-sm font-medium truncate flex-1 ${
