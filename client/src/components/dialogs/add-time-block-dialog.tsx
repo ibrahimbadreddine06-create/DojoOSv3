@@ -152,7 +152,7 @@ export function AddTimeBlockDialog({
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-muted-foreground">Start</FormLabel>
                     <FormControl>
-                      <Input {...field} type="time" className="text-sm" data-testid="input-start-time" />
+                      <Input {...field} type="time" className="text-sm" lang="en-GB" data-testid="input-start-time" />
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
@@ -166,7 +166,7 @@ export function AddTimeBlockDialog({
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-muted-foreground">End</FormLabel>
                     <FormControl>
-                      <Input {...field} type="time" className="text-sm" data-testid="input-end-time" />
+                      <Input {...field} type="time" className="text-sm" lang="en-GB" data-testid="input-end-time" />
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
