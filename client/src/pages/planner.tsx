@@ -1133,14 +1133,13 @@ export default function Planner() {
                                           >
                                             {subTaskCount > 0 && (
                                               <div 
-                                                className="flex flex-col gap-0.5"
-                                                onDragOver={(e) => e.preventDefault()}
+                                                className="flex flex-col gap-0.5 relative"
+                                                onDragOver={(e) => handleTaskDragMove(e)}
                                                 onDrop={(e) => {
                                                   e.preventDefault();
                                                   const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
                                                   const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                                  
-                                                  setDraggedTaskId(null);
+                                                  handleTaskDragEnd();
                                                   
                                                   if (sourceBlockId && sourceBlockId !== subBlock.id) {
                                                     moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: subBlock.id, taskId: draggedTaskId });
@@ -1149,23 +1148,39 @@ export default function Planner() {
                                                   }
                                                 }}
                                               >
-                                                {sortChronologically(subBlock.tasks || []).map((task: any) => (
+                                                {sortChronologically(subBlock.tasks || []).map((task: any, idx: number) => {
+                                                  let transform = '';
+                                                  if (dragInfo && dragInfo.containerId === subBlock.id && dragInfo.id !== task.id) {
+                                                    const tasks = sortChronologically(subBlock.tasks || []);
+                                                    const draggedIdx = tasks.findIndex(t => t.id === dragInfo.id);
+                                                    const currentIdx = idx;
+                                                    const itemHeight = 24;
+                                                    if (dragCursorY > (idx + 0.5) * itemHeight && draggedIdx < currentIdx) {
+                                                      transform = `translateY(-${itemHeight}px)`;
+                                                    } else if (dragCursorY < (idx + 0.5) * itemHeight && draggedIdx > currentIdx) {
+                                                      transform = `translateY(${itemHeight}px)`;
+                                                    }
+                                                  }
+                                                  
+                                                  return (
                                                   <div 
-                                                    key={task.id} 
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all duration-200 group ${draggedTaskId === task.id ? 'opacity-30 scale-95' : ''}`}
-                                                    style={{ backgroundColor: `hsl(var(${colorVar}) / 0.2)` }}
-                                                    draggable
-                                                    onDragStart={(e) => {
-                                                      e.dataTransfer!.effectAllowed = "move";
-                                                      setDraggedTaskId(task.id);
-                                                      e.dataTransfer!.setData("draggedTaskId", task.id);
-                                                      e.dataTransfer!.setData("sourceBlockId", subBlock.id);
+                                                    key={task.id}
+                                                    data-drag-item
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all duration-150 group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                    style={{ 
+                                                      backgroundColor: `hsl(var(${colorVar}) / 0.2)`,
+                                                      transform,
+                                                      zIndex: draggedTaskId === task.id ? 50 : 'auto',
+                                                      position: draggedTaskId === task.id ? 'relative' : 'static'
                                                     }}
+                                                    draggable
+                                                    onDragStart={(e) => handleTaskDragStart(e, task.id, subBlock.id, e.currentTarget.parentElement as HTMLElement)}
                                                     onDragOver={(e) => {
                                                       e.preventDefault();
                                                       e.dataTransfer!.effectAllowed = "move";
+                                                      handleTaskDragMove(e);
                                                     }}
-                                                    onDragEnd={() => setDraggedTaskId(null)}
+                                                    onDragEnd={handleTaskDragEnd}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
@@ -1187,7 +1202,8 @@ export default function Planner() {
                                                       {task.text}
                                                     </span>
                                                   </div>
-                                                ))}
+                                                  );
+                                                })}
                                               </div>
                                             )}
                                             
