@@ -444,8 +444,8 @@ export default function Planner() {
                 </div>
               </div>
             </CardHeader>
-            <div className="flex gap-0">
-              <div className="w-12 flex-shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}>
+            <div className="flex gap-1">
+              <div className="w-14 flex-shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}>
                 {HOURS.map((hour) => (
                   <div
                     key={`hour-${hour}`}
@@ -501,8 +501,8 @@ export default function Planner() {
                             top, 
                             height, 
                             minHeight: '40px', 
-                            left: '4px', 
-                            right: '4px',
+                            left: '12px', 
+                            right: '12px',
                             borderColor: `hsla(var(${colorVar}), ${block.completed ? 0.4 : 0.6})`,
                             background: `linear-gradient(135deg, hsla(var(${colorVar}), ${block.completed ? 0.08 : 0.12}) 0%, hsla(var(${colorVar}), ${block.completed ? 0.04 : 0.06}) 100%)`,
                             ...(isDragging && { 
@@ -631,8 +631,8 @@ export default function Planner() {
                           style={{ 
                             top, 
                             height, 
-                            left: '58%', 
-                            right: '4px',
+                            left: '55%', 
+                            right: '12px',
                             borderColor: `hsla(var(${colorVar}), ${block.completed ? 0.35 : 0.5})`,
                             background: `linear-gradient(135deg, hsla(var(${colorVar}), ${block.completed ? 0.06 : 0.1}) 0%, hsla(var(${colorVar}), ${block.completed ? 0.03 : 0.05}) 100%)`,
                             ...(isDragging && { 
