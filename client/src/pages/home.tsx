@@ -474,7 +474,7 @@ export default function Home() {
               const mod = moduleComponents[id];
               if (!mod) return null;
               const Component = mod.component;
-              const size = config.sizes[id] || "1x1";
+              const size = (config?.sizes?.[id]) || "1x1";
               const sizeClass = size === "2x1" ? "sm:col-span-2" : "";
               return (
                 <div key={id} className={sizeClass} data-testid={`bento-wrapper-${id}`}>
