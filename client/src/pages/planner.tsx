@@ -734,7 +734,8 @@ export default function Planner() {
                                   {block.tasks?.map((task) => (
                                     <div 
                                       key={task.id} 
-                                      className="flex items-center gap-1 px-2 py-1 rounded bg-background group" 
+                                      className="flex items-center gap-1 px-2 py-1 rounded group transition-all" 
+                                      style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
                                     >
                                       <input 
                                         type="checkbox" 
@@ -768,7 +769,11 @@ export default function Planner() {
 
                               {/* Add task input */}
                               {addingTaskToBlock === block.id && (
-                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-background" onClick={(e) => e.stopPropagation()}>
+                                <div 
+                                  className="flex items-center gap-1 px-2 py-1 rounded" 
+                                  style={{ backgroundColor: `hsl(var(${colorVar}) / 0.12)` }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <input
                                     type="text"
                                     value={newTaskText}
@@ -919,7 +924,8 @@ export default function Planner() {
                                                 {subBlock.tasks?.map((task) => (
                                                   <div 
                                                     key={task.id} 
-                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate bg-background/80" 
+                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all" 
+                                                    style={{ backgroundColor: `hsl(var(${colorVar}) / 0.2)` }}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
@@ -942,7 +948,10 @@ export default function Planner() {
                                             
                                             {/* Add task input for sub-block */}
                                             {addingTaskToBlock === subBlock.id && (
-                                              <div className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-background/80">
+                                              <div 
+                                                className="flex items-center gap-0.5 px-1 py-0.5 rounded"
+                                                style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
+                                              >
                                                 <input
                                                   type="text"
                                                   value={newTaskText}
