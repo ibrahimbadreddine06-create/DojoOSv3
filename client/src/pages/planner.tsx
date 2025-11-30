@@ -435,13 +435,12 @@ export default function Planner() {
   const handleTaskDragStart = (e: React.DragEvent, taskId: string, containerId: string, container: HTMLElement) => {
     e.dataTransfer!.effectAllowed = "move";
     const rect = container.getBoundingClientRect();
-    const itemRect = (e.target as HTMLElement).closest('[data-drag-item]')?.getBoundingClientRect();
     
     setDraggedTaskId(taskId);
     setDragInfo({
       id: taskId,
       containerId,
-      offset: itemRect ? e.clientY - itemRect.top : 0,
+      offset: 0,
       containerY: rect.top
     });
     
@@ -449,8 +448,16 @@ export default function Planner() {
     e.dataTransfer!.setData("sourceBlockId", containerId);
   };
 
-  const handleTaskDragMove = (e: React.DragEvent) => {
+  const handleTaskDragMove = (e: React.DragEvent, containerId?: string) => {
     if (dragInfo) {
+      if (containerId && containerId !== dragInfo.containerId) {
+        // Update container info when dragging over different container
+        const containerElement = document.querySelector(`[data-task-container="${containerId}"]`) as HTMLElement;
+        if (containerElement) {
+          const rect = containerElement.getBoundingClientRect();
+          setDragInfo(prev => prev ? { ...prev, containerId, containerY: rect.top } : null);
+        }
+      }
       setDragCursorY(e.clientY - dragInfo.containerY);
     }
   };
@@ -913,8 +920,13 @@ export default function Planner() {
                               {/* Tasks */}
                               {taskCount > 0 && (
                                 <div 
-                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative"
-                                  onDragOver={(e) => handleTaskDragMove(e)}
+                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit"
+                                  data-task-container={block.id}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.dataTransfer!.dropEffect = "move";
+                                    handleTaskDragMove(e, block.id);
+                                  }}
                                   onDrop={(e) => {
                                     e.preventDefault();
                                     const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
@@ -1133,8 +1145,13 @@ export default function Planner() {
                                           >
                                             {subTaskCount > 0 && (
                                               <div 
-                                                className="flex flex-col gap-0.5 relative"
-                                                onDragOver={(e) => handleTaskDragMove(e)}
+                                                className="flex flex-col gap-0.5 relative min-h-fit"
+                                                data-task-container={subBlock.id}
+                                                onDragOver={(e) => {
+                                                  e.preventDefault();
+                                                  e.dataTransfer!.dropEffect = "move";
+                                                  handleTaskDragMove(e, subBlock.id);
+                                                }}
                                                 onDrop={(e) => {
                                                   e.preventDefault();
                                                   const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
