@@ -958,103 +958,82 @@ export default function Planner() {
                               }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {/* Unified Tasks and Sub-blocks - ordered together */}
+                              {/* Unified Tasks and Sub-blocks - freely ordered together */}
                               {(taskCount > 0 || subBlocks.length > 0) && (
                                 <div 
                                   className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit"
-                                  data-task-container={block.id}
-                                  onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.dataTransfer!.dropEffect = "move";
-                                    handleTaskDragMove(e, block.id);
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
-                                    const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                    handleTaskDragEnd();
-                                    
-                                    if (sourceBlockId && sourceBlockId !== block.id) {
-                                      moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: block.id, taskId: draggedTaskId });
-                                    } else if (draggedTaskId) {
-                                      reorderTasksMutation.mutate({ blockId: block.id, draggedTaskId, targetTaskId: undefined });
-                                    }
-                                  }}
-                                >
-                                  {sortChronologically(block.tasks || []).map((task, idx) => {
-                                    let transform = '';
-                                    if (dragInfo?.containerId === block.id && dragInfo.id !== task.id) {
-                                      const tasks = sortChronologically(block.tasks || []);
-                                      const draggedIdx = tasks.findIndex(t => t.id === dragInfo.id);
-                                      const currentIdx = idx;
-                                      const itemHeight = 32;
-                                      if (dragCursorY > (idx + 0.5) * itemHeight && draggedIdx < currentIdx) {
-                                        transform = `translateY(-${itemHeight}px)`;
-                                      } else if (dragCursorY < (idx + 0.5) * itemHeight && draggedIdx > currentIdx) {
-                                        transform = `translateY(${itemHeight}px)`;
-                                      }
-                                    }
-                                    
-                                    return (
-                                    <div 
-                                      key={task.id}
-                                      data-drag-item
-                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-150 cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
-                                      style={{ 
-                                        backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
-                                        transform,
-                                        zIndex: draggedTaskId === task.id ? 50 : 'auto',
-                                        position: draggedTaskId === task.id ? 'relative' : 'static'
-                                      }}
-                                      draggable
-                                      onDragStart={(e) => handleTaskDragStart(e, task.id, block.id, e.currentTarget.parentElement as HTMLElement)}
-                                      onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.dataTransfer!.effectAllowed = "move";
-                                        handleTaskDragMove(e);
-                                      }}
-                                      onDragEnd={handleTaskDragEnd}
-                                    >
-                                      <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <GripVertical className="w-3 h-3 text-muted-foreground/40" />
-                                      </div>
-                                      <CircularProgress
-                                        completed={task.completed}
-                                        diameter={16}
-                                        colorVar={colorVar}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
-                                        }}
-                                      />
-                                      <span className={`truncate text-xs flex-1 ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
-                                        {task.text}
-                                      </span>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-3 w-3 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          deleteTaskMutation.mutate({ blockId: block.id, taskId: task.id });
-                                        }}
-                                        data-testid={`button-delete-task-${task.id}`}
-                                      >
-                                        <Trash2 className="w-2.5 h-2.5" />
-                                      </Button>
-                                    </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-
-                              {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
-                              {subBlocks.length > 0 && (
-                                <div 
-                                  className="flex flex-col gap-1" 
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {sortChronologically(subBlocks).map((subBlock) => {
+                                  {mergeContentByOrder(block.tasks, subBlocks).map((item, idx, allItems) => {
+                                    if (item.type === 'task') {
+                                      const task = item.data;
+                                      return (
+                                        <div 
+                                          key={task.id}
+                                          className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-150 hover-elevate`}
+                                          style={{ 
+                                            backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                          }}
+                                        >
+                                          <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <GripVertical className="w-3 h-3 text-muted-foreground/40" />
+                                          </div>
+                                          <CircularProgress
+                                            completed={task.completed}
+                                            diameter={16}
+                                            colorVar={colorVar}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
+                                            }}
+                                          />
+                                          <span className={`truncate text-xs flex-1 ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
+                                            {task.text}
+                                          </span>
+                                          {idx > 0 && (
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                moveContentMutation.mutate({ parentId: block.id, itemId: task.id, direction: 'up' });
+                                              }}
+                                              data-testid={`button-move-up-task-${task.id}`}
+                                            >
+                                              <ChevronUp className="w-2 h-2" />
+                                            </Button>
+                                          )}
+                                          {idx < allItems.length - 1 && (
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                moveContentMutation.mutate({ parentId: block.id, itemId: task.id, direction: 'down' });
+                                              }}
+                                              data-testid={`button-move-down-task-${task.id}`}
+                                            >
+                                              <ChevronDown className="w-2 h-2" />
+                                            </Button>
+                                          )}
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-3 w-3 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              deleteTaskMutation.mutate({ blockId: block.id, taskId: task.id });
+                                            }}
+                                            data-testid={`button-delete-task-${task.id}`}
+                                          >
+                                            <Trash2 className="w-2.5 h-2.5" />
+                                          </Button>
+                                        </div>
+                                      );
+                                    } else {
+                                      const subBlock = item.data;
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter((t: any) => t.completed).length || 0;
                                     const subIsExpanded = expandedBlocks.has(subBlock.id);
@@ -1291,7 +1270,8 @@ export default function Planner() {
                                           </div>
                                         )}
                                       </div>
-                                    );
+                                      );
+                                    }
                                   })}
                                 </div>
                               )}
