@@ -653,7 +653,8 @@ export default function Planner() {
                       const hasContent = taskCount > 0 || subBlocks.length > 0;
                       const contentOverflows = hasContent && height < HEADER_HEIGHT + CONTENT_MIN_HEIGHT + 10;
                       const isCollapsed = contentOverflows && !isExpanded;
-                      const displayHeight = isCollapsed ? HEADER_HEIGHT : (isExpanded ? 'auto' : height);
+                      // If there's content and overflow, expand; otherwise use normal height
+                      const displayHeight = isCollapsed ? HEADER_HEIGHT : (hasContent ? 'auto' : (isExpanded ? 'auto' : height));
                       
                       return (
                         <div
