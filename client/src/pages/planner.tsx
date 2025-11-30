@@ -486,89 +486,124 @@ export default function Planner() {
                       const { top, height } = getBlockStyle(block);
                       const isDragging = dragState?.blockId === block.id;
                       const subBlocks = blocks.filter(b => b.parentId === block.id);
-                      const isParent = subBlocks.length > 0;
                       const colorVar = getModuleColorVar(block.linkedModule);
+                      const taskCount = block.tasks?.length || 0;
+                      const completedTasks = block.tasks?.filter(t => t.completed).length || 0;
                       
                       return (
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute rounded border transition-shadow flex flex-col ${
-                            isDragging ? 'shadow-lg z-10' : 'hover-elevate'
-                          } ${
-                            block.completed 
-                              ? "border-opacity-30" 
-                              : "bg-card border-border"
+                          className={`absolute rounded-lg border-2 transition-all flex flex-col overflow-hidden ${
+                            isDragging ? 'shadow-xl z-10' : 'hover-elevate'
                           }`}
                           style={{ 
                             top, 
                             height, 
-                            minHeight: '20px', 
+                            minHeight: '40px', 
                             left: '4px', 
                             right: '4px',
-                            borderColor: block.completed ? `hsla(var(${colorVar}), 0.3)` : undefined,
-                            backgroundColor: block.completed ? `hsla(var(${colorVar}), 0.1)` : undefined,
+                            borderColor: `hsla(var(${colorVar}), ${block.completed ? 0.4 : 0.6})`,
+                            background: `linear-gradient(135deg, hsla(var(${colorVar}), ${block.completed ? 0.08 : 0.12}) 0%, hsla(var(${colorVar}), ${block.completed ? 0.04 : 0.06}) 100%)`,
                             ...(isDragging && { 
-                              boxShadow: `0 10px 15px -3px hsla(var(${colorVar}), 0.2)`,
-                              outline: `2px solid hsla(var(${colorVar}), 0.5)`,
+                              boxShadow: `0 20px 25px -5px hsla(var(${colorVar}), 0.3), 0 0 0 3px hsla(var(${colorVar}), 0.1)`,
                             })
                           }}
                           data-testid={`block-${block.id}`}
                         >
-                          <div 
-                            className={`flex items-center justify-between px-1 py-0.5 border-b ${
-                              block.completed 
-                                ? "bg-muted/30" 
-                                : "border-border/50 bg-muted/30"
-                            }`}
-                            style={{
-                              borderBottomColor: block.completed ? `hsla(var(${colorVar}), 0.2)` : undefined,
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!dragState) {
-                                toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
-                              }
-                            }}
-                          >
-                            <span className={`text-xs truncate leading-tight flex-1 ${
-                              block.completed ? "line-through text-muted-foreground" : ""
-                            }`}>
-                              {block.title}
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              {!block.parentId && height > 40 && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-3 w-3 shrink-0"
+                          <div className={`flex-1 flex flex-col gap-1 px-2.5 py-1.5 min-h-0 ${block.completed ? 'opacity-75' : ''}`}>
+                            <div className="flex items-start justify-between gap-1 min-h-0">
+                              <div className="flex-1 min-w-0">
+                                <div 
+                                  className="flex items-center gap-2 cursor-pointer group"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setAddSubBlockParentId(block.id);
-                                    setClickedTime({ start: block.startTime, end: block.endTime });
-                                    setAddDialogOpen(true);
+                                    if (!dragState) {
+                                      toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                                    }
                                   }}
-                                  data-testid={`button-add-sub-block-${block.id}`}
                                 >
-                                  <Plus className="w-2 h-2" />
-                                </Button>
-                              )}
-                              <div 
-                                className="cursor-grab active:cursor-grabbing shrink-0"
-                                style={{ touchAction: 'none' }}
-                                onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
-                                data-testid={`block-drag-handle-${block.id}`}
-                              >
-                                <GripVertical className="w-2 h-2 text-muted-foreground/50" />
+                                  <input 
+                                    type="checkbox" 
+                                    checked={block.completed}
+                                    readOnly
+                                    className="w-3 h-3 shrink-0"
+                                    style={{ accentColor: `hsl(var(${colorVar}))` }}
+                                  />
+                                  <span className={`text-sm font-semibold truncate ${
+                                    block.completed ? "line-through text-muted-foreground" : ""
+                                  }`}>
+                                    {block.title}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground font-mono pl-5">
+                                  {block.startTime} – {block.endTime}
+                                </span>
                               </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {taskCount > 0 && (
+                                  <Badge variant="outline" className="text-xs" style={{ borderColor: `hsla(var(${colorVar}), 0.5)` }}>
+                                    {completedTasks}/{taskCount}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {taskCount > 0 && height > 70 && (
+                              <div className="flex flex-col gap-0.5 text-xs min-h-0 overflow-y-auto">
+                                {block.tasks?.slice(0, 3).map((task) => (
+                                  <div key={task.id} className="flex items-center gap-1 truncate px-1 py-0.5 rounded" style={{ backgroundColor: `hsla(var(${colorVar}), 0.08)` }}>
+                                    <input 
+                                      type="checkbox" 
+                                      checked={task.completed}
+                                      readOnly
+                                      className="w-3 h-3 shrink-0"
+                                      style={{ accentColor: `hsl(var(${colorVar}))` }}
+                                    />
+                                    <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/70' : 'text-muted-foreground'}`}>
+                                      {task.text}
+                                    </span>
+                                  </div>
+                                ))}
+                                {taskCount > 3 && (
+                                  <span className="text-xs text-muted-foreground/60 px-1">+{taskCount - 3} more</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1 px-2 py-1 bg-card/50 border-t mt-auto shrink-0">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAddSubBlockParentId(block.id);
+                                setClickedTime({ start: block.startTime, end: block.endTime });
+                                setAddDialogOpen(true);
+                              }}
+                              data-testid={`button-add-sub-block-${block.id}`}
+                              title="Add sub-block"
+                            >
+                              <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
+                            </Button>
+                            <div className="flex-1" />
+                            <div 
+                              className="cursor-grab active:cursor-grabbing"
+                              style={{ touchAction: 'none' }}
+                              onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                              data-testid={`block-drag-handle-${block.id}`}
+                            >
+                              <GripVertical className="w-3 h-3 text-muted-foreground/50" />
                             </div>
                           </div>
 
                           <div 
-                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize rounded-b hover-elevate"
+                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover-elevate rounded-b-lg"
                             style={{ 
                               touchAction: 'none',
-                              backgroundColor: `hsla(var(${colorVar}), 0.2)`,
+                              backgroundColor: `hsla(var(${colorVar}), 0.4)`,
                             }}
                             onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
@@ -583,58 +618,72 @@ export default function Planner() {
                       const { top, height } = getBlockStyle(block);
                       const isDragging = dragState?.blockId === block.id;
                       const colorVar = getModuleColorVar(block.linkedModule);
+                      const taskCount = block.tasks?.length || 0;
+                      const completedTasks = block.tasks?.filter(t => t.completed).length || 0;
                       
                       return (
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute rounded-md border transition-shadow ${
+                          className={`absolute rounded-lg border-2 transition-all flex flex-col overflow-hidden ${
                             isDragging ? 'shadow-lg z-10' : 'hover-elevate'
-                          } ${
-                            block.completed 
-                              ? "border" 
-                              : "bg-muted/50 border border-border/50"
                           }`}
                           style={{ 
                             top, 
                             height, 
-                            left: '60%', 
+                            left: '58%', 
                             right: '4px',
-                            borderLeftWidth: '4px',
-                            borderLeftColor: `hsla(var(${colorVar}), 0.5)`,
-                            backgroundColor: block.completed ? `hsla(var(${colorVar}), 0.05)` : undefined,
-                            borderColor: block.completed ? `hsla(var(${colorVar}), 0.2)` : undefined,
+                            borderColor: `hsla(var(${colorVar}), ${block.completed ? 0.35 : 0.5})`,
+                            background: `linear-gradient(135deg, hsla(var(${colorVar}), ${block.completed ? 0.06 : 0.1}) 0%, hsla(var(${colorVar}), ${block.completed ? 0.03 : 0.05}) 100%)`,
                             ...(isDragging && { 
                               boxShadow: `0 10px 15px -3px hsla(var(${colorVar}), 0.2)`,
-                              outline: `2px solid hsla(var(${colorVar}), 0.5)`,
                             })
                           }}
                           data-testid={`sub-block-${block.id}`}
                         >
-                          <div 
-                            className="p-2 h-full flex flex-col overflow-hidden cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!dragState) {
-                                toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
-                              }
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-1">
-                              <span className={`font-medium text-xs truncate ${
+                          <div className={`flex-1 flex flex-col gap-1 px-2 py-1.5 min-h-0 ${block.completed ? 'opacity-70' : ''}`}>
+                            <div 
+                              className="flex items-center gap-1.5 cursor-pointer group"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!dragState) {
+                                  toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                                }
+                              }}
+                            >
+                              <input 
+                                type="checkbox" 
+                                checked={block.completed}
+                                readOnly
+                                className="w-3 h-3 shrink-0"
+                                style={{ accentColor: `hsl(var(${colorVar}))` }}
+                              />
+                              <span className={`text-xs font-semibold truncate ${
                                 block.completed ? "line-through text-muted-foreground" : ""
                               }`}>
                                 {block.title}
                               </span>
-                              {block.completed && (
-                                <Badge variant="outline" className="text-xs shrink-0 px-1 py-0">
-                                  Done
+                              {taskCount > 0 && (
+                                <Badge variant="outline" className="text-xs shrink-0 px-1" style={{ borderColor: `hsla(var(${colorVar}), 0.4)` }}>
+                                  {completedTasks}/{taskCount}
                                 </Badge>
                               )}
                             </div>
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {block.startTime} - {block.endTime}
+                            <span className="text-xs text-muted-foreground font-mono pl-5">
+                              {block.startTime} – {block.endTime}
                             </span>
+                            {taskCount > 0 && height > 60 && (
+                              <div className="flex flex-col gap-0.5 text-xs min-h-0 overflow-y-auto mt-0.5 pl-1">
+                                {block.tasks?.slice(0, 2).map((task) => (
+                                  <div key={task.id} className="flex items-center gap-1 truncate" style={{ color: `hsl(var(${colorVar}))` }}>
+                                    <div className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: `hsl(var(${colorVar}))` }} />
+                                    <span className={`truncate text-xs ${task.completed ? 'line-through opacity-50' : ''}`}>
+                                      {task.text}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
