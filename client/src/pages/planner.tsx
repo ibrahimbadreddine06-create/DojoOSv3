@@ -783,22 +783,6 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Add task button - opens form directly */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="w-full justify-start text-xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setAddTaskParentId(block.id);
-                                  setAddTaskDialogOpen(true);
-                                }}
-                                data-testid={`button-add-task-${block.id}`}
-                              >
-                                <Plus className="w-3 h-3 mr-1" style={{ color: `hsl(var(${colorVar}))` }} />
-                                Add Task
-                              </Button>
-
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
                               {subBlocks.length > 0 && (
                                 <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
