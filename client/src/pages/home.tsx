@@ -291,7 +291,13 @@ function StudiesBox() {
   );
 }
 
-const moduleComponents: Record<string, { component: () => JSX.Element; label: string; icon: typeof Calendar }> = {
+interface ModuleComponentEntry {
+  component: () => JSX.Element;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const moduleComponents: Record<string, ModuleComponentEntry> = {
   planner: { component: PlannerBox, label: "Today's Plan", icon: Calendar },
   goals: { component: GoalsBox, label: "Goals", icon: Target },
   second_brain: { component: SecondBrainBox, label: "Second Brain", icon: Brain },
