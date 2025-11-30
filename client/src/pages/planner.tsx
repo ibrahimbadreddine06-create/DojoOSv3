@@ -133,6 +133,7 @@ export default function Planner() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragInfo, setDragInfo] = useState<{ id: string; containerId: string; offset: number; containerY: number } | null>(null);
   const [dragCursorY, setDragCursorY] = useState(0);
+  const [draggedSubBlockId, setDraggedSubBlockId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");

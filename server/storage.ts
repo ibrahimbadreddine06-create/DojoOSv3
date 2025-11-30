@@ -202,6 +202,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTimeBlock(id: string, data: Partial<InsertTimeBlock>): Promise<TimeBlock> {
+    // Only update if there are fields to update
+    if (Object.keys(data).length === 0) {
+      const block = await this.getTimeBlock(id);
+      if (!block) throw new Error("Time block not found");
+      return block;
+    }
     const [block] = await db.update(timeBlocks).set(data).where(eq(timeBlocks.id, id)).returning();
     return block;
   }
