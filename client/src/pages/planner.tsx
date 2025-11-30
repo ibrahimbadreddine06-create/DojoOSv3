@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, ChevronDown, ListTodo, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, ChevronDown, ListTodo, Layers, Maximize2, Minimize2 } from "lucide-react";
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { CreatePresetDialog } from "@/components/dialogs/create-preset-dialog";
@@ -86,6 +86,7 @@ export default function Planner() {
   const [tempBlock, setTempBlock] = useState<{ id: string; startTime: string; endTime: string } | null>(null);
   const [addSubBlockParentId, setAddSubBlockParentId] = useState<string | null>(null);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const [expandedContent, setExpandedContent] = useState<string | null>(null);
   const [addingTaskToBlock, setAddingTaskToBlock] = useState<string | null>(null);
   const [newTaskText, setNewTaskText] = useState("");
   const queryClient = useQueryClient();
@@ -296,6 +297,10 @@ export default function Planner() {
   };
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragState && expandedContent) {
+      setExpandedContent(null);
+      return;
+    }
     if (dragState) return;
     if (!gridRef.current) return;
     if ((e.target as HTMLElement).closest('[data-block-id]')) return;
@@ -652,6 +657,24 @@ export default function Planner() {
                             >
                               <GripVertical className="w-4 h-4 text-muted-foreground/60" />
                             </div>
+                            {contentOverflows && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-4 w-4"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedContent(expandedContent === block.id ? null : block.id);
+                                }}
+                                data-testid={`button-toggle-expand-content-${block.id}`}
+                              >
+                                {expandedContent === block.id ? (
+                                  <Minimize2 className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
@@ -672,10 +695,25 @@ export default function Planner() {
                           {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - 30% opacity */}
                           {!isCollapsed && (
                             <div 
-                              className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 ${block.completed ? 'opacity-70' : ''}`}
+                              className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 overflow-y-auto ${block.completed ? 'opacity-70' : ''}`}
                               style={{ 
                                 backgroundColor: `hsl(var(${colorVar}) / 0.3)`,
+                                ...(expandedContent === block.id && {
+                                  position: 'fixed',
+                                  inset: '0',
+                                  zIndex: 40,
+                                  margin: 0,
+                                  padding: '3rem 2.5rem 2.5rem 2.5rem',
+                                  borderRadius: '0.5rem',
+                                  maxHeight: '90vh',
+                                  left: '50%',
+                                  top: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                  width: '90%',
+                                  maxWidth: '600px',
+                                })
                               }}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {/* Tasks */}
                               {taskCount > 0 && (
@@ -717,12 +755,13 @@ export default function Planner() {
 
                               {/* Add task input */}
                               {addingTaskToBlock === block.id && (
-                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-background">
+                                <div className="flex items-center gap-1 px-2 py-1 rounded bg-background" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="text"
                                     value={newTaskText}
                                     onChange={(e) => setNewTaskText(e.target.value)}
                                     onKeyDown={(e) => {
+                                      e.stopPropagation();
                                       if (e.key === 'Enter') handleAddTask(block.id);
                                       if (e.key === 'Escape') {
                                         setAddingTaskToBlock(null);
@@ -744,7 +783,10 @@ export default function Planner() {
                                     size="icon"
                                     variant="ghost"
                                     className="h-5 w-5"
-                                    onClick={() => handleAddTask(block.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddTask(block.id);
+                                    }}
                                     disabled={!newTaskText.trim()}
                                   >
                                     <Plus className="w-3 h-3" />
@@ -754,7 +796,7 @@ export default function Planner() {
 
                               {/* Sub-blocks (nested inside parent content) */}
                               {subBlocks.length > 0 && (
-                                <div className="flex flex-col gap-1">
+                                <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                   {subBlocks.map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter(t => t.completed).length || 0;
@@ -768,13 +810,37 @@ export default function Planner() {
                                       <div
                                         key={subBlock.id}
                                         className="relative rounded border flex flex-col overflow-hidden bg-background/50"
-                                        style={{ borderColor: `hsl(var(${colorVar}) / 0.3)` }}
+                                        style={{ 
+                                          borderColor: `hsl(var(${colorVar}) / 0.3)`,
+                                          ...(expandedContent === subBlock.id && {
+                                            position: 'fixed',
+                                            inset: '0',
+                                            zIndex: 40,
+                                            margin: 0,
+                                            padding: '3rem 2.5rem 2.5rem 2.5rem',
+                                            borderRadius: '0.5rem',
+                                            maxHeight: '90vh',
+                                            left: '50%',
+                                            top: '50%',
+                                            transform: 'translate(-50%, -50%)',
+                                            width: '90%',
+                                            maxWidth: '600px',
+                                          })
+                                        }}
                                         data-testid={`sub-block-nested-${subBlock.id}`}
+                                        onClick={(e) => e.stopPropagation()}
                                       >
                                         {/* Sub-block header */}
                                         <div 
                                           className="flex items-center gap-1 px-1.5 py-0.5 shrink-0"
-                                          style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
+                                          style={{ 
+                                            backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                            ...(expandedContent === subBlock.id && {
+                                              position: 'sticky',
+                                              top: 0,
+                                              zIndex: 41,
+                                            })
+                                          }}
                                         >
                                           <input 
                                             type="checkbox" 
@@ -810,14 +876,15 @@ export default function Planner() {
                                               className="h-3 w-3 shrink-0"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                toggleBlockExpanded(subBlock.id);
+                                                setExpandedContent(expandedContent === subBlock.id ? null : subBlock.id);
                                               }}
                                               data-testid={`button-expand-sub-nested-${subBlock.id}`}
                                             >
-                                              <ChevronDown 
-                                                className={`w-2 h-2 transition-transform ${subIsExpanded ? 'rotate-180' : ''}`}
-                                                style={{ color: `hsl(var(${colorVar}))` }}
-                                              />
+                                              {expandedContent === subBlock.id ? (
+                                                <Minimize2 className="w-2 h-2" />
+                                              ) : (
+                                                <Maximize2 className="w-2 h-2" />
+                                              )}
                                             </Button>
                                           )}
                                         </div>
@@ -825,8 +892,14 @@ export default function Planner() {
                                         {/* Sub-block content */}
                                         {!subIsCollapsed && (
                                           <div 
-                                            className="flex flex-col gap-1 px-1.5 py-1"
-                                            style={{ backgroundColor: `hsl(var(${colorVar}) / 0.1)` }}
+                                            className="flex flex-col gap-1 px-1.5 py-1 overflow-y-auto"
+                                            style={{ 
+                                              backgroundColor: `hsl(var(${colorVar}) / 0.1)`,
+                                              ...(expandedContent === subBlock.id && {
+                                                flex: 1,
+                                              })
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
                                           >
                                             {subTaskCount > 0 && (
                                               <div className="flex flex-col gap-0.5">
