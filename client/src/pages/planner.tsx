@@ -55,6 +55,15 @@ function sortChronologically(items: any[]): any[] {
   });
 }
 
+function calculateWeightedCompletion(tasks: any[]): number {
+  if (!tasks || tasks.length === 0) return 0;
+  const totalImportance = tasks.reduce((sum, t) => sum + (t.importance || 1), 0);
+  const completedImportance = tasks
+    .filter(t => t.completed)
+    .reduce((sum, t) => sum + (t.importance || 1), 0);
+  return totalImportance > 0 ? (completedImportance / totalImportance) * 100 : 0;
+}
+
 function getBlockStyle(block: TimeBlock): { top: number; height: number } {
   const startMinutes = timeToMinutes(block.startTime);
   const endMinutes = timeToMinutes(block.endTime);
@@ -218,14 +227,14 @@ export default function Planner() {
   });
 
   const addTaskMutation = useMutation({
-    mutationFn: async ({ blockId, taskText }: { blockId: string; taskText: string }) => {
+    mutationFn: async ({ blockId, taskText, importance }: { blockId: string; taskText: string; importance?: number }) => {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
       const newTask = {
         id: crypto.randomUUID(),
         text: taskText,
         completed: false,
-        importance: 1,
+        importance: importance || 3,
       };
       const updatedTasks = [...(block.tasks || []), newTask];
       return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
@@ -322,7 +331,7 @@ export default function Planner() {
 
   const handleAddTaskDialog = (data: { text: string; importance: number }) => {
     if (addTaskParentId) {
-      addTaskMutation.mutate({ blockId: addTaskParentId, taskText: data.text });
+      addTaskMutation.mutate({ blockId: addTaskParentId, taskText: data.text, importance: data.importance });
       setAddTaskDialogOpen(false);
       setAddTaskParentId(null);
     }
@@ -665,7 +674,7 @@ export default function Planner() {
                           >
                             <CircularProgress
                               completed={block.completed}
-                              progress={taskCount > 0 ? (completedTasks / taskCount) * 100 : 0}
+                              progress={calculateWeightedCompletion(block.tasks)}
                               diameter={20}
                               colorVar={colorVar}
                               onClick={(e) => {
@@ -838,7 +847,7 @@ export default function Planner() {
                                         >
                                           <CircularProgress
                                             completed={subBlock.completed}
-                                            progress={subTaskCount > 0 ? (subCompletedTasks / subTaskCount) * 100 : 0}
+                                            progress={calculateWeightedCompletion(subBlock.tasks)}
                                             diameter={14}
                                             colorVar={colorVar}
                                             onClick={(e) => {
