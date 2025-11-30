@@ -712,6 +712,170 @@ export default function Planner() {
                                 </div>
                               )}
 
+                              {/* Sub-blocks (nested inside parent content) */}
+                              {subBlocks.length > 0 && (
+                                <div className="flex flex-col gap-1 px-1.5 py-1.5 border-t" style={{ borderColor: `hsla(var(${colorVar}), 0.15)` }}>
+                                  {subBlocks.map((subBlock) => {
+                                    const subTaskCount = subBlock.tasks?.length || 0;
+                                    const subCompletedTasks = subBlock.tasks?.filter(t => t.completed).length || 0;
+                                    const subIsExpanded = expandedBlocks.has(subBlock.id);
+                                    const SUB_HEADER_HEIGHT = 24;
+                                    const SUB_CONTENT_MIN = 20;
+                                    const subContentOverflows = subTaskCount > 0 && 60 < SUB_HEADER_HEIGHT + SUB_CONTENT_MIN;
+                                    const subIsCollapsed = subContentOverflows && !subIsExpanded;
+                                    
+                                    return (
+                                      <div
+                                        key={subBlock.id}
+                                        className="relative rounded border flex flex-col overflow-hidden bg-background/50"
+                                        style={{ borderColor: `hsla(var(${colorVar}), 0.3)` }}
+                                        data-testid={`sub-block-nested-${subBlock.id}`}
+                                      >
+                                        {/* Sub-block header */}
+                                        <div 
+                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0"
+                                          style={{ backgroundColor: `hsla(var(${colorVar}), 0.15)` }}
+                                        >
+                                          <input 
+                                            type="checkbox" 
+                                            checked={subBlock.completed}
+                                            onChange={(e) => {
+                                              e.stopPropagation();
+                                              if (!dragState) {
+                                                toggleBlockMutation.mutate({ id: subBlock.id, completed: !subBlock.completed });
+                                              }
+                                            }}
+                                            className="w-2.5 h-2.5 shrink-0 cursor-pointer"
+                                            style={{ accentColor: `hsl(var(${colorVar}))` }}
+                                          />
+                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
+                                            {subBlock.title}
+                                          </span>
+                                          {subTaskCount > 0 && (
+                                            <Badge 
+                                              variant="outline" 
+                                              className="text-xs shrink-0 px-1 py-0" 
+                                              style={{ 
+                                                borderColor: `hsla(var(${colorVar}), 0.4)`,
+                                                backgroundColor: `hsla(var(${colorVar}), 0.08)`,
+                                              }}
+                                            >
+                                              {subCompletedTasks}/{subTaskCount}
+                                            </Badge>
+                                          )}
+                                          {subContentOverflows && (
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-3 w-3 shrink-0"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleBlockExpanded(subBlock.id);
+                                              }}
+                                              data-testid={`button-expand-sub-nested-${subBlock.id}`}
+                                            >
+                                              <ChevronDown 
+                                                className={`w-2 h-2 transition-transform ${subIsExpanded ? 'rotate-180' : ''}`}
+                                                style={{ color: `hsl(var(${colorVar}))` }}
+                                              />
+                                            </Button>
+                                          )}
+                                        </div>
+                                        
+                                        {/* Sub-block content */}
+                                        {!subIsCollapsed && (
+                                          <div 
+                                            className="flex flex-col gap-0.5 px-1.5 py-0.5"
+                                            style={{ backgroundColor: `hsla(var(${colorVar}), 0.04)` }}
+                                          >
+                                            {subTaskCount > 0 && (
+                                              <div className="flex flex-col gap-0.5">
+                                                {subBlock.tasks?.map((task) => (
+                                                  <div 
+                                                    key={task.id} 
+                                                    className="flex items-center gap-1 px-1 py-0.5 rounded text-xs cursor-pointer hover-elevate" 
+                                                    style={{ backgroundColor: `hsla(var(${colorVar}), 0.06)` }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
+                                                    }}
+                                                  >
+                                                    <input 
+                                                      type="checkbox" 
+                                                      checked={task.completed}
+                                                      readOnly
+                                                      className="w-2 h-2 shrink-0"
+                                                      style={{ accentColor: `hsl(var(${colorVar}))` }}
+                                                    />
+                                                    <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/60' : 'text-foreground/80'}`}>
+                                                      {task.text}
+                                                    </span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                            
+                                            {/* Add task input for sub-block */}
+                                            {addingTaskToBlock === subBlock.id && (
+                                              <div className="flex items-center gap-0.5 px-1 py-0.5">
+                                                <input
+                                                  type="text"
+                                                  value={newTaskText}
+                                                  onChange={(e) => setNewTaskText(e.target.value)}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleAddTask(subBlock.id);
+                                                    if (e.key === 'Escape') {
+                                                      setAddingTaskToBlock(null);
+                                                      setNewTaskText("");
+                                                    }
+                                                  }}
+                                                  onBlur={() => {
+                                                    setTimeout(() => {
+                                                      setAddingTaskToBlock(null);
+                                                      setNewTaskText("");
+                                                    }, 150);
+                                                  }}
+                                                  placeholder="Task..."
+                                                  className="flex-1 text-xs bg-transparent border-none outline-none"
+                                                  autoFocus
+                                                  data-testid={`input-new-task-sub-nested-${subBlock.id}`}
+                                                />
+                                                <Button
+                                                  size="icon"
+                                                  variant="ghost"
+                                                  className="h-3 w-3"
+                                                  onClick={() => handleAddTask(subBlock.id)}
+                                                  disabled={!newTaskText.trim()}
+                                                >
+                                                  <Plus className="w-1.5 h-1.5" />
+                                                </Button>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Add task button for sub-block */}
+                                            {addingTaskToBlock !== subBlock.id && (
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-3 w-3 self-start"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setAddingTaskToBlock(subBlock.id);
+                                                  setNewTaskText("");
+                                                }}
+                                                data-testid={`button-add-task-sub-nested-${subBlock.id}`}
+                                              >
+                                                <Plus className="w-1.5 h-1.5" style={{ color: `hsl(var(${colorVar}))` }} />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
                               {/* Footer with plus button */}
                               <div 
                                 className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0 border-t"
@@ -795,206 +959,6 @@ export default function Planner() {
                             onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
                           />
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Render sub-blocks (with parentId) - can only add tasks, not more sub-blocks */}
-                    {blocks.filter(b => b.parentId).map((originalBlock) => {
-                      const block = getDisplayBlock(originalBlock);
-                      const { top, height } = getBlockStyle(block);
-                      const isDragging = dragState?.blockId === block.id;
-                      const colorVar = getModuleColorVar(block.linkedModule);
-                      const taskCount = block.tasks?.length || 0;
-                      const completedTasks = block.tasks?.filter(t => t.completed).length || 0;
-                      const isExpanded = expandedBlocks.has(block.id);
-                      
-                      const HEADER_HEIGHT = 28;
-                      const CONTENT_MIN_HEIGHT = 24;
-                      const hasContent = taskCount > 0;
-                      const contentOverflows = hasContent && height < HEADER_HEIGHT + CONTENT_MIN_HEIGHT + 10;
-                      const isCollapsed = contentOverflows && !isExpanded;
-                      const displayHeight = isCollapsed ? HEADER_HEIGHT : (isExpanded ? 'auto' : height);
-                      
-                      return (
-                        <div
-                          key={block.id}
-                          data-block-id={block.id}
-                          className={`absolute rounded-lg border-2 transition-all flex flex-col overflow-hidden ${
-                            isDragging ? 'shadow-lg z-20' : ''
-                          }`}
-                          style={{ 
-                            top, 
-                            height: displayHeight,
-                            minHeight: isExpanded ? height : HEADER_HEIGHT,
-                            left: '55%', 
-                            right: '8px',
-                            borderColor: `hsl(var(${colorVar}))`,
-                            zIndex: isExpanded ? 15 : isDragging ? 20 : 2,
-                            ...(isDragging && { 
-                              boxShadow: `0 10px 15px -3px hsla(var(${colorVar}), 0.2)`,
-                            })
-                          }}
-                          data-testid={`sub-block-${block.id}`}
-                        >
-                          {/* Header - title and time on same line */}
-                          <div 
-                            className={`flex items-center gap-1.5 px-2 py-1 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
-                            style={{ 
-                              backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.15 : 0.25})`,
-                              minHeight: HEADER_HEIGHT,
-                            }}
-                          >
-                            <input 
-                              type="checkbox" 
-                              checked={block.completed}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                if (!dragState) {
-                                  toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
-                                }
-                              }}
-                              className="w-3 h-3 shrink-0 cursor-pointer"
-                              style={{ accentColor: `hsl(var(${colorVar}))` }}
-                            />
-                            <span className={`text-xs font-semibold truncate flex-1 ${
-                              block.completed ? "line-through text-muted-foreground" : ""
-                            }`}>
-                              {block.title}
-                            </span>
-                            <span className="text-xs text-muted-foreground font-mono shrink-0">
-                              {block.startTime}–{block.endTime}
-                            </span>
-                            {taskCount > 0 && (
-                              <Badge 
-                                variant="outline" 
-                                className="text-xs shrink-0 px-1 py-0" 
-                                style={{ 
-                                  borderColor: `hsla(var(${colorVar}), 0.5)`,
-                                  backgroundColor: `hsla(var(${colorVar}), 0.1)`,
-                                }}
-                              >
-                                {completedTasks}/{taskCount}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Content area - more translucent, hidden when collapsed */}
-                          {!isCollapsed && (
-                            <div 
-                              className={`flex-1 flex flex-col min-h-0 ${block.completed ? 'opacity-70' : ''}`}
-                              style={{ 
-                                backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.03 : 0.06})`,
-                              }}
-                            >
-                              {/* Tasks */}
-                              {taskCount > 0 && (
-                                <div className="flex flex-col gap-0.5 px-2 py-1 overflow-y-auto flex-1">
-                                  {block.tasks?.map((task) => (
-                                    <div 
-                                      key={task.id} 
-                                      className="flex items-center gap-1 px-1 py-0.5 rounded cursor-pointer hover-elevate" 
-                                      style={{ backgroundColor: `hsla(var(${colorVar}), 0.08)` }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
-                                      }}
-                                    >
-                                      <input 
-                                        type="checkbox" 
-                                        checked={task.completed}
-                                        readOnly
-                                        className="w-2.5 h-2.5 shrink-0"
-                                        style={{ accentColor: `hsl(var(${colorVar}))` }}
-                                      />
-                                      <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
-                                        {task.text}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Add task input for sub-block */}
-                              {addingTaskToBlock === block.id && (
-                                <div className="px-2 py-1 border-t" style={{ borderColor: `hsla(var(${colorVar}), 0.2)` }}>
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="text"
-                                      value={newTaskText}
-                                      onChange={(e) => setNewTaskText(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleAddTask(block.id);
-                                        if (e.key === 'Escape') {
-                                          setAddingTaskToBlock(null);
-                                          setNewTaskText("");
-                                        }
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setAddingTaskToBlock(null);
-                                          setNewTaskText("");
-                                        }, 150);
-                                      }}
-                                      placeholder="Task name..."
-                                      className="flex-1 text-xs bg-transparent border-none outline-none"
-                                      autoFocus
-                                      data-testid={`input-new-task-sub-${block.id}`}
-                                    />
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-4 w-4"
-                                      onClick={() => handleAddTask(block.id)}
-                                      disabled={!newTaskText.trim()}
-                                    >
-                                      <Plus className="w-2.5 h-2.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Footer with plus button - sub-blocks can only add tasks */}
-                              <div 
-                                className="flex items-center gap-1 px-1.5 py-0.5 mt-auto shrink-0 border-t"
-                                style={{ borderColor: `hsla(var(${colorVar}), 0.15)` }}
-                              >
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-4 w-4"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAddingTaskToBlock(block.id);
-                                    setNewTaskText("");
-                                  }}
-                                  data-testid={`button-add-task-sub-${block.id}`}
-                                  title="Add Task"
-                                >
-                                  <Plus className="w-2.5 h-2.5" style={{ color: `hsl(var(${colorVar}))` }} />
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Collapse/Expand button when content overflows */}
-                          {contentOverflows && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-0.5 right-1 h-4 w-4"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleBlockExpanded(block.id);
-                              }}
-                              data-testid={`button-expand-sub-${block.id}`}
-                            >
-                              <ChevronDown 
-                                className={`w-2.5 h-2.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                style={{ color: `hsl(var(${colorVar}))` }}
-                              />
-                            </Button>
-                          )}
                         </div>
                       );
                     })}
