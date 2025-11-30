@@ -48,9 +48,15 @@ function snapToGrid(minutes: number): number {
 
 function sortChronologically(items: any[]): any[] {
   return [...items].sort((a, b) => {
+    // If both have startTime, sort chronologically
     if (a.startTime && b.startTime) {
       return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
     }
+    // If only one has startTime, it goes first (timed items before non-timed)
+    if (a.startTime && !b.startTime) return -1;
+    if (!a.startTime && b.startTime) return 1;
+    // If neither has startTime, preserve insertion order (by checking order field or createdAt)
+    // Return 0 to keep original order
     return 0;
   });
 }
@@ -781,12 +787,20 @@ export default function Planner() {
                               {/* Tasks */}
                               {taskCount > 0 && (
                                 <div className="flex flex-col gap-1 overflow-y-auto flex-1">
-                                  {block.tasks?.map((task) => (
+                                  {sortChronologically(block.tasks || []).map((task) => (
                                     <div 
                                       key={task.id} 
-                                      className="flex items-center gap-1 px-2 py-1 rounded group transition-all" 
+                                      className="flex items-center gap-1 px-2 py-1 rounded group transition-all cursor-grab hover-elevate" 
                                       style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
+                                      draggable
+                                      onDragStart={(e) => {
+                                        e.dataTransfer!.effectAllowed = "move";
+                                        e.dataTransfer!.setData("text/plain", `task-${task.id}`);
+                                      }}
                                     >
+                                      <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <GripVertical className="w-3 h-3 text-muted-foreground/40" />
+                                      </div>
                                       <CircularProgress
                                         completed={task.completed}
                                         diameter={16}
@@ -928,13 +942,21 @@ export default function Planner() {
                                                 {sortChronologically(subBlock.tasks || []).map((task: any) => (
                                                   <div 
                                                     key={task.id} 
-                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all" 
+                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all group" 
                                                     style={{ backgroundColor: `hsl(var(${colorVar}) / 0.2)` }}
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                      e.dataTransfer!.effectAllowed = "move";
+                                                      e.dataTransfer!.setData("text/plain", `task-${task.id}`);
+                                                    }}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
                                                     }}
                                                   >
+                                                    <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                      <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
+                                                    </div>
                                                     <CircularProgress
                                                       completed={task.completed}
                                                       diameter={12}
