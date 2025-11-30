@@ -130,6 +130,7 @@ export default function Planner() {
   const [newTaskText, setNewTaskText] = useState("");
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [addTaskParentId, setAddTaskParentId] = useState<string | null>(null);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -328,6 +329,28 @@ export default function Planner() {
     },
     onError: () => {
       toast({ title: "Failed to delete task", variant: "destructive" });
+    },
+  });
+
+  const reorderTasksMutation = useMutation({
+    mutationFn: async ({ blockId, taskId, targetIndex }: { blockId: string; taskId: string; targetIndex: number }) => {
+      const block = blocks?.find(b => b.id === blockId);
+      if (!block) throw new Error("Block not found");
+      const tasks = [...(block.tasks || [])];
+      const draggedIndex = tasks.findIndex(t => t.id === taskId);
+      if (draggedIndex === -1) throw new Error("Task not found");
+      
+      // Remove from old position and insert at new position
+      const [draggedTask] = tasks.splice(draggedIndex, 1);
+      tasks.splice(Math.max(0, targetIndex), 0, draggedTask);
+      
+      return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+    },
+    onError: () => {
+      toast({ title: "Failed to reorder tasks", variant: "destructive" });
     },
   });
 
@@ -786,17 +809,29 @@ export default function Planner() {
                             >
                               {/* Tasks */}
                               {taskCount > 0 && (
-                                <div className="flex flex-col gap-1 overflow-y-auto flex-1">
-                                  {sortChronologically(block.tasks || []).map((task) => (
+                                <div 
+                                  className="flex flex-col gap-1 overflow-y-auto flex-1"
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    const taskIndex = parseInt(e.dataTransfer!.getData("taskIndex") || "-1");
+                                    if (taskIndex !== -1) {
+                                      reorderTasksMutation.mutate({ blockId: block.id, taskId: block.tasks?.[taskIndex]?.id || "", targetIndex: taskIndex });
+                                    }
+                                  }}
+                                >
+                                  {sortChronologically(block.tasks || []).map((task, taskIndex) => (
                                     <div 
                                       key={task.id} 
-                                      className="flex items-center gap-1 px-2 py-1 rounded group transition-all cursor-grab hover-elevate" 
+                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
                                       style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
                                       draggable
                                       onDragStart={(e) => {
                                         e.dataTransfer!.effectAllowed = "move";
-                                        e.dataTransfer!.setData("text/plain", `task-${task.id}`);
+                                        setDraggedTaskId(task.id);
+                                        e.dataTransfer!.setData("taskIndex", taskIndex.toString());
                                       }}
+                                      onDragEnd={() => setDraggedTaskId(null)}
                                     >
                                       <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <GripVertical className="w-3 h-3 text-muted-foreground/40" />
@@ -938,17 +973,29 @@ export default function Planner() {
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             {subTaskCount > 0 && (
-                                              <div className="flex flex-col gap-0.5">
-                                                {sortChronologically(subBlock.tasks || []).map((task: any) => (
+                                              <div 
+                                                className="flex flex-col gap-0.5"
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDrop={(e) => {
+                                                  e.preventDefault();
+                                                  const taskIndex = parseInt(e.dataTransfer!.getData("taskIndex") || "-1");
+                                                  if (taskIndex !== -1) {
+                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, taskId: subBlock.tasks?.[taskIndex]?.id || "", targetIndex: taskIndex });
+                                                  }
+                                                }}
+                                              >
+                                                {sortChronologically(subBlock.tasks || []).map((task: any, taskIndex: number) => (
                                                   <div 
                                                     key={task.id} 
-                                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all group" 
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
                                                     style={{ backgroundColor: `hsl(var(${colorVar}) / 0.2)` }}
                                                     draggable
                                                     onDragStart={(e) => {
                                                       e.dataTransfer!.effectAllowed = "move";
-                                                      e.dataTransfer!.setData("text/plain", `task-${task.id}`);
+                                                      setDraggedTaskId(task.id);
+                                                      e.dataTransfer!.setData("taskIndex", taskIndex.toString());
                                                     }}
+                                                    onDragEnd={() => setDraggedTaskId(null)}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
