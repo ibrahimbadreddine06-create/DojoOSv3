@@ -556,8 +556,8 @@ export default function Planner() {
                 </div>
               </div>
             </CardHeader>
-            <div className="h-px bg-border" />
-            <div className="flex pl-3 pr-3">
+            <div className="h-1 bg-border" />
+            <div className="flex pl-3 pr-3 pt-4">
               <div className="w-14 flex-shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}>
                 {HOURS.map((hour) => (
                   <div
