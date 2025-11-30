@@ -106,8 +106,8 @@ function AuthenticatedApp() {
               </span>
             </div>
           </header>
-          <main className="flex-1 relative bg-background overflow-hidden">
-            <div className={`h-full overflow-y-auto scrollbar-hide transition-all duration-300 ${isMinimized ? 'max-h-0' : 'max-h-full'}`}>
+          <main className="flex-1 relative bg-background">
+            <div className={`h-full transition-all duration-300 ${isMinimized ? 'max-h-0' : 'max-h-full'}`}>
               <AuthenticatedRouter />
             </div>
             <Button
