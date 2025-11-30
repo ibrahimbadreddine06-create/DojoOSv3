@@ -350,4 +350,14 @@
   input[type="time"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
+
+  /* Hide scrollbars but allow scrolling */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

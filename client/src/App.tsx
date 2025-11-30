@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -6,7 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -81,6 +83,7 @@ function LoadingScreen() {
 
 function AuthenticatedApp() {
   const [location] = useLocation();
+  const [isMinimized, setIsMinimized] = useState(false);
   
   // Detect if we're on a sub-page (detail pages like /second-brain/:id, /languages/:id, /studies/:id)
   const isSubPage = /^\/(second-brain|languages|studies)\/[^/]+$/.test(location);
@@ -103,8 +106,23 @@ function AuthenticatedApp() {
               </span>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto bg-background">
-            <AuthenticatedRouter />
+          <main className="flex-1 relative bg-background overflow-hidden">
+            <div className={`h-full overflow-y-auto scrollbar-hide transition-all duration-300 ${isMinimized ? 'max-h-0' : 'max-h-full'}`}>
+              <AuthenticatedRouter />
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="absolute bottom-4 right-4 z-10"
+              data-testid="button-minimize-content"
+            >
+              {isMinimized ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
           </main>
         </div>
       </div>
