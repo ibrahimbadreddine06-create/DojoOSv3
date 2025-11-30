@@ -131,10 +131,13 @@ export default function Planner() {
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [addTaskParentId, setAddTaskParentId] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragInfo, setDragInfo] = useState<{ id: string; containerId: string; offset: number; containerY: number } | null>(null);
+  const [dragCursorY, setDragCursorY] = useState(0);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const gridRef = useRef<HTMLDivElement>(null);
+  const containerRefs = useRef<Map<string, { element: HTMLElement; items: HTMLElement[] }>>(new Map());
 
   const { data: blocks, isLoading } = useQuery<TimeBlock[]>({
     queryKey: ["/api/time-blocks", dateStr],
@@ -428,6 +431,35 @@ export default function Planner() {
   const handlePrevDay = () => setSelectedDate(subDays(selectedDate, 1));
   const handleNextDay = () => setSelectedDate(addDays(selectedDate, 1));
   const handleToday = () => setSelectedDate(new Date());
+
+  const handleTaskDragStart = (e: React.DragEvent, taskId: string, containerId: string, container: HTMLElement) => {
+    e.dataTransfer!.effectAllowed = "move";
+    const rect = container.getBoundingClientRect();
+    const itemRect = (e.target as HTMLElement).closest('[data-drag-item]')?.getBoundingClientRect();
+    
+    setDraggedTaskId(taskId);
+    setDragInfo({
+      id: taskId,
+      containerId,
+      offset: itemRect ? e.clientY - itemRect.top : 0,
+      containerY: rect.top
+    });
+    
+    e.dataTransfer!.setData("draggedTaskId", taskId);
+    e.dataTransfer!.setData("sourceBlockId", containerId);
+  };
+
+  const handleTaskDragMove = (e: React.DragEvent) => {
+    if (dragInfo) {
+      setDragCursorY(e.clientY - dragInfo.containerY);
+    }
+  };
+
+  const handleTaskDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragInfo(null);
+    setDragCursorY(0);
+  };
 
   const toggleBlockExpanded = (blockId: string) => {
     setExpandedBlocks(prev => {
@@ -881,14 +913,13 @@ export default function Planner() {
                               {/* Tasks */}
                               {taskCount > 0 && (
                                 <div 
-                                  className="flex flex-col gap-1 overflow-y-auto flex-1"
-                                  onDragOver={(e) => e.preventDefault()}
+                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative"
+                                  onDragOver={(e) => handleTaskDragMove(e)}
                                   onDrop={(e) => {
                                     e.preventDefault();
                                     const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
                                     const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                    
-                                    setDraggedTaskId(null);
+                                    handleTaskDragEnd();
                                     
                                     if (sourceBlockId && sourceBlockId !== block.id) {
                                       moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: block.id, taskId: draggedTaskId });
@@ -897,23 +928,39 @@ export default function Planner() {
                                     }
                                   }}
                                 >
-                                  {sortChronologically(block.tasks || []).map((task) => (
+                                  {sortChronologically(block.tasks || []).map((task, idx) => {
+                                    let transform = '';
+                                    if (dragInfo?.containerId === block.id && dragInfo.id !== task.id) {
+                                      const tasks = sortChronologically(block.tasks || []);
+                                      const draggedIdx = tasks.findIndex(t => t.id === dragInfo.id);
+                                      const currentIdx = idx;
+                                      const itemHeight = 32;
+                                      if (dragCursorY > (idx + 0.5) * itemHeight && draggedIdx < currentIdx) {
+                                        transform = `translateY(-${itemHeight}px)`;
+                                      } else if (dragCursorY < (idx + 0.5) * itemHeight && draggedIdx > currentIdx) {
+                                        transform = `translateY(${itemHeight}px)`;
+                                      }
+                                    }
+                                    
+                                    return (
                                     <div 
-                                      key={task.id} 
-                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-200 cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-30 scale-95' : ''}`}
-                                      style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
-                                      draggable
-                                      onDragStart={(e) => {
-                                        e.dataTransfer!.effectAllowed = "move";
-                                        setDraggedTaskId(task.id);
-                                        e.dataTransfer!.setData("draggedTaskId", task.id);
-                                        e.dataTransfer!.setData("sourceBlockId", block.id);
+                                      key={task.id}
+                                      data-drag-item
+                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-150 cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                      style={{ 
+                                        backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                        transform,
+                                        zIndex: draggedTaskId === task.id ? 50 : 'auto',
+                                        position: draggedTaskId === task.id ? 'relative' : 'static'
                                       }}
+                                      draggable
+                                      onDragStart={(e) => handleTaskDragStart(e, task.id, block.id, e.currentTarget.parentElement as HTMLElement)}
                                       onDragOver={(e) => {
                                         e.preventDefault();
                                         e.dataTransfer!.effectAllowed = "move";
+                                        handleTaskDragMove(e);
                                       }}
-                                      onDragEnd={() => setDraggedTaskId(null)}
+                                      onDragEnd={handleTaskDragEnd}
                                     >
                                       <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <GripVertical className="w-3 h-3 text-muted-foreground/40" />
@@ -943,7 +990,8 @@ export default function Planner() {
                                         <Trash2 className="w-2.5 h-2.5" />
                                       </Button>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
 
