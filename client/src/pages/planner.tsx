@@ -244,6 +244,35 @@ export default function Planner() {
     },
   });
 
+  const deleteBlockMutation = useMutation({
+    mutationFn: async (blockId: string) => {
+      return await apiRequest("DELETE", `/api/time-blocks/${blockId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Block deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete block", variant: "destructive" });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async ({ blockId, taskId }: { blockId: string; taskId: string }) => {
+      const block = blocks?.find(b => b.id === blockId);
+      if (!block) throw new Error("Block not found");
+      const updatedTasks = block.tasks?.filter(t => t.id !== taskId) || [];
+      return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Task deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete task", variant: "destructive" });
+    },
+  });
+
   const handlePrevDay = () => setSelectedDate(subDays(selectedDate, 1));
   const handleNextDay = () => setSelectedDate(addDays(selectedDate, 1));
   const handleToday = () => setSelectedDate(new Date());
@@ -623,6 +652,18 @@ export default function Planner() {
                             >
                               <GripVertical className="w-4 h-4 text-muted-foreground/60" />
                             </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-4 w-4 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteBlockMutation.mutate(block.id);
+                              }}
+                              data-testid={`button-delete-block-${block.id}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
 
                           {/* Dividing line */}
@@ -642,22 +683,33 @@ export default function Planner() {
                                   {block.tasks?.map((task) => (
                                     <div 
                                       key={task.id} 
-                                      className="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer hover-elevate bg-background" 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
-                                      }}
+                                      className="flex items-center gap-1 px-2 py-1 rounded bg-background group" 
                                     >
                                       <input 
                                         type="checkbox" 
                                         checked={task.completed}
-                                        readOnly
-                                        className="w-3 h-3 shrink-0"
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
+                                        }}
+                                        className="w-3 h-3 shrink-0 cursor-pointer"
                                         style={{ accentColor: `hsl(var(${colorVar}))` }}
                                       />
-                                      <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
+                                      <span className={`truncate text-xs flex-1 ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
                                         {task.text}
                                       </span>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-3 w-3 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          deleteTaskMutation.mutate({ blockId: block.id, taskId: task.id });
+                                        }}
+                                        data-testid={`button-delete-task-${task.id}`}
+                                      >
+                                        <Trash2 className="w-2.5 h-2.5" />
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
