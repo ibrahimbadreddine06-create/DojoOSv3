@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, ChevronDown, ListTodo, Layers, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, ChevronDown, ChevronUp, ListTodo, Layers, Maximize2, Minimize2 } from "lucide-react";
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { AddTaskDialog } from "@/components/dialogs/add-task-dialog";
@@ -1059,7 +1059,7 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab transition-all duration-200 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group transition-all duration-200 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{ 
                                           borderColor: `hsl(var(${colorVar}) / 0.3)`,
                                           ...(expandedContent === subBlock.id && {
@@ -1079,21 +1079,10 @@ export default function Planner() {
                                         }}
                                         data-testid={`sub-block-nested-${subBlock.id}`}
                                         onClick={(e) => e.stopPropagation()}
-                                        draggable
-                                        onDragStart={(e) => {
-                                          e.dataTransfer!.effectAllowed = "move";
-                                          setDraggedSubBlockId(subBlock.id);
-                                          e.dataTransfer!.setData("draggedBlockId", subBlock.id);
-                                        }}
-                                        onDragOver={(e) => {
-                                          e.preventDefault();
-                                          e.dataTransfer!.effectAllowed = "move";
-                                        }}
-                                        onDragEnd={() => setDraggedSubBlockId(null)}
                                       >
                                         {/* Sub-block header with drag handle */}
                                         <div 
-                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0 cursor-grab"
+                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0 cursor-grab group"
                                           style={{ 
                                             backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                                             ...(expandedContent === subBlock.id && {
@@ -1102,9 +1091,13 @@ export default function Planner() {
                                               zIndex: 41,
                                             })
                                           }}
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
+                                          draggable
+                                          onDragStart={(e) => {
+                                            e.dataTransfer!.effectAllowed = "move";
+                                            setDraggedSubBlockId(subBlock.id);
+                                            e.dataTransfer!.setData("draggedBlockId", subBlock.id);
                                           }}
+                                          onDragEnd={() => setDraggedSubBlockId(null)}
                                         >
                                           <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
@@ -1154,6 +1147,38 @@ export default function Planner() {
                                               )}
                                             </Button>
                                           )}
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const sortedSubs = sortChronologically(subBlocks);
+                                              const idx = sortedSubs.findIndex(b => b.id === subBlock.id);
+                                              if (idx > 0) {
+                                                reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId: subBlock.id, targetBlockId: sortedSubs[idx - 1].id });
+                                              }
+                                            }}
+                                            data-testid={`button-move-up-sub-${subBlock.id}`}
+                                          >
+                                            <ChevronUp className="w-2 h-2" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const sortedSubs = sortChronologically(subBlocks);
+                                              const idx = sortedSubs.findIndex(b => b.id === subBlock.id);
+                                              if (idx < sortedSubs.length - 1) {
+                                                reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId: subBlock.id, targetBlockId: sortedSubs[idx + 1].id });
+                                              }
+                                            }}
+                                            data-testid={`button-move-down-sub-${subBlock.id}`}
+                                          >
+                                            <ChevronDown className="w-2 h-2" />
+                                          </Button>
                                         </div>
                                         
                                         {/* Sub-block content */}
