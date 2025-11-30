@@ -788,71 +788,20 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Add task input */}
-                              {addingTaskToBlock === block.id && (
-                                <div 
-                                  className="flex items-center gap-1 px-2 py-1 rounded" 
-                                  style={{ backgroundColor: `hsl(var(${colorVar}) / 0.12)` }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="text"
-                                    value={newTaskText}
-                                    onChange={(e) => setNewTaskText(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      e.stopPropagation();
-                                      if (e.key === 'Enter') {
-                                        setAddTaskParentId(block.id);
-                                        setAddTaskDialogOpen(true);
-                                      }
-                                      if (e.key === 'Escape') {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }
-                                    }}
-                                    onBlur={() => {
-                                      setTimeout(() => {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }, 150);
-                                    }}
-                                    placeholder="Task name..."
-                                    className="flex-1 text-xs bg-transparent border-none outline-none"
-                                    autoFocus
-                                    data-testid={`input-new-task-${block.id}`}
-                                  />
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAddTaskParentId(block.id);
-                                      setAddTaskDialogOpen(true);
-                                    }}
-                                    disabled={!newTaskText.trim()}
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              )}
-
-                              {/* Plus button to start adding task */}
-                              {addingTaskToBlock !== block.id && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-5 w-5 self-start"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAddingTaskToBlock(block.id);
-                                    setNewTaskText("");
-                                  }}
-                                  data-testid={`button-add-task-${block.id}`}
-                                >
-                                  <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
-                                </Button>
-                              )}
+                              {/* Add task button - opens form directly */}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5 self-start"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAddTaskParentId(block.id);
+                                  setAddTaskDialogOpen(true);
+                                }}
+                                data-testid={`button-add-task-${block.id}`}
+                              >
+                                <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
+                              </Button>
 
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
                               {subBlocks.length > 0 && (
@@ -991,68 +940,20 @@ export default function Planner() {
                                             )}
                                             
                                             
-                                            {/* Add task input for sub-block */}
-                                            {addingTaskToBlock === subBlock.id && (
-                                              <div 
-                                                className="flex items-center gap-0.5 px-1 py-0.5 rounded"
-                                                style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
-                                              >
-                                                <input
-                                                  type="text"
-                                                  value={newTaskText}
-                                                  onChange={(e) => setNewTaskText(e.target.value)}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                      setAddTaskParentId(subBlock.id);
-                                                      setAddTaskDialogOpen(true);
-                                                    }
-                                                    if (e.key === 'Escape') {
-                                                      setAddingTaskToBlock(null);
-                                                      setNewTaskText("");
-                                                    }
-                                                  }}
-                                                  onBlur={() => {
-                                                    setTimeout(() => {
-                                                      setAddingTaskToBlock(null);
-                                                      setNewTaskText("");
-                                                    }, 150);
-                                                  }}
-                                                  placeholder="Task..."
-                                                  className="flex-1 text-xs bg-transparent border-none outline-none"
-                                                  autoFocus
-                                                  data-testid={`input-new-task-sub-nested-${subBlock.id}`}
-                                                />
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="h-3 w-3"
-                                                  onClick={() => {
-                                                    setAddTaskParentId(subBlock.id);
-                                                    setAddTaskDialogOpen(true);
-                                                  }}
-                                                  disabled={!newTaskText.trim()}
-                                                >
-                                                  <Plus className="w-1.5 h-1.5" />
-                                                </Button>
-                                              </div>
-                                            )}
-                                            
-                                            {/* Add task button for sub-block */}
-                                            {addingTaskToBlock !== subBlock.id && (
-                                              <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-4 w-4 self-start"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setAddingTaskToBlock(subBlock.id);
-                                                  setNewTaskText("");
-                                                }}
-                                                data-testid={`button-add-task-sub-nested-${subBlock.id}`}
-                                              >
-                                                <Plus className="w-2 h-2" style={{ color: `hsl(var(${colorVar}))` }} />
-                                              </Button>
-                                            )}
+                                            {/* Add task button for sub-block - opens form directly */}
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-4 w-4 self-start"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAddTaskParentId(subBlock.id);
+                                                setAddTaskDialogOpen(true);
+                                              }}
+                                              data-testid={`button-add-task-sub-nested-${subBlock.id}`}
+                                            >
+                                              <Plus className="w-2 h-2" style={{ color: `hsl(var(${colorVar}))` }} />
+                                            </Button>
                                           </div>
                                         )}
                                       </div>
