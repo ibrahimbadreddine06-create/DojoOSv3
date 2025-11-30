@@ -13,6 +13,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -942,10 +947,55 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Footer with minimize button */}
+                              {/* Footer with + button and minimize button */}
                               <div 
                                 className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0"
                               >
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-5 w-5"
+                                      onClick={(e) => e.stopPropagation()}
+                                      data-testid={`button-add-${block.id}`}
+                                    >
+                                      <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-40 p-1" align="start" side="top">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full justify-start gap-2 h-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAddTaskParentId(block.id);
+                                        setAddTaskDialogOpen(true);
+                                      }}
+                                      data-testid={`button-add-task-popover-${block.id}`}
+                                    >
+                                      <ListTodo className="w-3.5 h-3.5" />
+                                      Add Task
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full justify-start gap-2 h-8"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAddSubBlockParentId(block.id);
+                                        setClickedTime({ start: block.startTime, end: block.endTime });
+                                        setAddDialogOpen(true);
+                                      }}
+                                      data-testid={`button-add-sub-block-popover-${block.id}`}
+                                    >
+                                      <Layers className="w-3.5 h-3.5" />
+                                      Add Sub-block
+                                    </Button>
+                                  </PopoverContent>
+                                </Popover>
+                                <div className="flex-1" />
                                 {contentOverflows && (
                                   <Button
                                     size="icon"
