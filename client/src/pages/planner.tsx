@@ -788,49 +788,21 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Add task input - when plus button is clicked */}
-                              {addingTaskToBlock === block.id && (
-                                <div 
-                                  className="flex items-center gap-1 px-2 py-1 rounded" 
-                                  style={{ backgroundColor: `hsl(var(${colorVar}) / 0.12)` }}
-                                  onClick={(e) => e.stopPropagation()}
+                              {/* Add task button - opens dialog */}
+                              {addingTaskToBlock !== block.id && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5 self-start"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAddTaskParentId(block.id);
+                                    setAddTaskDialogOpen(true);
+                                  }}
+                                  data-testid={`button-add-task-${block.id}`}
                                 >
-                                  <input
-                                    type="text"
-                                    value={newTaskText}
-                                    onChange={(e) => setNewTaskText(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      e.stopPropagation();
-                                      if (e.key === 'Enter') handleAddTask(block.id);
-                                      if (e.key === 'Escape') {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }
-                                    }}
-                                    onBlur={() => {
-                                      setTimeout(() => {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }, 150);
-                                    }}
-                                    placeholder="Task name..."
-                                    className="flex-1 text-xs bg-transparent border-none outline-none"
-                                    autoFocus
-                                    data-testid={`input-new-task-${block.id}`}
-                                  />
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAddTask(block.id);
-                                    }}
-                                    disabled={!newTaskText.trim()}
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </Button>
-                                </div>
+                                  <Plus className="w-3 h-3" style={{ color: `hsl(var(${colorVar}))` }} />
+                                </Button>
                               )}
 
                               {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
@@ -838,7 +810,7 @@ export default function Planner() {
                                 <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                   {sortChronologically(subBlocks).map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
-                                    const subCompletedTasks = subBlock.tasks?.filter(t => t.completed).length || 0;
+                                    const subCompletedTasks = subBlock.tasks?.filter((t: any) => t.completed).length || 0;
                                     const subIsExpanded = expandedBlocks.has(subBlock.id);
                                     const SUB_HEADER_HEIGHT = 24;
                                     const SUB_CONTENT_MIN = 20;
@@ -969,45 +941,6 @@ export default function Planner() {
                                               </div>
                                             )}
                                             
-                                            {/* Add task input for sub-block */}
-                                            {addingTaskToBlock === subBlock.id && (
-                                              <div 
-                                                className="flex items-center gap-0.5 px-1 py-0.5 rounded"
-                                                style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
-                                              >
-                                                <input
-                                                  type="text"
-                                                  value={newTaskText}
-                                                  onChange={(e) => setNewTaskText(e.target.value)}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') handleAddTask(subBlock.id);
-                                                    if (e.key === 'Escape') {
-                                                      setAddingTaskToBlock(null);
-                                                      setNewTaskText("");
-                                                    }
-                                                  }}
-                                                  onBlur={() => {
-                                                    setTimeout(() => {
-                                                      setAddingTaskToBlock(null);
-                                                      setNewTaskText("");
-                                                    }, 150);
-                                                  }}
-                                                  placeholder="Task..."
-                                                  className="flex-1 text-xs bg-transparent border-none outline-none"
-                                                  autoFocus
-                                                  data-testid={`input-new-task-sub-nested-${subBlock.id}`}
-                                                />
-                                                <Button
-                                                  size="icon"
-                                                  variant="ghost"
-                                                  className="h-3 w-3"
-                                                  onClick={() => handleAddTask(subBlock.id)}
-                                                  disabled={!newTaskText.trim()}
-                                                >
-                                                  <Plus className="w-1.5 h-1.5" />
-                                                </Button>
-                                              </div>
-                                            )}
                                             
                                             {/* Add task button for sub-block */}
                                             {addingTaskToBlock !== subBlock.id && (
