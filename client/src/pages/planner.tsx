@@ -430,23 +430,34 @@ export default function Planner() {
                 </div>
               </div>
             </CardHeader>
-            <div 
-              ref={gridRef}
-              className={`relative w-full pl-12 ${dragState ? 'cursor-grabbing select-none' : ''}`}
-              onClick={handleGridClick}
-              data-testid="planner-grid"
-              style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}
-            >
+            <div className="flex gap-0">
+              <div className="w-12 flex-shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}>
                 {HOURS.map((hour) => (
-                  <div 
-                    key={hour} 
+                  <div
+                    key={`hour-${hour}`}
                     className="absolute left-0 right-0 border-t border-border/50"
                     style={{ top: hour * HOUR_HEIGHT }}
                   >
-                    <span className="absolute -top-3 left-2 text-xs text-muted-foreground font-mono bg-card px-1">
+                    <span className="absolute -top-3 left-0 text-xs text-muted-foreground font-mono bg-card px-1">
                       {hour.toString().padStart(2, "0")}:00
                     </span>
                   </div>
+                ))}
+              </div>
+
+              <div 
+                ref={gridRef}
+                className={`relative flex-1 ${dragState ? 'cursor-grabbing select-none' : ''}`}
+                onClick={handleGridClick}
+                data-testid="planner-grid"
+                style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}
+              >
+                {HOURS.map((hour) => (
+                  <div 
+                    key={`grid-${hour}`}
+                    className="absolute left-0 right-0 border-t border-border/50"
+                    style={{ top: hour * HOUR_HEIGHT }}
+                  />
                 ))}
 
                 {isLoading ? (
@@ -474,7 +485,7 @@ export default function Planner() {
                               ? "bg-primary/10 border-primary/30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height, minHeight: '20px', left: '12px', right: '4px' }}
+                          style={{ top, height, minHeight: '20px', left: '4px', right: '4px' }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
@@ -590,6 +601,7 @@ export default function Planner() {
                     </div>
                   </div>
                 )}
+              </div>
             </div>
           </Card>
 
