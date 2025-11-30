@@ -235,7 +235,18 @@ export default function Planner() {
       const updatedTasks = block.tasks?.map(t => 
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ) || [];
-      return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
+      
+      // Check if all tasks are now completed
+      const allTasksCompleted = updatedTasks.length > 0 && updatedTasks.every(t => t.completed);
+      const shouldMarkBlockCompleted = allTasksCompleted && !block.completed;
+      
+      // Update tasks
+      await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
+      
+      // If all tasks are completed, mark the block as completed
+      if (shouldMarkBlockCompleted) {
+        return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: true });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
