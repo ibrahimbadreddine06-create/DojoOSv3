@@ -61,9 +61,9 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
   
   const allTasks = [...tasks];
   
-  // Include all tasks from sub-blocks
+  // Include all tasks from sub-blocks that have tasks
   subBlocks.forEach(subBlock => {
-    if (subBlock.tasks && Array.isArray(subBlock.tasks)) {
+    if (subBlock.tasks && Array.isArray(subBlock.tasks) && subBlock.tasks.length > 0) {
       allTasks.push(...subBlock.tasks);
     }
   });
@@ -271,16 +271,21 @@ export default function Planner() {
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ) || [];
       
-      // Check if all tasks are now completed
+      // Check if all tasks are now completed or if any task is incomplete
       const allTasksCompleted = updatedTasks.length > 0 && updatedTasks.every(t => t.completed);
-      const shouldMarkBlockCompleted = allTasksCompleted && !block.completed;
+      const anyTaskIncomplete = updatedTasks.some(t => !t.completed);
       
       // Update tasks
       await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
       
       // If all tasks are completed, mark the block as completed
-      if (shouldMarkBlockCompleted) {
+      if (allTasksCompleted && !block.completed) {
         return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: true });
+      }
+      
+      // If any task is incomplete and block is completed, mark block as incomplete
+      if (anyTaskIncomplete && block.completed) {
+        return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: false });
       }
     },
     onSuccess: () => {
