@@ -1013,12 +1013,15 @@ export default function Planner() {
                                 <div 
                                   className="flex flex-col gap-1" 
                                   onClick={(e) => e.stopPropagation()}
-                                  onDragOver={(e) => e.preventDefault()}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.dataTransfer!.dropEffect = "move";
+                                  }}
                                   onDrop={(e) => {
                                     e.preventDefault();
                                     const draggedBlockId = e.dataTransfer!.getData("draggedBlockId");
-                                    setDraggedTaskId(null);
-                                    if (draggedBlockId) {
+                                    setDraggedSubBlockId(null);
+                                    if (draggedBlockId && block.id) {
                                       reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId });
                                     }
                                   }}
@@ -1035,7 +1038,7 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab transition-all duration-200 ${draggedTaskId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab transition-all duration-200 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{ 
                                           borderColor: `hsl(var(${colorVar}) / 0.3)`,
                                           ...(expandedContent === subBlock.id && {
@@ -1058,14 +1061,14 @@ export default function Planner() {
                                         draggable
                                         onDragStart={(e) => {
                                           e.dataTransfer!.effectAllowed = "move";
-                                          setDraggedTaskId(subBlock.id);
+                                          setDraggedSubBlockId(subBlock.id);
                                           e.dataTransfer!.setData("draggedBlockId", subBlock.id);
                                         }}
                                         onDragOver={(e) => {
                                           e.preventDefault();
                                           e.dataTransfer!.effectAllowed = "move";
                                         }}
-                                        onDragEnd={() => setDraggedTaskId(null)}
+                                        onDragEnd={() => setDraggedSubBlockId(null)}
                                       >
                                         {/* Sub-block header with drag handle */}
                                         <div 
