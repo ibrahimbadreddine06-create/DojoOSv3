@@ -610,7 +610,7 @@ export default function Planner() {
                             borderColor: `hsl(var(${colorVar}))`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
                             ...(isDragging && { 
-                              boxShadow: `0 20px 25px -5px hsla(var(${colorVar}), 0.3), 0 0 0 3px hsla(var(${colorVar}), 0.1)`,
+                              boxShadow: `0 20px 25px -5px hsl(var(${colorVar}) / 0.3), 0 0 0 3px hsl(var(${colorVar}) / 0.1)`,
                             })
                           }}
                           data-testid={`block-${block.id}`}
@@ -619,7 +619,7 @@ export default function Planner() {
                           <div 
                             className={`flex items-center gap-2 px-2.5 py-1.5 shrink-0 ${block.completed ? 'opacity-75' : ''}`}
                             style={{ 
-                              backgroundColor: `hsla(var(${colorVar}), 0.6)`,
+                              backgroundColor: `hsl(var(${colorVar}) / 0.6)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -674,7 +674,7 @@ export default function Planner() {
                             <div 
                               className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 ${block.completed ? 'opacity-70' : ''}`}
                               style={{ 
-                                backgroundColor: `hsla(var(${colorVar}), 0.3)`,
+                                backgroundColor: `hsl(var(${colorVar}) / 0.3)`,
                               }}
                             >
                               {/* Tasks */}
@@ -768,13 +768,13 @@ export default function Planner() {
                                       <div
                                         key={subBlock.id}
                                         className="relative rounded border flex flex-col overflow-hidden bg-background/50"
-                                        style={{ borderColor: `hsla(var(${colorVar}), 0.3)` }}
+                                        style={{ borderColor: `hsl(var(${colorVar}) / 0.3)` }}
                                         data-testid={`sub-block-nested-${subBlock.id}`}
                                       >
                                         {/* Sub-block header */}
                                         <div 
                                           className="flex items-center gap-1 px-1.5 py-0.5 shrink-0"
-                                          style={{ backgroundColor: `hsla(var(${colorVar}), 0.15)` }}
+                                          style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
                                         >
                                           <input 
                                             type="checkbox" 
@@ -796,8 +796,8 @@ export default function Planner() {
                                               variant="outline" 
                                               className="text-xs shrink-0 px-1 py-0" 
                                               style={{ 
-                                                borderColor: `hsla(var(${colorVar}), 0.4)`,
-                                                backgroundColor: `hsla(var(${colorVar}), 0.08)`,
+                                                borderColor: `hsl(var(${colorVar}) / 0.4)`,
+                                                backgroundColor: `hsl(var(${colorVar}) / 0.08)`,
                                               }}
                                             >
                                               {subCompletedTasks}/{subTaskCount}
@@ -826,7 +826,7 @@ export default function Planner() {
                                         {!subIsCollapsed && (
                                           <div 
                                             className="flex flex-col gap-1 px-1.5 py-1"
-                                            style={{ backgroundColor: `hsla(var(${colorVar}), 0.1)` }}
+                                            style={{ backgroundColor: `hsl(var(${colorVar}) / 0.1)` }}
                                           >
                                             {subTaskCount > 0 && (
                                               <div className="flex flex-col gap-0.5">
