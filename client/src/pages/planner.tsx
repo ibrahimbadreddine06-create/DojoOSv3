@@ -1098,11 +1098,10 @@ export default function Planner() {
                                       );
                                     } else {
                                       const subBlock = item.data;
-                                    const subTaskCount = subBlock.tasks?.length || 0;
-                                    const subCompletedTasks = subBlock.tasks?.filter((t: any) => t.completed).length || 0;
                                     const subIsExpanded = expandedBlocks.has(subBlock.id);
                                     const SUB_HEADER_HEIGHT = 24;
                                     const SUB_CONTENT_MIN = 20;
+                                    const subTaskCount = subBlock.tasks?.length || 0;
                                     const subContentOverflows = subTaskCount > 0 && 60 < SUB_HEADER_HEIGHT + SUB_CONTENT_MIN;
                                     const subIsCollapsed = subContentOverflows && !subIsExpanded;
                                     
@@ -1167,18 +1166,6 @@ export default function Planner() {
                                           <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
                                             {subBlock.title}
                                           </span>
-                                          {subTaskCount > 0 && (
-                                            <Badge 
-                                              variant="outline" 
-                                              className="text-xs shrink-0 px-1 py-0" 
-                                              style={{ 
-                                                borderColor: `hsl(var(${colorVar}) / 0.4)`,
-                                                backgroundColor: `hsl(var(${colorVar}) / 0.08)`,
-                                              }}
-                                            >
-                                              {subCompletedTasks}/{subTaskCount}
-                                            </Badge>
-                                          )}
                                           {subContentOverflows && (
                                             <Button
                                               size="icon"
