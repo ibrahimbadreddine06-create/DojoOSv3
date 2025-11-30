@@ -315,21 +315,6 @@
     inset: -1px;
   }
 
-  /* Hide all scrollbars */
-  main {
-    overflow: hidden !important;
-  }
-
-  main > div {
-    overflow-y: auto !important;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  main > div::-webkit-scrollbar {
-    display: none;
-  }
-
   /* Force 24-hour time format */
   input[type="time"] {
     -webkit-appearance: none;
@@ -340,13 +325,4 @@
     cursor: pointer;
   }
 
-  /* Hide scrollbars but allow scrolling */
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
 }
