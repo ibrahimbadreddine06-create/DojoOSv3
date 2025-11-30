@@ -55,7 +55,7 @@ function sortChronologically(items: any[]): any[] {
   });
 }
 
-function calculateWeightedCompletion(tasks: any[]): number {
+function calculateWeightedCompletion(tasks: any[] | null | undefined): number {
   if (!tasks || tasks.length === 0) return 0;
   const totalImportance = tasks.reduce((sum, t) => sum + (t.importance || 1), 0);
   const completedImportance = tasks
@@ -655,6 +655,7 @@ export default function Planner() {
                             minHeight: isExpanded ? height : HEADER_HEIGHT,
                             left: '8px', 
                             right: '8px',
+                            marginBottom: '4px',
                             borderColor: `hsl(var(${colorVar}) / 0.5)`,
                             backgroundColor: `hsl(var(${colorVar}) / 0.04)`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
