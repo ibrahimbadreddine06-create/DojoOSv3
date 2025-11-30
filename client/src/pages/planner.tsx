@@ -319,7 +319,7 @@ export default function Planner() {
     const rect = gridRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
     const hourIndex = Math.floor(y / HOUR_HEIGHT);
-    const hour = Math.min(Math.max(hourIndex + 6, 6), 23);
+    const hour = Math.min(Math.max(hourIndex, 0), 23);
     const startHour = hour.toString().padStart(2, "0");
     const endHour = Math.min(hour + 1, 24).toString().padStart(2, "0");
     setClickedTime({ start: `${startHour}:00`, end: `${endHour}:00` });
