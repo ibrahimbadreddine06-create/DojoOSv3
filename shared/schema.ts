@@ -51,10 +51,11 @@ export const timeBlocks = pgTable("time_blocks", {
   endTime: text("end_time").notNull(),
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
+  order: integer("order").notNull().default(0), // For ordering sub-blocks and tasks
   linkedModule: text("linked_module"), // Which module this block is linked to (e.g., "languages", "second_brain")
   linkedItemId: varchar("linked_item_id"), // ID of the linked theme/language/course
   linkedSubItemId: varchar("linked_sub_item_id"), // ID of the linked sub-item (chapter/lesson)
-  tasks: jsonb("tasks").$type<{ id: string; text: string; completed: boolean; importance: number }[]>().default([]),
+  tasks: jsonb("tasks").$type<{ id: string; text: string; completed: boolean; importance: number; order: number }[]>().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
