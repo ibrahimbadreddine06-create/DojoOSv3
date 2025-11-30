@@ -49,6 +49,20 @@ function getBlockStyle(block: TimeBlock): { top: number; height: number } {
   };
 }
 
+function getModuleColorVar(linkedModule?: string | null): string {
+  if (!linkedModule) return '--primary';
+  const moduleColorMap: Record<string, string> = {
+    'goals': '--module-goals',
+    'second_brain': '--module-second-brain',
+    'second-brain': '--module-second-brain',
+    'languages': '--module-languages',
+    'studies': '--module-studies',
+    'planner': '--module-planner',
+    'daily_planner': '--module-planner',
+  };
+  return moduleColorMap[linkedModule] || '--primary';
+}
+
 interface DragState {
   blockId: string;
   type: 'move' | 'resize';
@@ -473,27 +487,43 @@ export default function Planner() {
                       const isDragging = dragState?.blockId === block.id;
                       const subBlocks = blocks.filter(b => b.parentId === block.id);
                       const isParent = subBlocks.length > 0;
+                      const colorVar = getModuleColorVar(block.linkedModule);
                       
                       return (
                         <div
                           key={block.id}
                           data-block-id={block.id}
                           className={`absolute rounded border transition-shadow flex flex-col ${
-                            isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
+                            isDragging ? 'shadow-lg z-10' : 'hover-elevate'
                           } ${
                             block.completed 
-                              ? "bg-primary/10 border-primary/30" 
+                              ? "border-opacity-30" 
                               : "bg-card border-border"
                           }`}
-                          style={{ top, height, minHeight: '20px', left: '4px', right: '4px' }}
+                          style={{ 
+                            top, 
+                            height, 
+                            minHeight: '20px', 
+                            left: '4px', 
+                            right: '4px',
+                            borderColor: block.completed ? `hsla(var(${colorVar}), 0.3)` : undefined,
+                            backgroundColor: block.completed ? `hsla(var(${colorVar}), 0.1)` : undefined,
+                            ...(isDragging && { 
+                              boxShadow: `0 10px 15px -3px hsla(var(${colorVar}), 0.2)`,
+                              outline: `2px solid hsla(var(${colorVar}), 0.5)`,
+                            })
+                          }}
                           data-testid={`block-${block.id}`}
                         >
                           <div 
                             className={`flex items-center justify-between px-1 py-0.5 border-b ${
                               block.completed 
-                                ? "border-primary/20 bg-primary/5" 
+                                ? "bg-muted/30" 
                                 : "border-border/50 bg-muted/30"
                             }`}
+                            style={{
+                              borderBottomColor: block.completed ? `hsla(var(${colorVar}), 0.2)` : undefined,
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!dragState) {
@@ -535,8 +565,11 @@ export default function Planner() {
                           </div>
 
                           <div 
-                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-primary/20 rounded-b"
-                            style={{ touchAction: 'none' }}
+                            className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize rounded-b hover-elevate"
+                            style={{ 
+                              touchAction: 'none',
+                              backgroundColor: `hsla(var(${colorVar}), 0.2)`,
+                            }}
                             onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
                           />
@@ -549,19 +582,33 @@ export default function Planner() {
                       const block = getDisplayBlock(originalBlock);
                       const { top, height } = getBlockStyle(block);
                       const isDragging = dragState?.blockId === block.id;
+                      const colorVar = getModuleColorVar(block.linkedModule);
                       
                       return (
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute rounded-md border-l-4 border-l-primary/50 transition-shadow ${
-                            isDragging ? 'shadow-lg ring-2 ring-primary/50 z-10' : 'hover-elevate'
+                          className={`absolute rounded-md border transition-shadow ${
+                            isDragging ? 'shadow-lg z-10' : 'hover-elevate'
                           } ${
                             block.completed 
-                              ? "bg-primary/5 border border-primary/20" 
+                              ? "border" 
                               : "bg-muted/50 border border-border/50"
                           }`}
-                          style={{ top, height, left: '60%', right: '4px' }}
+                          style={{ 
+                            top, 
+                            height, 
+                            left: '60%', 
+                            right: '4px',
+                            borderLeftWidth: '4px',
+                            borderLeftColor: `hsla(var(${colorVar}), 0.5)`,
+                            backgroundColor: block.completed ? `hsla(var(${colorVar}), 0.05)` : undefined,
+                            borderColor: block.completed ? `hsla(var(${colorVar}), 0.2)` : undefined,
+                            ...(isDragging && { 
+                              boxShadow: `0 10px 15px -3px hsla(var(${colorVar}), 0.2)`,
+                              outline: `2px solid hsla(var(${colorVar}), 0.5)`,
+                            })
+                          }}
                           data-testid={`sub-block-${block.id}`}
                         >
                           <div 
