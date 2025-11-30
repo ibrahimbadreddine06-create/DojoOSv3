@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { ColorCustomizer } from "@/components/color-customizer";
+import { useColorCustomization } from "@/hooks/useColorCustomization";
 import { Loader2 } from "lucide-react";
 
 import Landing from "@/pages/landing";
@@ -81,6 +83,7 @@ function LoadingScreen() {
 
 function AuthenticatedApp() {
   const [location] = useLocation();
+  useColorCustomization(); // Initialize color customization on app load
   
   // Detect if we're on a sub-page (detail pages like /second-brain/:id, /languages/:id, /studies/:id)
   const isSubPage = /^\/(second-brain|languages|studies)\/[^/]+$/.test(location);
@@ -101,6 +104,7 @@ function AuthenticatedApp() {
               <span className="text-sm font-medium text-muted-foreground">
                 Dojo OS
               </span>
+              <ColorCustomizer />
             </div>
           </header>
           <main className="flex-1 overflow-y-auto bg-background">
