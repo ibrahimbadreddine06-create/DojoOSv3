@@ -60,26 +60,67 @@ function sortChronologically(items: any[]): any[] {
   });
 }
 
+const DEFAULT_IMPORTANCE = 3;
+
+// Calculate the internal weight of a sub-block based on its tasks
+function getSubBlockInternalWeight(subBlock: any): { total: number; completed: number } {
+  const tasks = subBlock.tasks || [];
+  if (tasks.length === 0) {
+    // If no tasks, the sub-block itself counts as 1 unit
+    return { 
+      total: DEFAULT_IMPORTANCE, 
+      completed: subBlock.completed ? DEFAULT_IMPORTANCE : 0 
+    };
+  }
+  
+  const total = tasks.reduce((sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE), 0);
+  const completed = tasks
+    .filter((t: any) => t.completed)
+    .reduce((sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE), 0);
+  
+  return { total, completed };
+}
+
+// Calculate weighted completion considering hierarchical sub-block weights
 function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?: any[] | null | undefined): number {
   if (!tasks) tasks = [];
   if (!subBlocks) subBlocks = [];
   
-  const allTasks = [...tasks];
+  let totalWeight = 0;
+  let completedWeight = 0;
   
-  // Include all tasks from sub-blocks that have tasks
-  subBlocks.forEach(subBlock => {
-    if (subBlock.tasks && Array.isArray(subBlock.tasks) && subBlock.tasks.length > 0) {
-      allTasks.push(...subBlock.tasks);
+  // Add direct tasks (each weighted by their importance)
+  tasks.forEach(task => {
+    const importance = task.importance || DEFAULT_IMPORTANCE;
+    totalWeight += importance;
+    if (task.completed) {
+      completedWeight += importance;
     }
   });
   
-  if (allTasks.length === 0) return 0;
+  // Add sub-blocks with hierarchical weighting
+  // Sub-block weight = (sum of internal task importances) * (subBlock importance / DEFAULT_IMPORTANCE)
+  subBlocks.forEach(subBlock => {
+    const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
+    const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
+    
+    const internal = getSubBlockInternalWeight(subBlock);
+    const subBlockWeight = internal.total * importanceMultiplier;
+    
+    totalWeight += subBlockWeight;
+    
+    // Calculate completion proportionally
+    if (subBlock.completed) {
+      // If manually marked complete, count full weight
+      completedWeight += subBlockWeight;
+    } else if (internal.total > 0) {
+      // Otherwise, calculate based on internal task completion
+      const completionRatio = internal.completed / internal.total;
+      completedWeight += subBlockWeight * completionRatio;
+    }
+  });
   
-  const totalImportance = allTasks.reduce((sum, t) => sum + (t.importance || 1), 0);
-  const completedImportance = allTasks
-    .filter(t => t.completed)
-    .reduce((sum, t) => sum + (t.importance || 1), 0);
-  return totalImportance > 0 ? (completedImportance / totalImportance) * 100 : 0;
+  return totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
 }
 
 // Merge tasks and sub-blocks into one unified ordered list
