@@ -398,12 +398,14 @@ export default function Planner() {
   const reorderSubBlocksMutation = useMutation({
     mutationFn: async ({ parentId, draggedBlockId, targetBlockId }: { parentId: string; draggedBlockId: string; targetBlockId?: string }) => {
       const allBlocks = blocks || [];
-      const subBlocks = allBlocks.filter(b => b.parentId === parentId);
+      const parentBlock = allBlocks.find(b => b.id === parentId);
+      if (!parentBlock) throw new Error("Parent block not found");
       
+      const subBlocks = allBlocks.filter(b => b.parentId === parentId);
       const draggedIdx = subBlocks.findIndex(b => b.id === draggedBlockId);
       if (draggedIdx === -1) throw new Error("Block not found");
       
-      // We'll use startTime ordering for sub-blocks if they have times
+      // Reorder sub-blocks in memory
       const [draggedBlock] = subBlocks.splice(draggedIdx, 1);
       
       if (targetBlockId) {
@@ -417,15 +419,34 @@ export default function Planner() {
         subBlocks.push(draggedBlock);
       }
       
-      // Update all sub-blocks with new order (we store order via sorting in display)
-      // For now, we just need to trigger a refresh
-      return await apiRequest("PATCH", `/api/time-blocks/${draggedBlockId}`, {});
+      // Assign new startTimes to maintain order
+      const parentStart = timeToMinutes(parentBlock.startTime);
+      const newUpdates = [];
+      
+      for (let i = 0; i < subBlocks.length; i++) {
+        const subBlock = subBlocks[i];
+        // Calculate duration
+        const duration = timeToMinutes(subBlock.endTime) - timeToMinutes(subBlock.startTime);
+        // New start time: parent start + (i * 30 minutes for spacing)
+        const newStartMinutes = parentStart + (i * 30);
+        const newEndMinutes = newStartMinutes + duration;
+        
+        newUpdates.push(
+          apiRequest("PATCH", `/api/time-blocks/${subBlock.id}`, {
+            startTime: minutesToTime(newStartMinutes),
+            endTime: minutesToTime(newEndMinutes),
+          })
+        );
+      }
+      
+      return Promise.all(newUpdates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Sub-block moved" });
     },
     onError: () => {
-      toast({ title: "Failed to reorder sub-blocks", variant: "destructive" });
+      toast({ title: "Failed to move sub-block", variant: "destructive" });
     },
   });
 
