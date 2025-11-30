@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, ChevronDown, ListTodo, Layers, Maximize2, Minimize2 } from "lucide-react";
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
+import { AddTaskDialog } from "@/components/dialogs/add-task-dialog";
 import { CreatePresetDialog } from "@/components/dialogs/create-preset-dialog";
+import { CircularProgress } from "@/components/circular-progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -42,6 +44,15 @@ function minutesToTime(minutes: number): string {
 
 function snapToGrid(minutes: number): number {
   return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+}
+
+function sortChronologically(items: any[]): any[] {
+  return [...items].sort((a, b) => {
+    if (a.startTime && b.startTime) {
+      return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+    }
+    return 0;
+  });
 }
 
 function getBlockStyle(block: TimeBlock): { top: number; height: number } {
@@ -89,6 +100,8 @@ export default function Planner() {
   const [expandedContent, setExpandedContent] = useState<string | null>(null);
   const [addingTaskToBlock, setAddingTaskToBlock] = useState<string | null>(null);
   const [newTaskText, setNewTaskText] = useState("");
+  const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
+  const [addTaskParentId, setAddTaskParentId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -304,6 +317,14 @@ export default function Planner() {
   const handleAddTask = (blockId: string) => {
     if (newTaskText.trim()) {
       addTaskMutation.mutate({ blockId, taskText: newTaskText.trim() });
+    }
+  };
+
+  const handleAddTaskDialog = (data: { text: string; importance: number }) => {
+    if (addTaskParentId) {
+      addTaskMutation.mutate({ blockId: addTaskParentId, taskText: data.text, importance: data.importance });
+      setAddTaskDialogOpen(false);
+      setAddTaskParentId(null);
     }
   };
 
@@ -738,15 +759,14 @@ export default function Planner() {
                                       className="flex items-center gap-1 px-2 py-1 rounded group transition-all" 
                                       style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
                                     >
-                                      <input 
-                                        type="checkbox" 
-                                        checked={task.completed}
-                                        onChange={(e) => {
+                                      <CircularProgress
+                                        completed={task.completed}
+                                        diameter={16}
+                                        colorVar={colorVar}
+                                        onClick={(e) => {
                                           e.stopPropagation();
                                           toggleTaskMutation.mutate({ blockId: block.id, taskId: task.id });
                                         }}
-                                        className="w-3 h-3 shrink-0 cursor-pointer"
-                                        style={{ accentColor: `hsl(var(${colorVar}))` }}
                                       />
                                       <span className={`truncate text-xs flex-1 ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
                                         {task.text}
@@ -768,55 +788,26 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Add task input */}
-                              {addingTaskToBlock === block.id && (
-                                <div 
-                                  className="flex items-center gap-1 px-2 py-1 rounded" 
-                                  style={{ backgroundColor: `hsl(var(${colorVar}) / 0.12)` }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <input
-                                    type="text"
-                                    value={newTaskText}
-                                    onChange={(e) => setNewTaskText(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      e.stopPropagation();
-                                      if (e.key === 'Enter') handleAddTask(block.id);
-                                      if (e.key === 'Escape') {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }
-                                    }}
-                                    onBlur={() => {
-                                      setTimeout(() => {
-                                        setAddingTaskToBlock(null);
-                                        setNewTaskText("");
-                                      }, 150);
-                                    }}
-                                    placeholder="Task name..."
-                                    className="flex-1 text-xs bg-transparent border-none outline-none"
-                                    autoFocus
-                                    data-testid={`input-new-task-${block.id}`}
-                                  />
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAddTask(block.id);
-                                    }}
-                                    disabled={!newTaskText.trim()}
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              )}
+                              {/* Add task button */}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="w-full text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAddTaskParentId(block.id);
+                                  setAddTaskDialogOpen(true);
+                                }}
+                                data-testid={`button-add-task-${block.id}`}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Add Task
+                              </Button>
 
-                              {/* Sub-blocks (nested inside parent content) */}
+                              {/* Sub-blocks (nested inside parent content) - chronologically sorted */}
                               {subBlocks.length > 0 && (
                                 <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                  {subBlocks.map((subBlock) => {
+                                  {sortChronologically(subBlocks).map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter(t => t.completed).length || 0;
                                     const subIsExpanded = expandedBlocks.has(subBlock.id);
@@ -861,17 +852,17 @@ export default function Planner() {
                                             })
                                           }}
                                         >
-                                          <input 
-                                            type="checkbox" 
-                                            checked={subBlock.completed}
-                                            onChange={(e) => {
+                                          <CircularProgress
+                                            completed={subBlock.completed}
+                                            progress={subTaskCount > 0 ? (subCompletedTasks / subTaskCount) * 100 : 0}
+                                            diameter={14}
+                                            colorVar={colorVar}
+                                            onClick={(e) => {
                                               e.stopPropagation();
                                               if (!dragState) {
                                                 toggleBlockMutation.mutate({ id: subBlock.id, completed: !subBlock.completed });
                                               }
                                             }}
-                                            className="w-2.5 h-2.5 shrink-0 cursor-pointer"
-                                            style={{ accentColor: `hsl(var(${colorVar}))` }}
                                           />
                                           <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
                                             {subBlock.title}
@@ -922,7 +913,7 @@ export default function Planner() {
                                           >
                                             {subTaskCount > 0 && (
                                               <div className="flex flex-col gap-0.5">
-                                                {subBlock.tasks?.map((task) => (
+                                                {sortChronologically(subBlock.tasks || []).map((task) => (
                                                   <div 
                                                     key={task.id} 
                                                     className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all" 
@@ -932,12 +923,14 @@ export default function Planner() {
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
                                                     }}
                                                   >
-                                                    <input 
-                                                      type="checkbox" 
-                                                      checked={task.completed}
-                                                      readOnly
-                                                      className="w-2 h-2 shrink-0"
-                                                      style={{ accentColor: `hsl(var(${colorVar}))` }}
+                                                    <CircularProgress
+                                                      completed={task.completed}
+                                                      diameter={12}
+                                                      colorVar={colorVar}
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
+                                                      }}
                                                     />
                                                     <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/60' : 'text-foreground/80'}`}>
                                                       {task.text}
@@ -1167,6 +1160,13 @@ export default function Planner() {
             </CardContent>
           </Card>
         </div>
+
+        <AddTaskDialog
+          open={addTaskDialogOpen}
+          onOpenChange={setAddTaskDialogOpen}
+          onSubmit={handleAddTaskDialog}
+          isLoading={addTaskMutation.isPending}
+        />
       </div>
     </div>
   );
