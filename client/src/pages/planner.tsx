@@ -333,16 +333,28 @@ export default function Planner() {
   });
 
   const reorderTasksMutation = useMutation({
-    mutationFn: async ({ blockId, taskId, targetIndex }: { blockId: string; taskId: string; targetIndex: number }) => {
+    mutationFn: async ({ blockId, draggedTaskId, targetTaskId }: { blockId: string; draggedTaskId: string; targetTaskId?: string }) => {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
       const tasks = [...(block.tasks || [])];
-      const draggedIndex = tasks.findIndex(t => t.id === taskId);
+      
+      const draggedIndex = tasks.findIndex(t => t.id === draggedTaskId);
       if (draggedIndex === -1) throw new Error("Task not found");
       
-      // Remove from old position and insert at new position
+      // Remove dragged task
       const [draggedTask] = tasks.splice(draggedIndex, 1);
-      tasks.splice(Math.max(0, targetIndex), 0, draggedTask);
+      
+      // If target task exists, insert before it; otherwise add to end
+      if (targetTaskId) {
+        const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
+        if (targetIndex !== -1) {
+          tasks.splice(targetIndex, 0, draggedTask);
+        } else {
+          tasks.push(draggedTask);
+        }
+      } else {
+        tasks.push(draggedTask);
+      }
       
       return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks });
     },
@@ -814,13 +826,14 @@ export default function Planner() {
                                   onDragOver={(e) => e.preventDefault()}
                                   onDrop={(e) => {
                                     e.preventDefault();
-                                    const taskIndex = parseInt(e.dataTransfer!.getData("taskIndex") || "-1");
-                                    if (taskIndex !== -1) {
-                                      reorderTasksMutation.mutate({ blockId: block.id, taskId: block.tasks?.[taskIndex]?.id || "", targetIndex: taskIndex });
+                                    const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
+                                    const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
+                                    if (draggedTaskId) {
+                                      reorderTasksMutation.mutate({ blockId: block.id, draggedTaskId, targetTaskId });
                                     }
                                   }}
                                 >
-                                  {sortChronologically(block.tasks || []).map((task, taskIndex) => (
+                                  {sortChronologically(block.tasks || []).map((task) => (
                                     <div 
                                       key={task.id} 
                                       className={`flex items-center gap-1 px-2 py-1 rounded group transition-all cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
@@ -829,7 +842,14 @@ export default function Planner() {
                                       onDragStart={(e) => {
                                         e.dataTransfer!.effectAllowed = "move";
                                         setDraggedTaskId(task.id);
-                                        e.dataTransfer!.setData("taskIndex", taskIndex.toString());
+                                        e.dataTransfer!.setData("draggedTaskId", task.id);
+                                      }}
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.dataTransfer!.effectAllowed = "move";
+                                      }}
+                                      onDragEnter={(e) => {
+                                        e.dataTransfer!.setData("targetTaskId", task.id);
                                       }}
                                       onDragEnd={() => setDraggedTaskId(null)}
                                     >
@@ -978,13 +998,14 @@ export default function Planner() {
                                                 onDragOver={(e) => e.preventDefault()}
                                                 onDrop={(e) => {
                                                   e.preventDefault();
-                                                  const taskIndex = parseInt(e.dataTransfer!.getData("taskIndex") || "-1");
-                                                  if (taskIndex !== -1) {
-                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, taskId: subBlock.tasks?.[taskIndex]?.id || "", targetIndex: taskIndex });
+                                                  const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
+                                                  const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
+                                                  if (draggedTaskId) {
+                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId });
                                                   }
                                                 }}
                                               >
-                                                {sortChronologically(subBlock.tasks || []).map((task: any, taskIndex: number) => (
+                                                {sortChronologically(subBlock.tasks || []).map((task: any) => (
                                                   <div 
                                                     key={task.id} 
                                                     className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
@@ -993,7 +1014,14 @@ export default function Planner() {
                                                     onDragStart={(e) => {
                                                       e.dataTransfer!.effectAllowed = "move";
                                                       setDraggedTaskId(task.id);
-                                                      e.dataTransfer!.setData("taskIndex", taskIndex.toString());
+                                                      e.dataTransfer!.setData("draggedTaskId", task.id);
+                                                    }}
+                                                    onDragOver={(e) => {
+                                                      e.preventDefault();
+                                                      e.dataTransfer!.effectAllowed = "move";
+                                                    }}
+                                                    onDragEnter={(e) => {
+                                                      e.dataTransfer!.setData("targetTaskId", task.id);
                                                     }}
                                                     onDragEnd={() => setDraggedTaskId(null)}
                                                     onClick={(e) => {
