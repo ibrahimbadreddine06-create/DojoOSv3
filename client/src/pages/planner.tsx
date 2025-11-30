@@ -85,16 +85,21 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
 // Merge tasks and sub-blocks into one unified ordered list
 function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] | null | undefined): Array<{ type: 'task' | 'block'; data: any; order: number }> {
   const content: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
+  let nextOrder = 0;
   
   if (tasks) {
     tasks.forEach(t => {
-      content.push({ type: 'task', data: t, order: t.order || 0 });
+      const order = t.order !== undefined ? t.order : nextOrder++;
+      content.push({ type: 'task', data: t, order });
+      nextOrder = Math.max(nextOrder, order + 1);
     });
   }
   
   if (subBlocks) {
     subBlocks.forEach(b => {
-      content.push({ type: 'block', data: b, order: b.order || 0 });
+      const order = b.order !== undefined ? b.order : nextOrder++;
+      content.push({ type: 'block', data: b, order });
+      nextOrder = Math.max(nextOrder, order + 1);
     });
   }
   
@@ -435,37 +440,40 @@ export default function Planner() {
       
       const newIdx = direction === 'up' ? idx - 1 : idx + 1;
       
-      // Swap order values
+      // Assign new order values: swap positions
       const updates = [];
       const item1 = content[idx];
       const item2 = content[newIdx];
       
-      const order1 = item2.order;
-      const order2 = item1.order;
+      // Simple swap: item1 gets item2's order, item2 gets item1's order
+      const tempOrder = item1.order;
+      const newOrder1 = item2.order;
+      const newOrder2 = tempOrder;
       
       if (item1.type === 'task') {
-        const updatedTask = { ...item1.data, order: order1 };
+        const updatedTask = { ...item1.data, order: newOrder1 };
         const updatedTasks = parentBlock.tasks!.map(t => t.id === itemId ? updatedTask : t);
         updates.push(apiRequest("PATCH", `/api/time-blocks/${parentId}`, { tasks: updatedTasks }));
       } else {
-        updates.push(apiRequest("PATCH", `/api/time-blocks/${itemId}`, { order: order1 }));
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${item1.data.id}`, { order: newOrder1 }));
       }
       
       if (item2.type === 'task') {
-        const updatedTask = { ...item2.data, order: order2 };
+        const updatedTask = { ...item2.data, order: newOrder2 };
         const updatedTasks = parentBlock.tasks!.map(t => t.id === item2.data.id ? updatedTask : t);
         updates.push(apiRequest("PATCH", `/api/time-blocks/${parentId}`, { tasks: updatedTasks }));
       } else {
-        updates.push(apiRequest("PATCH", `/api/time-blocks/${item2.data.id}`, { order: order2 }));
+        updates.push(apiRequest("PATCH", `/api/time-blocks/${item2.data.id}`, { order: newOrder2 }));
       }
       
       return Promise.all(updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      toast({ title: "Reordered" });
     },
     onError: () => {
-      toast({ title: "Failed to move content", variant: "destructive" });
+      toast({ title: "Failed to move", variant: "destructive" });
     },
   });
 
