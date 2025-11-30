@@ -10,7 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest } from "@/lib/queryClient";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, ChevronUp, ChevronDown } from "lucide-react";
+
+const addMinutes = (timeStr: string, minutes: number): string => {
+  const [hours, mins] = timeStr.split(":").map(Number);
+  let totalMinutes = hours * 60 + mins + minutes;
+  totalMinutes = ((totalMinutes % 1440) + 1440) % 1440; // Wrap around 24 hours
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMins = totalMinutes % 60;
+  return `${newHours.toString().padStart(2, "0")}:${newMins.toString().padStart(2, "0")}`;
+};
 
 const formSchema = z.object({
   date: z.string(),
@@ -152,7 +161,29 @@ export function AddTimeBlockDialog({
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-muted-foreground">Start</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="00:00" className="text-sm font-mono" data-testid="input-start-time" />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => field.onChange(addMinutes(field.value, -15))}
+                          data-testid="button-start-time-down"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                        <Input {...field} placeholder="00:00" className="text-sm font-mono text-center flex-1" data-testid="input-start-time" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => field.onChange(addMinutes(field.value, 15))}
+                          data-testid="button-start-time-up"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
@@ -166,7 +197,29 @@ export function AddTimeBlockDialog({
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-muted-foreground">End</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="00:00" className="text-sm font-mono" data-testid="input-end-time" />
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => field.onChange(addMinutes(field.value, -15))}
+                          data-testid="button-end-time-down"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                        <Input {...field} placeholder="00:00" className="text-sm font-mono text-center flex-1" data-testid="input-end-time" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 flex-shrink-0"
+                          onClick={() => field.onChange(addMinutes(field.value, 15))}
+                          data-testid="button-end-time-up"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
