@@ -55,10 +55,23 @@ function sortChronologically(items: any[]): any[] {
   });
 }
 
-function calculateWeightedCompletion(tasks: any[] | null | undefined): number {
-  if (!tasks || tasks.length === 0) return 0;
-  const totalImportance = tasks.reduce((sum, t) => sum + (t.importance || 1), 0);
-  const completedImportance = tasks
+function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?: any[] | null | undefined): number {
+  if (!tasks) tasks = [];
+  if (!subBlocks) subBlocks = [];
+  
+  const allTasks = [...tasks];
+  
+  // Include all tasks from sub-blocks
+  subBlocks.forEach(subBlock => {
+    if (subBlock.tasks && Array.isArray(subBlock.tasks)) {
+      allTasks.push(...subBlock.tasks);
+    }
+  });
+  
+  if (allTasks.length === 0) return 0;
+  
+  const totalImportance = allTasks.reduce((sum, t) => sum + (t.importance || 1), 0);
+  const completedImportance = allTasks
     .filter(t => t.completed)
     .reduce((sum, t) => sum + (t.importance || 1), 0);
   return totalImportance > 0 ? (completedImportance / totalImportance) * 100 : 0;
@@ -674,7 +687,7 @@ export default function Planner() {
                           >
                             <CircularProgress
                               completed={block.completed}
-                              progress={calculateWeightedCompletion(block.tasks)}
+                              progress={calculateWeightedCompletion(block.tasks, subBlocks)}
                               diameter={20}
                               colorVar={colorVar}
                               onClick={(e) => {
@@ -737,7 +750,7 @@ export default function Planner() {
                           <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}) / 0.4)` }} />
 
                           {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - 30% opacity */}
-                          {!isCollapsed && (
+                          {!isCollapsed ? (
                             <div 
                               className={`flex-1 flex flex-col gap-2 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
                               style={{ 
@@ -1024,6 +1037,8 @@ export default function Planner() {
                                 )}
                               </div>
                             </div>
+                          ) : (
+                            <div className="flex items-center gap-1 px-2 py-1 h-0 overflow-hidden" />
                           )}
 
                           {/* Resize handle */}

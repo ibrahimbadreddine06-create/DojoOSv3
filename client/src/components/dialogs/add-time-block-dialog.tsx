@@ -29,6 +29,7 @@ const formSchema = z.object({
   completed: z.boolean().default(false),
   linkedModule: z.string().optional(),
   linkedItemId: z.string().optional(),
+  importance: z.number().min(1).max(5).default(3),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -74,6 +75,7 @@ export function AddTimeBlockDialog({
       completed: false,
       linkedModule: undefined,
       linkedItemId: undefined,
+      importance: 3,
     },
   });
 
@@ -94,6 +96,7 @@ export function AddTimeBlockDialog({
         completed: false,
         linkedModule: undefined,
         linkedItemId: undefined,
+        importance: 3,
       });
     }
   }, [date, open, defaultStartTime, defaultEndTime, form]);
@@ -226,6 +229,34 @@ export function AddTimeBlockDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="importance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-medium text-muted-foreground">Importance</FormLabel>
+                  <Select 
+                    onValueChange={(val) => field.onChange(parseInt(val))} 
+                    value={String(field.value)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="text-sm" data-testid="select-importance">
+                        <SelectValue placeholder="3 - Medium" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="1">1 - Very Low</SelectItem>
+                      <SelectItem value="2">2 - Low</SelectItem>
+                      <SelectItem value="3">3 - Medium</SelectItem>
+                      <SelectItem value="4">4 - High</SelectItem>
+                      <SelectItem value="5">5 - Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <FormField
