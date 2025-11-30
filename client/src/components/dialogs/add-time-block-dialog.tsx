@@ -148,43 +148,37 @@ export function AddTimeBlockDialog({
           {parentId ? "Add Sub-Block" : "Add Block"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{parentId ? "Add Sub-Block" : "Add Time Block"}</DialogTitle>
-          <DialogDescription>
-            {parentId 
-              ? "Create a nested block within the parent block"
-              : "Create a new time block for your daily schedule"
-            }
-          </DialogDescription>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-3">
+          <DialogTitle className="text-xl">{parentId ? "Add Sub-Block" : "Add Time Block"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel className="text-sm font-medium">Title</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Morning workout" data-testid="input-title" />
+                    <Input {...field} placeholder="Enter block title" className="text-base" data-testid="input-title" autoFocus />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time</FormLabel>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">Start</FormLabel>
                     <FormControl>
-                      <Input {...field} type="time" data-testid="input-start-time" />
+                      <Input {...field} type="time" className="text-sm" data-testid="input-start-time" />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -194,36 +188,36 @@ export function AddTimeBlockDialog({
                 name="endTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Time</FormLabel>
+                    <FormLabel className="text-xs font-medium text-muted-foreground">End</FormLabel>
                     <FormControl>
-                      <Input {...field} type="time" data-testid="input-end-time" />
+                      <Input {...field} type="time" className="text-sm" data-testid="input-end-time" />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <LinkIcon className="w-4 h-4" />
-                Link to Module (Optional)
+            <div className="space-y-3 p-3 border rounded-md bg-muted/20">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                <LinkIcon className="w-3 h-3" />
+                Link to Module
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="linkedModule"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Module</FormLabel>
+                      <FormLabel className="text-xs font-medium">Module</FormLabel>
                       <Select 
                         onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} 
                         value={field.value || "none"}
                       >
                         <FormControl>
-                          <SelectTrigger data-testid="select-linked-module">
-                            <SelectValue placeholder="Select module" />
+                          <SelectTrigger className="text-sm" data-testid="select-linked-module">
+                            <SelectValue placeholder="None" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -246,15 +240,15 @@ export function AddTimeBlockDialog({
                     name="linkedItemId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Item (Optional)</FormLabel>
+                        <FormLabel className="text-xs font-medium">Item</FormLabel>
                         {linkedItems && linkedItems.length > 0 ? (
                           <Select 
                             onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} 
                             value={field.value || "none"}
                           >
                             <FormControl>
-                              <SelectTrigger data-testid="select-linked-item">
-                                <SelectValue placeholder="Select item" />
+                              <SelectTrigger className="text-sm" data-testid="select-linked-item">
+                                <SelectValue placeholder="All" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -278,46 +272,43 @@ export function AddTimeBlockDialog({
                 )}
               </div>
               
-              <FormDescription className="text-xs">
-                Linked blocks will appear in the module's "Today's Sessions" section
-              </FormDescription>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 border-t pt-4">
               <div className="flex items-center justify-between">
-                <FormLabel>Tasks</FormLabel>
+                <FormLabel className="text-sm font-medium">Tasks</FormLabel>
                 <Button 
                   type="button" 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm" 
                   onClick={addTask}
+                  className="h-7 text-xs"
                   data-testid="button-add-task"
                 >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Task
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add
                 </Button>
               </div>
               
               {taskFields.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No tasks yet. Add tasks with importance levels (1-5).
+                <p className="text-xs text-muted-foreground text-center py-3">
+                  No tasks yet
                 </p>
               )}
 
               {taskFields.map((field, index) => (
-                <div key={field.id} className="flex items-start gap-2 p-3 border rounded-lg bg-card">
-                  <div className="flex-1">
-                    <Input
-                      {...form.register(`tasks.${index}.text`)}
-                      placeholder="Task description"
-                      data-testid={`input-task-${index}`}
-                    />
-                  </div>
+                <div key={field.id} className="flex items-center gap-2 p-2 rounded border bg-muted/40">
+                  <Input
+                    {...form.register(`tasks.${index}.text`)}
+                    placeholder="Task"
+                    className="text-xs flex-1 h-8 bg-background"
+                    data-testid={`input-task-${index}`}
+                  />
                   <Select
                     value={form.watch(`tasks.${index}.importance`)?.toString()}
                     onValueChange={(val) => form.setValue(`tasks.${index}.importance`, parseInt(val))}
                   >
-                    <SelectTrigger className="w-24" data-testid={`select-task-importance-${index}`}>
+                    <SelectTrigger className="w-16 h-8 text-xs" data-testid={`select-task-importance-${index}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -332,27 +323,22 @@ export function AddTimeBlockDialog({
                     type="button"
                     variant="ghost"
                     size="icon"
+                    className="h-6 w-6"
                     onClick={() => removeTask(index)}
                     data-testid={`button-remove-task-${index}`}
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
                   </Button>
                 </div>
               ))}
-              
-              {taskFields.length > 0 && (
-                <FormDescription className="text-xs">
-                  Task importance (1-5) affects how tasks contribute to completion
-                </FormDescription>
-              )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)} data-testid="button-cancel">
+            <div className="flex justify-end gap-2 pt-3 border-t">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="h-8 text-sm" data-testid="button-cancel">
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-                {createMutation.isPending ? "Creating..." : "Create Block"}
+              <Button type="submit" disabled={createMutation.isPending} className="h-8 text-sm" data-testid="button-submit">
+                {createMutation.isPending ? "Creating..." : parentId ? "Add Sub-Block" : "Create Block"}
               </Button>
             </div>
           </form>
