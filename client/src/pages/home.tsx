@@ -296,37 +296,40 @@ function CustomizeDialog({
   config: DashboardConfig;
   onConfigChange: (config: DashboardConfig) => void;
 }) {
+  const safeConfig = config || defaultConfig;
+  const safeSizes = safeConfig.sizes || {};
+
   const moveUp = (id: string) => {
-    const idx = config.order.indexOf(id);
+    const idx = safeConfig.order.indexOf(id);
     if (idx > 0) {
-      const newOrder = [...config.order];
+      const newOrder = [...safeConfig.order];
       [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
-      onConfigChange({ ...config, order: newOrder });
+      onConfigChange({ ...safeConfig, order: newOrder });
     }
   };
 
   const moveDown = (id: string) => {
-    const idx = config.order.indexOf(id);
-    if (idx < config.order.length - 1) {
-      const newOrder = [...config.order];
+    const idx = safeConfig.order.indexOf(id);
+    if (idx < safeConfig.order.length - 1) {
+      const newOrder = [...safeConfig.order];
       [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
-      onConfigChange({ ...config, order: newOrder });
+      onConfigChange({ ...safeConfig, order: newOrder });
     }
   };
 
   const toggleVisibility = (id: string) => {
-    const hidden = config.hidden.includes(id)
-      ? config.hidden.filter(h => h !== id)
-      : [...config.hidden, id];
-    onConfigChange({ ...config, hidden });
+    const hidden = safeConfig.hidden.includes(id)
+      ? safeConfig.hidden.filter(h => h !== id)
+      : [...safeConfig.hidden, id];
+    onConfigChange({ ...safeConfig, hidden });
   };
 
   const toggleSize = (id: string) => {
-    const currentSize = config.sizes[id] || "1x1";
+    const currentSize = safeSizes[id] || "1x1";
     const newSize: BentoSize = currentSize === "1x1" ? "2x1" : "1x1";
     onConfigChange({ 
-      ...config, 
-      sizes: { ...config.sizes, [id]: newSize }
+      ...safeConfig, 
+      sizes: { ...safeSizes, [id]: newSize }
     });
   };
 
@@ -340,12 +343,12 @@ function CustomizeDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-4">
-          {config.order.map((id, index) => {
+          {safeConfig.order.map((id, index) => {
             const mod = moduleComponents[id];
             if (!mod) return null;
             const Icon = mod.icon;
-            const isHidden = config.hidden.includes(id);
-            const size = config.sizes[id] || "1x1";
+            const isHidden = safeConfig.hidden.includes(id);
+            const size = safeSizes[id] || "1x1";
             
             return (
               <div
@@ -382,7 +385,7 @@ function CustomizeDialog({
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => moveDown(id)}
-                    disabled={index === config.order.length - 1}
+                    disabled={index === safeConfig.order.length - 1}
                     data-testid={`button-move-down-${id}`}
                   >
                     <ChevronDown className="h-4 w-4" />
