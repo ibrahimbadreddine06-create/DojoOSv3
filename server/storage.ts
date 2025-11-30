@@ -197,6 +197,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTimeBlock(data: InsertTimeBlock): Promise<TimeBlock> {
+    // If this is a sub-block (has parentId), calculate the next order value
+    if (data.parentId) {
+      // Get all siblings (other sub-blocks with same parent) and all parent's tasks
+      const siblings = await db.select().from(timeBlocks).where(eq(timeBlocks.parentId, data.parentId));
+      const parent = await db.select().from(timeBlocks).where(eq(timeBlocks.id, data.parentId));
+      
+      // Find max order among siblings
+      let maxOrder = -1;
+      siblings.forEach(s => {
+        if (typeof s.order === 'number' && s.order > maxOrder) {
+          maxOrder = s.order;
+        }
+      });
+      
+      // Also check parent's tasks for their orders
+      if (parent[0]?.tasks && Array.isArray(parent[0].tasks)) {
+        parent[0].tasks.forEach((t: any) => {
+          if (typeof t.order === 'number' && t.order > maxOrder) {
+            maxOrder = t.order;
+          }
+        });
+      }
+      
+      // Set order to next available
+      data.order = maxOrder + 1;
+    }
+    
     const [block] = await db.insert(timeBlocks).values(data).returning();
     return block;
   }

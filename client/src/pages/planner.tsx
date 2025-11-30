@@ -85,25 +85,56 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
 // Merge tasks and sub-blocks into one unified ordered list
 function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] | null | undefined): Array<{ type: 'task' | 'block'; data: any; order: number }> {
   const content: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
-  let nextOrder = 0;
   
-  if (tasks) {
-    tasks.forEach(t => {
-      const order = t.order !== undefined ? t.order : nextOrder++;
-      content.push({ type: 'task', data: t, order });
-      nextOrder = Math.max(nextOrder, order + 1);
-    });
+  // Collect all items with their original orders
+  const taskItems = (tasks || []).map((t, idx) => ({ 
+    type: 'task' as const, 
+    data: t, 
+    order: typeof t.order === 'number' ? t.order : -1,
+    originalIndex: idx
+  }));
+  
+  const blockItems = (subBlocks || []).map((b, idx) => ({ 
+    type: 'block' as const, 
+    data: b, 
+    order: typeof b.order === 'number' ? b.order : -1,
+    originalIndex: idx
+  }));
+  
+  // Check if we have meaningful order values (not all same/missing)
+  const allItems = [...taskItems, ...blockItems];
+  const orders = allItems.map(i => i.order).filter(o => o >= 0);
+  const hasUniqueOrders = new Set(orders).size === orders.length && orders.length === allItems.length;
+  
+  if (hasUniqueOrders) {
+    // All items have unique order values - use them directly
+    return allItems
+      .map(({ type, data, order }) => ({ type, data, order }))
+      .sort((a, b) => a.order - b.order);
   }
   
-  if (subBlocks) {
-    subBlocks.forEach(b => {
-      const order = b.order !== undefined ? b.order : nextOrder++;
-      content.push({ type: 'block', data: b, order });
-      nextOrder = Math.max(nextOrder, order + 1);
-    });
+  // Fallback: assign sequential orders, interleaving tasks and blocks alternately
+  // This ensures they mix rather than group together
+  let result: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
+  let taskIdx = 0;
+  let blockIdx = 0;
+  let orderCounter = 0;
+  
+  // Interleave: alternate between tasks and blocks
+  while (taskIdx < taskItems.length || blockIdx < blockItems.length) {
+    // Add a task if available
+    if (taskIdx < taskItems.length) {
+      result.push({ type: 'task', data: taskItems[taskIdx].data, order: orderCounter++ });
+      taskIdx++;
+    }
+    // Add a block if available
+    if (blockIdx < blockItems.length) {
+      result.push({ type: 'block', data: blockItems[blockIdx].data, order: orderCounter++ });
+      blockIdx++;
+    }
   }
   
-  return content.sort((a, b) => a.order - b.order);
+  return result;
 }
 
 function getBlockStyle(block: TimeBlock): { top: number; height: number } {
@@ -290,14 +321,27 @@ export default function Planner() {
     mutationFn: async ({ blockId, taskText, importance }: { blockId: string; taskText: string; importance?: number }) => {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
+      
+      // Calculate next order considering both existing tasks AND sub-blocks
+      const existingTasks = block.tasks || [];
+      const subBlocks = blocks?.filter(b => b.parentId === blockId) || [];
+      
+      let maxOrder = -1;
+      existingTasks.forEach((t: any) => {
+        if (typeof t.order === 'number' && t.order > maxOrder) maxOrder = t.order;
+      });
+      subBlocks.forEach(b => {
+        if (typeof b.order === 'number' && b.order > maxOrder) maxOrder = b.order;
+      });
+      
       const newTask = {
         id: crypto.randomUUID(),
         text: taskText,
         completed: false,
         importance: importance || 3,
-        order: (block.tasks?.length || 0),
+        order: maxOrder + 1,
       };
-      const updatedTasks = [...(block.tasks || []), newTask];
+      const updatedTasks = [...existingTasks, newTask];
       return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
     },
     onSuccess: () => {
