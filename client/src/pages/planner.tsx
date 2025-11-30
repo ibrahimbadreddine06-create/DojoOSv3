@@ -586,11 +586,11 @@ export default function Planner() {
                           }}
                           data-testid={`block-${block.id}`}
                         >
-                          {/* Header - less translucent, title and time on same line */}
+                          {/* Header - ONLY checkbox, title, time, drag - 60% opacity */}
                           <div 
                             className={`flex items-center gap-2 px-2.5 py-1.5 shrink-0 ${block.completed ? 'opacity-75' : ''}`}
                             style={{ 
-                              backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.15 : 0.25})`,
+                              backgroundColor: `hsla(var(${colorVar}), 0.6)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -615,18 +615,6 @@ export default function Planner() {
                             <span className="text-xs text-muted-foreground font-mono shrink-0">
                               {block.startTime}–{block.endTime}
                             </span>
-                            {taskCount > 0 && (
-                              <Badge 
-                                variant="outline" 
-                                className="text-xs shrink-0 px-1.5 py-0" 
-                                style={{ 
-                                  borderColor: `hsla(var(${colorVar}), 0.6)`,
-                                  backgroundColor: `hsla(var(${colorVar}), 0.1)`,
-                                }}
-                              >
-                                {completedTasks}/{taskCount}
-                              </Badge>
-                            )}
                             <div 
                               className="cursor-grab active:cursor-grabbing shrink-0"
                               style={{ touchAction: 'none' }}
@@ -637,12 +625,15 @@ export default function Planner() {
                             </div>
                           </div>
 
-                          {/* Content area - more translucent, hidden when collapsed */}
+                          {/* Dividing line */}
+                          <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}))` }} />
+
+                          {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - 30% opacity */}
                           {!isCollapsed && (
                             <div 
                               className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 ${block.completed ? 'opacity-70' : ''}`}
                               style={{ 
-                                backgroundColor: `hsla(var(${colorVar}), ${block.completed ? 0.08 : 0.12})`,
+                                backgroundColor: `hsla(var(${colorVar}), 0.3)`,
                               }}
                             >
                               {/* Tasks */}
@@ -711,7 +702,7 @@ export default function Planner() {
 
                               {/* Sub-blocks (nested inside parent content) */}
                               {subBlocks.length > 0 && (
-                                <div className="flex flex-col gap-1 px-1.5 py-1.5 border-t" style={{ borderColor: `hsla(var(${colorVar}), 0.15)` }}>
+                                <div className="flex flex-col gap-1">
                                   {subBlocks.map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter(t => t.completed).length || 0;
@@ -872,10 +863,9 @@ export default function Planner() {
                                 </div>
                               )}
 
-                              {/* Footer with plus button */}
+                              {/* Footer with + and minimize buttons */}
                               <div 
-                                className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0 border-t"
-                                style={{ borderColor: `hsla(var(${colorVar}), 0.15)` }}
+                                className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0"
                               >
                                 <Popover>
                                   <PopoverTrigger asChild>
@@ -922,27 +912,25 @@ export default function Planner() {
                                   </PopoverContent>
                                 </Popover>
                                 <div className="flex-1" />
+                                {contentOverflows && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleBlockExpanded(block.id);
+                                    }}
+                                    data-testid={`button-expand-${block.id}`}
+                                  >
+                                    <ChevronDown 
+                                      className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                      style={{ color: `hsl(var(${colorVar}))` }}
+                                    />
+                                  </Button>
+                                )}
                               </div>
                             </div>
-                          )}
-
-                          {/* Collapse/Expand button when content overflows */}
-                          {contentOverflows && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-1 right-8 h-5 w-5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleBlockExpanded(block.id);
-                              }}
-                              data-testid={`button-expand-${block.id}`}
-                            >
-                              <ChevronDown 
-                                className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                style={{ color: `hsl(var(${colorVar}))` }}
-                              />
-                            </Button>
                           )}
 
                           {/* Resize handle */}
