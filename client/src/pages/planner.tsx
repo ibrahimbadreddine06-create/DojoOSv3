@@ -55,31 +55,9 @@ function sortChronologically(items: any[]): any[] {
     // If only one has startTime, it goes first (timed items before non-timed)
     if (a.startTime && !b.startTime) return -1;
     if (!a.startTime && b.startTime) return 1;
-    // If neither has startTime, preserve insertion order (by checking order field or createdAt)
-    // Return 0 to keep original order
+    // If neither has startTime, preserve insertion order
     return 0;
   });
-}
-
-function reorderWithDragPreview(items: any[], preview: { draggedId: string; targetId?: string } | null): any[] {
-  if (!preview) return items;
-  
-  const sorted = sortChronologically(items);
-  const draggedIdx = sorted.findIndex(i => i.id === preview.draggedId);
-  if (draggedIdx === -1) return sorted;
-  
-  const [dragged] = sorted.splice(draggedIdx, 1);
-  if (!preview.targetId) {
-    sorted.push(dragged);
-  } else {
-    const targetIdx = sorted.findIndex(i => i.id === preview.targetId);
-    if (targetIdx !== -1) {
-      sorted.splice(targetIdx, 0, dragged);
-    } else {
-      sorted.push(dragged);
-    }
-  }
-  return sorted;
 }
 
 function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?: any[] | null | undefined): number {
@@ -909,50 +887,33 @@ export default function Planner() {
                                     e.preventDefault();
                                     const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
                                     const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                    const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
                                     
-                                    setDragPreview(null);
                                     setDraggedTaskId(null);
                                     
-                                    // If dragged from different block, move task; otherwise reorder
                                     if (sourceBlockId && sourceBlockId !== block.id) {
                                       moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: block.id, taskId: draggedTaskId });
                                     } else if (draggedTaskId) {
-                                      reorderTasksMutation.mutate({ blockId: block.id, draggedTaskId, targetTaskId });
+                                      reorderTasksMutation.mutate({ blockId: block.id, draggedTaskId, targetTaskId: undefined });
                                     }
                                   }}
-                                  onDragLeave={() => {
-                                    if (dragPreview?.containerId === block.id) setDragPreview(null);
-                                  }}
                                 >
-                                  {reorderWithDragPreview(block.tasks || [], dragPreview?.containerId === block.id ? dragPreview : null).map((task) => (
+                                  {sortChronologically(block.tasks || []).map((task) => (
                                     <div 
                                       key={task.id} 
-                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                      className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-200 cursor-grab hover-elevate ${draggedTaskId === task.id ? 'opacity-30 scale-95' : ''}`}
                                       style={{ backgroundColor: `hsl(var(${colorVar}) / 0.15)` }}
                                       draggable
                                       onDragStart={(e) => {
                                         e.dataTransfer!.effectAllowed = "move";
                                         setDraggedTaskId(task.id);
-                                        setDragPreview({ type: 'task', draggedId: task.id, containerId: block.id });
                                         e.dataTransfer!.setData("draggedTaskId", task.id);
                                         e.dataTransfer!.setData("sourceBlockId", block.id);
                                       }}
                                       onDragOver={(e) => {
                                         e.preventDefault();
                                         e.dataTransfer!.effectAllowed = "move";
-                                        if (dragPreview?.containerId === block.id) {
-                                          setDragPreview(p => p ? { ...p, targetId: task.id } : null);
-                                        }
                                       }}
-                                      onDragEnter={(e) => {
-                                        e.dataTransfer!.setData("targetTaskId", task.id);
-                                        setDragPreview({ type: 'task', draggedId: e.dataTransfer!.getData("draggedTaskId"), targetId: task.id, containerId: block.id });
-                                      }}
-                                      onDragEnd={() => {
-                                        setDraggedTaskId(null);
-                                        setDragPreview(null);
-                                      }}
+                                      onDragEnd={() => setDraggedTaskId(null)}
                                     >
                                       <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <GripVertical className="w-3 h-3 text-muted-foreground/40" />
@@ -995,16 +956,13 @@ export default function Planner() {
                                   onDrop={(e) => {
                                     e.preventDefault();
                                     const draggedBlockId = e.dataTransfer!.getData("draggedBlockId");
-                                    setDragPreview(null);
+                                    setDraggedTaskId(null);
                                     if (draggedBlockId) {
                                       reorderSubBlocksMutation.mutate({ parentId: block.id, draggedBlockId });
                                     }
                                   }}
-                                  onDragLeave={() => {
-                                    if (dragPreview?.containerId === `sub-${block.id}`) setDragPreview(null);
-                                  }}
                                 >
-                                  {reorderWithDragPreview(subBlocks, dragPreview?.containerId === `sub-${block.id}` ? dragPreview : null).map((subBlock) => {
+                                  {sortChronologically(subBlocks).map((subBlock) => {
                                     const subTaskCount = subBlock.tasks?.length || 0;
                                     const subCompletedTasks = subBlock.tasks?.filter((t: any) => t.completed).length || 0;
                                     const subIsExpanded = expandedBlocks.has(subBlock.id);
@@ -1016,7 +974,7 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className="relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab"
+                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group cursor-grab transition-all duration-200 ${draggedTaskId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{ 
                                           borderColor: `hsl(var(${colorVar}) / 0.3)`,
                                           ...(expandedContent === subBlock.id && {
@@ -1039,20 +997,14 @@ export default function Planner() {
                                         draggable
                                         onDragStart={(e) => {
                                           e.dataTransfer!.effectAllowed = "move";
-                                          setDragPreview({ type: 'block', draggedId: subBlock.id, containerId: `sub-${block.id}` });
+                                          setDraggedTaskId(subBlock.id);
                                           e.dataTransfer!.setData("draggedBlockId", subBlock.id);
                                         }}
                                         onDragOver={(e) => {
                                           e.preventDefault();
                                           e.dataTransfer!.effectAllowed = "move";
-                                          if (dragPreview?.containerId === `sub-${block.id}`) {
-                                            setDragPreview(p => p ? { ...p, targetId: subBlock.id } : null);
-                                          }
                                         }}
-                                        onDragEnter={(e) => {
-                                          setDragPreview({ type: 'block', draggedId: e.dataTransfer!.getData("draggedBlockId"), targetId: subBlock.id, containerId: `sub-${block.id}` });
-                                        }}
-                                        onDragEnd={() => setDragPreview(null)}
+                                        onDragEnd={() => setDraggedTaskId(null)}
                                       >
                                         {/* Sub-block header with drag handle */}
                                         <div 
@@ -1139,49 +1091,33 @@ export default function Planner() {
                                                   e.preventDefault();
                                                   const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
                                                   const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                                  const targetTaskId = e.dataTransfer!.getData("targetTaskId") || undefined;
                                                   
-                                                  setDragPreview(null);
                                                   setDraggedTaskId(null);
                                                   
-                                                  // If dragged from different block, move task; otherwise reorder
                                                   if (sourceBlockId && sourceBlockId !== subBlock.id) {
                                                     moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: subBlock.id, taskId: draggedTaskId });
                                                   } else if (draggedTaskId) {
-                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId });
+                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId: undefined });
                                                   }
                                                 }}
-                                                onDragLeave={() => {
-                                                  if (dragPreview?.containerId === subBlock.id) setDragPreview(null);
-                                                }}
                                               >
-                                                {reorderWithDragPreview(subBlock.tasks || [], dragPreview?.containerId === subBlock.id ? dragPreview : null).map((task: any) => (
+                                                {sortChronologically(subBlock.tasks || []).map((task: any) => (
                                                   <div 
                                                     key={task.id} 
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all duration-200 group ${draggedTaskId === task.id ? 'opacity-30 scale-95' : ''}`}
                                                     style={{ backgroundColor: `hsl(var(${colorVar}) / 0.2)` }}
                                                     draggable
                                                     onDragStart={(e) => {
                                                       e.dataTransfer!.effectAllowed = "move";
                                                       setDraggedTaskId(task.id);
-                                                      setDragPreview({ type: 'task', draggedId: task.id, containerId: subBlock.id });
                                                       e.dataTransfer!.setData("draggedTaskId", task.id);
                                                       e.dataTransfer!.setData("sourceBlockId", subBlock.id);
                                                     }}
                                                     onDragOver={(e) => {
                                                       e.preventDefault();
                                                       e.dataTransfer!.effectAllowed = "move";
-                                                      if (dragPreview?.containerId === subBlock.id) {
-                                                        setDragPreview(p => p ? { ...p, targetId: task.id } : null);
-                                                      }
                                                     }}
-                                                    onDragEnter={(e) => {
-                                                      setDragPreview({ type: 'task', draggedId: e.dataTransfer!.getData("draggedTaskId"), targetId: task.id, containerId: subBlock.id });
-                                                    }}
-                                                    onDragEnd={() => {
-                                                      setDraggedTaskId(null);
-                                                      setDragPreview(null);
-                                                    }}
+                                                    onDragEnd={() => setDraggedTaskId(null)}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
