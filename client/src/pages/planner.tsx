@@ -164,9 +164,21 @@ export default function Planner() {
   const gridRef = useRef<HTMLDivElement>(null);
   const containerRefs = useRef<Map<string, { element: HTMLElement; items: HTMLElement[] }>>(new Map());
 
-  const { data: blocks, isLoading } = useQuery<TimeBlock[]>({
+  const { data: rawBlocks, isLoading } = useQuery<TimeBlock[]>({
     queryKey: ["/api/time-blocks", dateStr],
   });
+
+  // Initialize order values for sub-blocks that don't have them
+  const blocks = useMemo(() => {
+    if (!rawBlocks) return undefined;
+    return rawBlocks.map(block => {
+      if (block.parentId) {
+        // Sub-block: ensure it has an order value
+        return { ...block, order: block.order || 0 };
+      }
+      return block;
+    });
+  }, [rawBlocks]);
 
   const { data: dailyMetrics } = useQuery<{ plannerCompletion?: string }>({
     queryKey: ["/api/daily-metrics", dateStr],
