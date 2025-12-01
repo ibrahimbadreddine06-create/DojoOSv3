@@ -418,68 +418,55 @@ export default function CourseDetail() {
           <Badge variant="secondary" className="text-xs" data-testid="badge-chapter-count">
             {completedChapters}/{totalChapters} Chapters
           </Badge>
-          <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" data-testid="button-toggle-metrics">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Metrics</span>
-                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${metricsOpen ? "rotate-180" : ""}`} />
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
         </div>
       </div>
 
-      <Collapsible open={metricsOpen} onOpenChange={setMetricsOpen}>
-        <CollapsibleContent>
-          <div className="px-4 py-3 border-b bg-muted/20">
-            {chartData.length === 0 ? (
-              <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
-                Complete chapters and review flashcards to start tracking progress
-              </div>
-            ) : (
-              <ChartContainer config={chartConfig} className="h-32 w-full">
-                <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                  <XAxis 
-                    dataKey="date" 
-                    tickLine={false} 
-                    axisLine={false}
-                    tick={{ fontSize: 10 }}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis 
-                    domain={[0, 100]} 
-                    tickLine={false} 
-                    axisLine={false}
-                    tick={{ fontSize: 10 }}
-                    width={30}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="completion" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 3 }}
-                    name="Completion"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="readiness" 
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
-                    name="Readiness"
-                  />
-                  <Legend />
-                </LineChart>
-              </ChartContainer>
-            )}
+      <div className="px-4 py-3 border-b bg-muted/20">
+        {chartData.length === 0 ? (
+          <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
+            Complete chapters and review flashcards to start tracking progress
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        ) : (
+          <ChartContainer config={chartConfig} className="h-32 w-full">
+            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+              <XAxis 
+                dataKey="date" 
+                tickLine={false} 
+                axisLine={false}
+                tick={{ fontSize: 10 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis 
+                domain={[0, 100]} 
+                tickLine={false} 
+                axisLine={false}
+                tick={{ fontSize: 10 }}
+                width={30}
+                tickFormatter={(v) => `${v}%`}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line 
+                type="monotone" 
+                dataKey="completion" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={2}
+                dot={{ fill: "hsl(var(--primary))", r: 3 }}
+                name="Completion"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="readiness" 
+                stroke="hsl(var(--chart-2))" 
+                strokeWidth={2}
+                dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
+                name="Readiness"
+              />
+              <Legend />
+            </LineChart>
+          </ChartContainer>
+        )}
+      </div>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         <div className="w-full md:w-72 border-b md:border-b-0 md:border-r flex-shrink-0 flex flex-col bg-muted/30 max-h-[40vh] md:max-h-none overflow-auto md:overflow-visible">
