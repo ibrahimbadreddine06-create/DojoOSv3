@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface MetricData {
-  themeId: string;
-  themeName: string;
+  topicId: string;
+  topicName: string;
   date: string;
   completion: string;
 }
@@ -45,7 +45,7 @@ export default function Languages() {
   const queryClient = useQueryClient();
 
   const { data: languages, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/knowledge-themes", "language"],
+    queryKey: ["/api/knowledge-topics", "language"],
   });
 
   const { data: metricsData } = useQuery<any[]>({
@@ -56,8 +56,8 @@ export default function Languages() {
     if (!metricsData) return {};
     const latest: Record<string, { completion: number; importance: number }> = {};
     for (const m of metricsData) {
-      if (!latest[m.themeId] || m.date > (metricsData.find(x => x.themeId === m.themeId && latest[m.themeId])?.date || '')) {
-        latest[m.themeId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
+      if (!latest[m.topicId] || m.date > (metricsData.find(x => x.topicId === m.topicId && latest[m.topicId])?.date || '')) {
+        latest[m.topicId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
       }
     }
     return latest;
@@ -65,12 +65,12 @@ export default function Languages() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/knowledge-themes/${id}`);
+      return await apiRequest("DELETE", `/api/knowledge-topics/${id}`);
     },
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-themes", "language"] });
-      const previous = queryClient.getQueryData(["/api/knowledge-themes", "language"]);
-      queryClient.setQueryData(["/api/knowledge-themes", "language"], (old: any[]) =>
+      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-topics", "language"] });
+      const previous = queryClient.getQueryData(["/api/knowledge-topics", "language"]);
+      queryClient.setQueryData(["/api/knowledge-topics", "language"], (old: any[]) =>
         old.filter((lang) => lang.id !== id)
       );
       return { previous };
@@ -81,7 +81,7 @@ export default function Languages() {
     },
     onError: (err, id, context: any) => {
       if (context?.previous) {
-        queryClient.setQueryData(["/api/knowledge-themes", "language"], context.previous);
+        queryClient.setQueryData(["/api/knowledge-topics", "language"], context.previous);
       }
       toast({ title: "Failed to delete language", variant: "destructive" });
     },
@@ -96,24 +96,24 @@ export default function Languages() {
     const existingLanguageNames = new Set(languages.map(l => l.name));
 
     const dateMap = new Map<string, Record<string, number>>();
-    const themeNames = new Set<string>();
+    const topicNames = new Set<string>();
 
     // Filter metrics to only include currently existing languages
     for (const m of metricsData) {
-      if (!existingLanguageNames.has(m.themeName)) continue;
+      if (!existingLanguageNames.has(m.topicName)) continue;
       const completionVal = parseFloat(m.completion);
       if (isNaN(completionVal)) continue;
-      themeNames.add(m.themeName);
+      topicNames.add(m.topicName);
       if (!dateMap.has(m.date)) {
         dateMap.set(m.date, {});
       }
-      dateMap.get(m.date)![m.themeName] = completionVal;
+      dateMap.get(m.date)![m.topicName] = completionVal;
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
     
     // Build continuous data with all languages on each date (fill gaps with previous value or 0)
-    const languageNames = Array.from(themeNames).sort();
+    const languageNames = Array.from(topicNames).sort();
     const data = sortedDates.map((date, idx) => {
       const dayData: Record<string, string | number> = {
         date: format(parseISO(date), "MMM d"),

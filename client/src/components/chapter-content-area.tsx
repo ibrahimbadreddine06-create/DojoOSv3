@@ -28,7 +28,7 @@ import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
-  themeId?: string;
+  topicId?: string;
   courseId?: string;
   onNotesChange?: (notes: string) => void;
 }
@@ -111,12 +111,12 @@ function FlashcardCircleChart({ flashcards }: { flashcards: Flashcard[] }) {
 
 function AddMaterialDialog({
   chapterId,
-  themeId,
+  topicId,
   courseId,
   onClose,
 }: {
   chapterId: string;
-  themeId?: string;
+  topicId?: string;
   courseId?: string;
   onClose: () => void;
 }) {
@@ -126,7 +126,7 @@ function AddMaterialDialog({
   const [content, setContent] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { type: string; title: string; url?: string; content?: string; chapterId: string; themeId?: string; courseId?: string }) => {
+    mutationFn: async (data: { type: string; title: string; url?: string; content?: string; chapterId: string; topicId?: string; courseId?: string }) => {
       return apiRequest("POST", "/api/materials", data);
     },
     onSuccess: () => {
@@ -144,7 +144,7 @@ function AddMaterialDialog({
       url: url.trim() || undefined,
       content: content.trim() || undefined,
       chapterId,
-      themeId,
+      topicId,
       courseId,
     });
   };
@@ -210,12 +210,12 @@ function AddMaterialDialog({
 
 function AddFlashcardDialog({
   chapterId,
-  themeId,
+  topicId,
   courseId,
   onClose,
 }: {
   chapterId: string;
-  themeId?: string;
+  topicId?: string;
   courseId?: string;
   onClose: () => void;
 }) {
@@ -223,7 +223,7 @@ function AddFlashcardDialog({
   const [back, setBack] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { front: string; back: string; chapterId: string; themeId?: string; courseId?: string }) => {
+    mutationFn: async (data: { front: string; back: string; chapterId: string; topicId?: string; courseId?: string }) => {
       return apiRequest("POST", "/api/flashcards", data);
     },
     onSuccess: () => {
@@ -240,7 +240,7 @@ function AddFlashcardDialog({
       front: front.trim(),
       back: back.trim(),
       chapterId,
-      themeId,
+      topicId,
       courseId,
     });
   };
@@ -280,7 +280,7 @@ function AddFlashcardDialog({
   );
 }
 
-export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }: ChapterContentAreaProps) {
+export function ChapterContentArea({ chapter, topicId, courseId, onNotesChange }: ChapterContentAreaProps) {
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
   const [learningSessionOpen, setLearningSessionOpen] = useState(false);
@@ -357,7 +357,7 @@ export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }
                 </DialogHeader>
                 <AddMaterialDialog
                   chapterId={chapter.id}
-                  themeId={themeId}
+                  topicId={topicId}
                   courseId={courseId}
                   onClose={() => setAddMaterialOpen(false)}
                 />
@@ -431,7 +431,7 @@ export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }
                 </DialogHeader>
                 <AddFlashcardDialog
                   chapterId={chapter.id}
-                  themeId={themeId}
+                  topicId={topicId}
                   courseId={courseId}
                   onClose={() => setAddFlashcardOpen(false)}
                 />
@@ -472,7 +472,7 @@ export function ChapterContentArea({ chapter, themeId, courseId, onNotesChange }
       <LearningSession
         flashcards={flashcards}
         chapterId={chapter.id}
-        themeId={themeId}
+        topicId={topicId}
         courseId={courseId}
         open={learningSessionOpen}
         onClose={() => setLearningSessionOpen(false)}

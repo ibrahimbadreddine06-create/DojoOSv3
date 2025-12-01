@@ -20,7 +20,7 @@ import type { Flashcard, LearnPlanItem } from "@shared/schema";
 interface LearningSesionProps {
   flashcards: Flashcard[];
   chapterId: string;
-  themeId?: string;
+  topicId?: string;
   courseId?: string;
   open: boolean;
   onClose: () => void;
@@ -151,7 +151,7 @@ function FlashcardCard({
 export function LearningSession({
   flashcards,
   chapterId,
-  themeId,
+  topicId,
   courseId,
   open,
   onClose,
@@ -190,17 +190,17 @@ export function LearningSession({
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flashcards/chapter", chapterId] });
       
-      const entityId = themeId || courseId;
+      const entityId = topicId || courseId;
       if (entityId) {
-        if (themeId) {
-          await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/theme", themeId] });
+        if (topicId) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/theme", topicId] });
         }
         if (courseId) {
           await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/course", courseId] });
         }
         
-        const chaptersKey = themeId ? ["/api/learn-plan-items", themeId] : ["/api/learn-plan-items/course", courseId];
-        const flashcardsKey = themeId ? ["/api/flashcards/theme", themeId] : ["/api/flashcards/course", courseId];
+        const chaptersKey = topicId ? ["/api/learn-plan-items", topicId] : ["/api/learn-plan-items/course", courseId];
+        const flashcardsKey = topicId ? ["/api/flashcards/theme", topicId] : ["/api/flashcards/course", courseId];
         
         const chapters = queryClient.getQueryData<LearnPlanItem[]>(chaptersKey);
         const allFlashcards = queryClient.getQueryData<Flashcard[]>(flashcardsKey) || [];

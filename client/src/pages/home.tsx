@@ -148,7 +148,7 @@ function GoalsBox() {
 
 function SecondBrainBox() {
   const { data: themes = [], isLoading } = useQuery<KnowledgeTopic[]>({
-    queryKey: ["/api/knowledge-themes", "second_brain"],
+    queryKey: ["/api/knowledge-topics", "second_brain"],
   });
 
   return (
@@ -186,7 +186,7 @@ function SecondBrainBox() {
 
 function LanguagesBox() {
   const { data: languages = [], isLoading } = useQuery<KnowledgeTopic[]>({
-    queryKey: ["/api/knowledge-themes", "language"],
+    queryKey: ["/api/knowledge-topics", "language"],
   });
 
   return (

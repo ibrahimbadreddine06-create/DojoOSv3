@@ -82,7 +82,7 @@ export function AddTimeBlockDialog({
   const selectedModule = form.watch("linkedModule");
 
   const { data: linkedItems } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["/api/knowledge-themes", selectedModule],
+    queryKey: ["/api/knowledge-topics", selectedModule],
     enabled: !!selectedModule,
   });
 

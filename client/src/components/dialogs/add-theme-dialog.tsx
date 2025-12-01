@@ -29,10 +29,10 @@ export function AddThemeDialog({ type, trigger }: AddThemeDialogProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; description?: string; type: string }) => {
-      return await apiRequest("POST", "/api/knowledge-themes", data);
+      return await apiRequest("POST", "/api/knowledge-topics", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-themes", type] });
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-topics", type] });
       toast({ title: `${type === "language" ? "Language" : "Theme"} created successfully` });
       setOpen(false);
       resetForm();

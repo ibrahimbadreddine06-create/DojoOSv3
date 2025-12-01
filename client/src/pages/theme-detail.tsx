@@ -189,11 +189,11 @@ function ChapterItem({
 }
 
 function AddChapterDialog({ 
-  themeId, 
+  topicId, 
   parentId = null, 
   onClose 
 }: { 
-  themeId: string; 
+  topicId: string; 
   parentId?: string | null;
   onClose: () => void;
 }) {
@@ -201,11 +201,11 @@ function AddChapterDialog({
   const [importance, setImportance] = useState(3);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { themeId: string; parentId?: string | null; title: string; importance: number }) => {
+    mutationFn: async (data: { topicId: string; parentId?: string | null; title: string; importance: number }) => {
       return apiRequest("POST", "/api/learn-plan-items", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] });
       onClose();
     },
   });
@@ -213,7 +213,7 @@ function AddChapterDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    createMutation.mutate({ themeId, parentId, title: title.trim(), importance });
+    createMutation.mutate({ topicId, parentId, title: title.trim(), importance });
   };
 
   return (
@@ -263,7 +263,7 @@ export default function ThemeDetail() {
   const [matchLanguage, paramsLanguage] = useRoute("/languages/:id");
   
   const isSecondBrain = matchSecondBrain;
-  const themeId = isSecondBrain ? paramsSecondBrain?.id : paramsLanguage?.id;
+  const topicId = isSecondBrain ? paramsSecondBrain?.id : paramsLanguage?.id;
   const backPath = isSecondBrain ? "/second-brain" : "/languages";
   const moduleType = isSecondBrain ? "second_brain" : "language";
 
@@ -272,22 +272,22 @@ export default function ThemeDetail() {
   const [parentIdForNew, setParentIdForNew] = useState<string | null>(null);
 
   const { data: theme, isLoading: themeLoading } = useQuery<KnowledgeTopic>({
-    queryKey: ["/api/knowledge-themes/detail", themeId],
+    queryKey: ["/api/knowledge-topics/detail", topicId],
   });
 
   const { data: chapters = [], isLoading: chaptersLoading } = useQuery<LearnPlanItem[]>({
-    queryKey: ["/api/learn-plan-items", themeId],
-    enabled: !!themeId,
+    queryKey: ["/api/learn-plan-items", topicId],
+    enabled: !!topicId,
   });
 
   const { data: flashcards = [] } = useQuery<Flashcard[]>({
-    queryKey: ["/api/flashcards/theme", themeId],
-    enabled: !!themeId,
+    queryKey: ["/api/flashcards/theme", topicId],
+    enabled: !!topicId,
   });
 
   const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({
-    queryKey: ["/api/knowledge-metrics", themeId],
-    enabled: !!themeId,
+    queryKey: ["/api/knowledge-metrics", topicId],
+    enabled: !!topicId,
   });
 
   const [metricsOpen, setMetricsOpen] = useState(false);
@@ -322,19 +322,19 @@ export default function ThemeDetail() {
       return apiRequest("PATCH", `/api/learn-plan-items/${id}`, data);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
-      const updatedChapters = queryClient.getQueryData<LearnPlanItem[]>(["/api/learn-plan-items", themeId]);
-      const updatedFlashcards = queryClient.getQueryData<Flashcard[]>(["/api/flashcards/theme", themeId]) || [];
+      await queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] });
+      const updatedChapters = queryClient.getQueryData<LearnPlanItem[]>(["/api/learn-plan-items", topicId]);
+      const updatedFlashcards = queryClient.getQueryData<Flashcard[]>(["/api/flashcards/theme", topicId]) || [];
       
-      if (updatedChapters && updatedChapters.length > 0 && themeId) {
+      if (updatedChapters && updatedChapters.length > 0 && topicId) {
         const total = updatedChapters.length;
         const completed = updatedChapters.filter(c => c.completed).length;
         const completion = Math.round((completed / total) * 100);
         const readiness = calculateReadinessWithDecay(updatedFlashcards);
         
         const today = format(new Date(), "yyyy-MM-dd");
-        await apiRequest("PUT", `/api/knowledge-metrics/${themeId}/${today}`, { completion, readiness });
-        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", themeId] });
+        await apiRequest("PUT", `/api/knowledge-metrics/${topicId}/${today}`, { completion, readiness });
+        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", topicId] });
       }
     },
   });
@@ -344,7 +344,7 @@ export default function ThemeDetail() {
       return apiRequest("DELETE", `/api/learn-plan-items/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] });
       if (selectedChapterId) {
         setSelectedChapterId(null);
       }
@@ -491,7 +491,7 @@ export default function ThemeDetail() {
                   </DialogTitle>
                 </DialogHeader>
                 <AddChapterDialog
-                  themeId={themeId!}
+                  topicId={topicId!}
                   parentId={parentIdForNew}
                   onClose={() => {
                     setAddChapterOpen(false);
@@ -550,9 +550,9 @@ export default function ThemeDetail() {
               <div className="max-w-3xl mx-auto">
                 <ChapterContentArea 
                   chapter={selectedChapter} 
-                  themeId={themeId}
+                  topicId={topicId}
                   onNotesChange={() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", themeId] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] });
                   }}
                 />
               </div>
@@ -570,7 +570,7 @@ export default function ThemeDetail() {
 
           <div className="border-t p-4 bg-muted/20">
             <h3 className="font-medium text-sm mb-3">Today's Sessions</h3>
-            <TodaySessions module={moduleType as "second_brain" | "languages"} itemId={themeId} />
+            <TodaySessions module={moduleType as "second_brain" | "languages"} itemId={topicId} />
           </div>
         </div>
       </div>

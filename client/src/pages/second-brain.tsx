@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface MetricData {
-  themeId: string;
-  themeName: string;
+  topicId: string;
+  topicName: string;
   date: string;
   completion: string;
 }
@@ -45,7 +45,7 @@ export default function SecondBrain() {
   const queryClient = useQueryClient();
 
   const { data: themes, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/knowledge-themes", "second_brain"],
+    queryKey: ["/api/knowledge-topics", "second_brain"],
   });
 
   const { data: metricsData } = useQuery<any[]>({
@@ -56,8 +56,8 @@ export default function SecondBrain() {
     if (!metricsData) return {};
     const latest: Record<string, { completion: number; importance: number }> = {};
     for (const m of metricsData) {
-      if (!latest[m.themeId] || m.date > (metricsData.find(x => x.themeId === m.themeId && latest[m.themeId])?.date || '')) {
-        latest[m.themeId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
+      if (!latest[m.topicId] || m.date > (metricsData.find(x => x.topicId === m.topicId && latest[m.topicId])?.date || '')) {
+        latest[m.topicId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
       }
     }
     return latest;
@@ -65,12 +65,12 @@ export default function SecondBrain() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/knowledge-themes/${id}`);
+      return await apiRequest("DELETE", `/api/knowledge-topics/${id}`);
     },
     onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-themes", "second_brain"] });
-      const previous = queryClient.getQueryData(["/api/knowledge-themes", "second_brain"]);
-      queryClient.setQueryData(["/api/knowledge-themes", "second_brain"], (old: any[]) =>
+      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-topics", "second_brain"] });
+      const previous = queryClient.getQueryData(["/api/knowledge-topics", "second_brain"]);
+      queryClient.setQueryData(["/api/knowledge-topics", "second_brain"], (old: any[]) =>
         old.filter((theme) => theme.id !== id)
       );
       return { previous };
@@ -81,7 +81,7 @@ export default function SecondBrain() {
     },
     onError: (err, id, context: any) => {
       if (context?.previous) {
-        queryClient.setQueryData(["/api/knowledge-themes", "second_brain"], context.previous);
+        queryClient.setQueryData(["/api/knowledge-topics", "second_brain"], context.previous);
       }
       toast({ title: "Failed to delete theme", variant: "destructive" });
     },
@@ -96,44 +96,44 @@ export default function SecondBrain() {
     const existingThemeNames = new Set(themes.map(t => t.name));
 
     const dateMap = new Map<string, Record<string, number>>();
-    const themeNames = new Set<string>();
+    const topicNames = new Set<string>();
 
     // Filter metrics to only include currently existing themes
     for (const m of metricsData) {
-      if (!existingThemeNames.has(m.themeName)) continue;
+      if (!existingThemeNames.has(m.topicName)) continue;
       const completionVal = parseFloat(m.completion);
       if (isNaN(completionVal)) continue;
-      themeNames.add(m.themeName);
+      topicNames.add(m.topicName);
       if (!dateMap.has(m.date)) {
         dateMap.set(m.date, {});
       }
-      dateMap.get(m.date)![m.themeName] = completionVal;
+      dateMap.get(m.date)![m.topicName] = completionVal;
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
     
     // Build continuous data with all themes on each date (fill gaps with previous value or 0)
-    const themeNamesList = Array.from(themeNames).sort();
+    const topicNamesList = Array.from(topicNames).sort();
     const data = sortedDates.map((date, idx) => {
       const dayData: Record<string, string | number> = {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
       
-      for (const themeName of themeNamesList) {
+      for (const topicName of topicNamesList) {
         // Get value for this date, or use previous value, or default to 0
-        if (dateMap.get(date)?.[themeName] !== undefined) {
-          dayData[themeName] = dateMap.get(date)![themeName];
+        if (dateMap.get(date)?.[topicName] !== undefined) {
+          dayData[topicName] = dateMap.get(date)![topicName];
         } else {
           // Find last known value
           let lastValue = 0;
           for (let i = idx - 1; i >= 0; i--) {
-            if (dateMap.get(sortedDates[i])?.[themeName] !== undefined) {
-              lastValue = dateMap.get(sortedDates[i])![themeName];
+            if (dateMap.get(sortedDates[i])?.[topicName] !== undefined) {
+              lastValue = dateMap.get(sortedDates[i])![topicName];
               break;
             }
           }
-          dayData[themeName] = lastValue;
+          dayData[topicName] = lastValue;
         }
       }
       return dayData;
@@ -141,7 +141,7 @@ export default function SecondBrain() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of themeNamesList) {
+    for (const name of topicNamesList) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],
