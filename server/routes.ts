@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
-  insertGoalSchema, insertKnowledgeThemeSchema, insertLearnPlanItemSchema,
+  insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
   insertMaterialSchema, insertFlashcardSchema, insertWorkoutSchema, insertExerciseSchema,
   insertIntakeLogSchema, insertSleepLogSchema, insertHygieneRoutineSchema,
   insertSalahLogSchema, insertQuranLogSchema, insertDhikrLogSchema, insertDuaLogSchema,
@@ -145,24 +145,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== KNOWLEDGE TRACKING =====
-  app.get("/api/knowledge-themes/:type", isAuthenticated, async (req, res) => {
-    const themes = await storage.getKnowledgeThemes(req.params.type);
+  app.get("/api/knowledge-topics/:type", isAuthenticated, async (req, res) => {
+    const themes = await storage.getKnowledgeTopics(req.params.type);
     res.json(themes);
   });
 
-  app.get("/api/knowledge-themes/detail/:id", isAuthenticated, async (req, res) => {
-    const theme = await storage.getKnowledgeTheme(req.params.id);
+  app.get("/api/knowledge-topics/detail/:id", isAuthenticated, async (req, res) => {
+    const theme = await storage.getKnowledgeTopic(req.params.id);
     res.json(theme);
   });
 
-  app.post("/api/knowledge-themes", isAuthenticated, async (req, res) => {
-    const data = insertKnowledgeThemeSchema.parse(req.body);
-    const theme = await storage.createKnowledgeTheme(data);
+  app.post("/api/knowledge-topics", isAuthenticated, async (req, res) => {
+    const data = insertKnowledgeTopicSchema.parse(req.body);
+    const theme = await storage.createKnowledgeTopic(data);
     res.json(theme);
   });
 
-  app.delete("/api/knowledge-themes/:id", isAuthenticated, async (req, res) => {
-    await storage.deleteKnowledgeTheme(req.params.id);
+  app.delete("/api/knowledge-topics/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteKnowledgeTopic(req.params.id);
     res.json({ success: true });
   });
 
@@ -172,9 +172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(items);
   });
 
-  // Route for theme chapters (less specific, matches any :themeId)
-  app.get("/api/learn-plan-items/:themeId", isAuthenticated, async (req, res) => {
-    const items = await storage.getLearnPlanItems(req.params.themeId);
+  // Route for theme chapters (less specific, matches any :topicId)
+  app.get("/api/learn-plan-items/:topicId", isAuthenticated, async (req, res) => {
+    const items = await storage.getLearnPlanItems(req.params.topicId);
     res.json(items);
   });
 
@@ -205,8 +205,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(materials);
   });
 
-  app.get("/api/materials/:themeId", isAuthenticated, async (req, res) => {
-    const materials = await storage.getMaterials(req.params.themeId);
+  app.get("/api/materials/:topicId", isAuthenticated, async (req, res) => {
+    const materials = await storage.getMaterials(req.params.topicId);
     res.json(materials);
   });
 
@@ -237,8 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(flashcards);
   });
 
-  app.get("/api/flashcards/theme/:themeId", isAuthenticated, async (req, res) => {
-    const flashcards = await storage.getFlashcardsByTheme(req.params.themeId);
+  app.get("/api/flashcards/theme/:topicId", isAuthenticated, async (req, res) => {
+    const flashcards = await storage.getFlashcardsByTheme(req.params.topicId);
     res.json(flashcards);
   });
 
@@ -569,8 +569,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metric);
   });
 
-  app.get("/api/knowledge-metrics/:themeId", isAuthenticated, async (req, res) => {
-    const metrics = await storage.getKnowledgeMetrics(req.params.themeId);
+  app.get("/api/knowledge-metrics/:topicId", isAuthenticated, async (req, res) => {
+    const metrics = await storage.getKnowledgeMetrics(req.params.topicId);
     res.json(metrics);
   });
 
@@ -579,9 +579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metrics);
   });
 
-  app.put("/api/knowledge-metrics/:themeId/:date", isAuthenticated, async (req, res) => {
+  app.put("/api/knowledge-metrics/:topicId/:date", isAuthenticated, async (req, res) => {
     const { completion, readiness } = req.body;
-    const metric = await storage.upsertKnowledgeMetric(req.params.themeId, req.params.date, completion, readiness);
+    const metric = await storage.upsertKnowledgeMetric(req.params.topicId, req.params.date, completion, readiness);
     res.json(metric);
   });
 

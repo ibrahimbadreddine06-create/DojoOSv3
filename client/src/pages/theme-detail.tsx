@@ -28,7 +28,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
-import type { KnowledgeTheme, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
+import type { KnowledgeTopic, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
 
 interface ChapterWithChildren extends LearnPlanItem {
   children: ChapterWithChildren[];
@@ -271,7 +271,7 @@ export default function ThemeDetail() {
   const [addChapterOpen, setAddChapterOpen] = useState(false);
   const [parentIdForNew, setParentIdForNew] = useState<string | null>(null);
 
-  const { data: theme, isLoading: themeLoading } = useQuery<KnowledgeTheme>({
+  const { data: theme, isLoading: themeLoading } = useQuery<KnowledgeTopic>({
     queryKey: ["/api/knowledge-themes/detail", themeId],
   });
 

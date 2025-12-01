@@ -19,7 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import type { Goal, KnowledgeTheme, Course, TimeBlock, PageSetting } from "@shared/schema";
+import type { Goal, KnowledgeTopic, Course, TimeBlock, PageSetting } from "@shared/schema";
 
 type BentoSize = "1x1" | "2x1";
 
@@ -147,7 +147,7 @@ function GoalsBox() {
 }
 
 function SecondBrainBox() {
-  const { data: themes = [], isLoading } = useQuery<KnowledgeTheme[]>({
+  const { data: themes = [], isLoading } = useQuery<KnowledgeTopic[]>({
     queryKey: ["/api/knowledge-themes", "second_brain"],
   });
 
@@ -185,7 +185,7 @@ function SecondBrainBox() {
 }
 
 function LanguagesBox() {
-  const { data: languages = [], isLoading } = useQuery<KnowledgeTheme[]>({
+  const { data: languages = [], isLoading } = useQuery<KnowledgeTopic[]>({
     queryKey: ["/api/knowledge-themes", "language"],
   });
 

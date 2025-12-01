@@ -123,7 +123,7 @@ export const goalsRelations = relations(goals, ({ one, many }) => ({
 }));
 
 // ===== KNOWLEDGE TRACKING (Second Brain, Languages, Disciplines) =====
-export const knowledgeThemes = pgTable("knowledge_themes", {
+export const knowledgeTopics = pgTable("knowledge_topics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   type: text("type").notNull(), // "second_brain", "language", "discipline"
   name: text("name").notNull(),
@@ -133,7 +133,7 @@ export const knowledgeThemes = pgTable("knowledge_themes", {
 
 export const learnPlanItems = pgTable("learn_plan_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id"), // For Second Brain / Languages
+  topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
   parentId: varchar("parent_id"), // For nested chapters (infinite depth: 1.1 → 1.1.1 → 1.1.1.1)
   title: text("title").notNull(),
@@ -146,7 +146,7 @@ export const learnPlanItems = pgTable("learn_plan_items", {
 
 export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id"), // For Second Brain / Languages
+  topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
   chapterId: varchar("chapter_id"), // Optional: link material to specific chapter
   type: text("type").notNull(), // "pdf", "video", "link", "file"
@@ -158,7 +158,7 @@ export const materials = pgTable("materials", {
 
 export const flashcards = pgTable("flashcards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id"), // For Second Brain / Languages
+  topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
   chapterId: varchar("chapter_id"), // Optional: link to specific chapter
   front: text("front").notNull(),
@@ -173,22 +173,22 @@ export const flashcards = pgTable("flashcards", {
 
 export const knowledgeMetrics = pgTable("knowledge_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  themeId: varchar("theme_id").notNull(),
+  topicId: varchar("topic_id").notNull(),
   date: date("date").notNull(),
   completion: decimal("completion", { precision: 5, scale: 2 }).notNull(), // Percentage
   readiness: decimal("readiness", { precision: 5, scale: 2 }).notNull(), // Percentage
 });
 
-export const knowledgeThemesRelations = relations(knowledgeThemes, ({ many }) => ({
+export const knowledgeTopicsRelations = relations(knowledgeTopics, ({ many }) => ({
   learnPlanItems: many(learnPlanItems),
   materials: many(materials),
   metrics: many(knowledgeMetrics),
 }));
 
 export const learnPlanItemsRelations = relations(learnPlanItems, ({ one, many }) => ({
-  theme: one(knowledgeThemes, {
-    fields: [learnPlanItems.themeId],
-    references: [knowledgeThemes.id],
+  topic: one(knowledgeTopics, {
+    fields: [learnPlanItems.topicId],
+    references: [knowledgeTopics.id],
   }),
   course: one(courses, {
     fields: [learnPlanItems.courseId],
@@ -203,9 +203,9 @@ export const learnPlanItemsRelations = relations(learnPlanItems, ({ one, many })
 }));
 
 export const materialsRelations = relations(materials, ({ one, many }) => ({
-  theme: one(knowledgeThemes, {
-    fields: [materials.themeId],
-    references: [knowledgeThemes.id],
+  topic: one(knowledgeTopics, {
+    fields: [materials.topicId],
+    references: [knowledgeTopics.id],
   }),
   course: one(courses, {
     fields: [materials.courseId],
@@ -219,9 +219,9 @@ export const materialsRelations = relations(materials, ({ one, many }) => ({
 }));
 
 export const flashcardsRelations = relations(flashcards, ({ one }) => ({
-  theme: one(knowledgeThemes, {
-    fields: [flashcards.themeId],
-    references: [knowledgeThemes.id],
+  topic: one(knowledgeTopics, {
+    fields: [flashcards.topicId],
+    references: [knowledgeTopics.id],
   }),
   course: one(courses, {
     fields: [flashcards.courseId],
@@ -234,9 +234,9 @@ export const flashcardsRelations = relations(flashcards, ({ one }) => ({
 }));
 
 export const knowledgeMetricsRelations = relations(knowledgeMetrics, ({ one }) => ({
-  theme: one(knowledgeThemes, {
-    fields: [knowledgeMetrics.themeId],
-    references: [knowledgeThemes.id],
+  topic: one(knowledgeTopics, {
+    fields: [knowledgeMetrics.topicId],
+    references: [knowledgeTopics.id],
   }),
 }));
 
@@ -539,7 +539,7 @@ export const insertTimeBlockSchema = createInsertSchema(timeBlocks).omit({ id: t
 export const insertDayPresetSchema = createInsertSchema(dayPresets).omit({ id: true, createdAt: true });
 export const insertActivityPresetSchema = createInsertSchema(activityPresets).omit({ id: true, createdAt: true });
 export const insertGoalSchema = createInsertSchema(goals).omit({ id: true, createdAt: true, completedAt: true });
-export const insertKnowledgeThemeSchema = createInsertSchema(knowledgeThemes).omit({ id: true, createdAt: true });
+export const insertKnowledgeTopicSchema = createInsertSchema(knowledgeTopics).omit({ id: true, createdAt: true });
 export const insertLearnPlanItemSchema = createInsertSchema(learnPlanItems).omit({ id: true, createdAt: true });
 export const insertMaterialSchema = createInsertSchema(materials).omit({ id: true, createdAt: true });
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true, createdAt: true });
@@ -577,8 +577,8 @@ export type ActivityPreset = typeof activityPresets.$inferSelect;
 export type InsertActivityPreset = z.infer<typeof insertActivityPresetSchema>;
 export type Goal = typeof goals.$inferSelect;
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
-export type KnowledgeTheme = typeof knowledgeThemes.$inferSelect;
-export type InsertKnowledgeTheme = z.infer<typeof insertKnowledgeThemeSchema>;
+export type KnowledgeTopic = typeof knowledgeTopics.$inferSelect;
+export type InsertKnowledgeTopic = z.infer<typeof insertKnowledgeTopicSchema>;
 export type LearnPlanItem = typeof learnPlanItems.$inferSelect;
 export type InsertLearnPlanItem = z.infer<typeof insertLearnPlanItemSchema>;
 export type Material = typeof materials.$inferSelect;

@@ -1,6 +1,6 @@
 // Referenced from javascript_database blueprint - comprehensive storage for all Dojo OS modules
 import {
-  users, timeBlocks, dayPresets, activityPresets, goals, knowledgeThemes, learnPlanItems,
+  users, timeBlocks, dayPresets, activityPresets, goals, knowledgeTopics, learnPlanItems,
   materials, flashcards, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, courseMetrics, businesses, workProjects, tasks,
@@ -8,7 +8,7 @@ import {
   type User, type UpsertUser,
   type TimeBlock, type InsertTimeBlock, type DayPreset, type InsertDayPreset,
   type ActivityPreset, type InsertActivityPreset, type Goal, type InsertGoal,
-  type KnowledgeTheme, type InsertKnowledgeTheme, type LearnPlanItem, type InsertLearnPlanItem,
+  type KnowledgeTopic, type InsertKnowledgeTopic, type LearnPlanItem, type InsertLearnPlanItem,
   type Material, type InsertMaterial, type Flashcard, type InsertFlashcard,
   type Workout, type InsertWorkout, type Exercise, type InsertExercise,
   type IntakeLog, type InsertIntakeLog, type SleepLog, type InsertSleepLog,
@@ -54,21 +54,21 @@ export interface IStorage {
   deleteGoal(id: string): Promise<void>;
 
   // Knowledge Tracking
-  getKnowledgeThemes(type: string): Promise<KnowledgeTheme[]>;
-  getKnowledgeTheme(id: string): Promise<KnowledgeTheme | undefined>;
-  createKnowledgeTheme(data: InsertKnowledgeTheme): Promise<KnowledgeTheme>;
-  getLearnPlanItems(themeId: string): Promise<LearnPlanItem[]>;
+  getKnowledgeTopics(type: string): Promise<KnowledgeTopic[]>;
+  getKnowledgeTopic(id: string): Promise<KnowledgeTopic | undefined>;
+  createKnowledgeTopic(data: InsertKnowledgeTheme): Promise<KnowledgeTopic>;
+  getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]>;
   getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]>;
   createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem>;
   updateLearnPlanItem(id: string, data: Partial<InsertLearnPlanItem>): Promise<LearnPlanItem>;
   deleteLearnPlanItem(id: string): Promise<void>;
-  getMaterials(themeId: string): Promise<Material[]>;
+  getMaterials(topicId: string): Promise<Material[]>;
   getMaterialsByCourse(courseId: string): Promise<Material[]>;
   getMaterialsByChapter(chapterId: string): Promise<Material[]>;
   createMaterial(data: InsertMaterial): Promise<Material>;
   updateMaterial(id: string, data: Partial<InsertMaterial>): Promise<Material>;
   deleteMaterial(id: string): Promise<void>;
-  getFlashcardsByTheme(themeId: string): Promise<Flashcard[]>;
+  getFlashcardsByTheme(topicId: string): Promise<Flashcard[]>;
   getFlashcardsByCourse(courseId: string): Promise<Flashcard[]>;
   getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]>;
   createFlashcard(data: InsertFlashcard): Promise<Flashcard>;
@@ -145,9 +145,9 @@ export interface IStorage {
   getAllDailyMetrics(): Promise<DailyMetric[]>;
   upsertDailyMetric(date: string, completion: number): Promise<DailyMetric>;
   createDailyMetric(data: InsertDailyMetric): Promise<DailyMetric>;
-  getKnowledgeMetrics(themeId: string): Promise<KnowledgeMetric[]>;
-  getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string }[]>;
-  upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric>;
+  getKnowledgeMetrics(topicId: string): Promise<KnowledgeMetric[]>;
+  getAllKnowledgeMetricsByType(type: string): Promise<{ topicId: string; themeName: string; date: string; completion: string }[]>;
+  upsertKnowledgeMetric(topicId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric>;
   getCourseMetrics(courseId: string): Promise<CourseMetric[]>;
   getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string }[]>;
   upsertCourseMetric(courseId: string, date: string, completion: number): Promise<CourseMetric>;
@@ -294,27 +294,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Knowledge Tracking
-  async getKnowledgeThemes(type: string): Promise<KnowledgeTheme[]> {
-    return await db.select().from(knowledgeThemes).where(eq(knowledgeThemes.type, type));
+  async getKnowledgeTopics(type: string): Promise<KnowledgeTopic[]> {
+    return await db.select().from(knowledgeTopics).where(eq(knowledgeTopics.type, type));
   }
 
-  async getKnowledgeTheme(id: string): Promise<KnowledgeTheme | undefined> {
-    const [theme] = await db.select().from(knowledgeThemes).where(eq(knowledgeThemes.id, id));
+  async getKnowledgeTopic(id: string): Promise<KnowledgeTopic | undefined> {
+    const [theme] = await db.select().from(knowledgeTopics).where(eq(knowledgeTopics.id, id));
     return theme;
   }
 
-  async createKnowledgeTheme(data: InsertKnowledgeTheme): Promise<KnowledgeTheme> {
-    const [theme] = await db.insert(knowledgeThemes).values(data).returning();
+  async createKnowledgeTopic(data: InsertKnowledgeTheme): Promise<KnowledgeTopic> {
+    const [theme] = await db.insert(knowledgeTopics).values(data).returning();
     return theme;
   }
 
-  async deleteKnowledgeTheme(id: string): Promise<void> {
-    await db.delete(knowledgeMetrics).where(eq(knowledgeMetrics.themeId, id));
-    await db.delete(knowledgeThemes).where(eq(knowledgeThemes.id, id));
+  async deleteKnowledgeTopic(id: string): Promise<void> {
+    await db.delete(knowledgeMetrics).where(eq(knowledgeMetrics.topicId, id));
+    await db.delete(knowledgeTopics).where(eq(knowledgeTopics.id, id));
   }
 
-  async calculateWeightedCompletion(themeId: string): Promise<number> {
-    const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId));
+  async calculateWeightedCompletion(topicId: string): Promise<number> {
+    const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.topicId, topicId));
     if (items.length === 0) return 0;
     
     let totalWeight = 0;
@@ -349,8 +349,8 @@ export class DatabaseStorage implements IStorage {
     return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
   }
 
-  async getLearnPlanItems(themeId: string): Promise<LearnPlanItem[]> {
-    return await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId)).orderBy(asc(learnPlanItems.order));
+  async getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]> {
+    return await db.select().from(learnPlanItems).where(eq(learnPlanItems.topicId, topicId)).orderBy(asc(learnPlanItems.order));
   }
 
   async getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]> {
@@ -371,8 +371,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(learnPlanItems).where(eq(learnPlanItems.id, id));
   }
 
-  async getMaterials(themeId: string): Promise<Material[]> {
-    return await db.select().from(materials).where(eq(materials.themeId, themeId));
+  async getMaterials(topicId: string): Promise<Material[]> {
+    return await db.select().from(materials).where(eq(materials.topicId, topicId));
   }
 
   async getMaterialsByCourse(courseId: string): Promise<Material[]> {
@@ -397,8 +397,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(materials).where(eq(materials.id, id));
   }
 
-  async getFlashcardsByTheme(themeId: string): Promise<Flashcard[]> {
-    return await db.select().from(flashcards).where(eq(flashcards.themeId, themeId));
+  async getFlashcardsByTheme(topicId: string): Promise<Flashcard[]> {
+    return await db.select().from(flashcards).where(eq(flashcards.topicId, topicId));
   }
 
   async getFlashcardsByCourse(courseId: string): Promise<Flashcard[]> {
@@ -695,49 +695,49 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getKnowledgeMetrics(themeId: string): Promise<KnowledgeMetric[]> {
+  async getKnowledgeMetrics(topicId: string): Promise<KnowledgeMetric[]> {
     return await db.select().from(knowledgeMetrics)
-      .where(eq(knowledgeMetrics.themeId, themeId))
+      .where(eq(knowledgeMetrics.topicId, topicId))
       .orderBy(asc(knowledgeMetrics.date));
   }
 
-  async upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric> {
-    const weightedCompletion = await this.calculateWeightedCompletion(themeId);
+  async upsertKnowledgeMetric(topicId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric> {
+    const weightedCompletion = await this.calculateWeightedCompletion(topicId);
     const [existing] = await db.select().from(knowledgeMetrics)
-      .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)));
+      .where(and(eq(knowledgeMetrics.topicId, topicId), eq(knowledgeMetrics.date, date)));
     
     if (existing) {
       const [updated] = await db.update(knowledgeMetrics)
         .set({ completion: weightedCompletion.toString(), readiness: readiness.toString() })
-        .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)))
+        .where(and(eq(knowledgeMetrics.topicId, topicId), eq(knowledgeMetrics.date, date)))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(knowledgeMetrics)
-        .values({ themeId, date, completion: weightedCompletion.toString(), readiness: readiness.toString() })
+        .values({ topicId, date, completion: weightedCompletion.toString(), readiness: readiness.toString() })
         .returning();
       return created;
     }
   }
 
-  async getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string; importance: number }[]> {
-    const themes = await db.select().from(knowledgeThemes).where(eq(knowledgeThemes.type, type));
-    const themeIds = themes.map(t => t.id);
+  async getAllKnowledgeMetricsByType(type: string): Promise<{ topicId: string; themeName: string; date: string; completion: string; importance: number }[]> {
+    const themes = await db.select().from(knowledgeTopics).where(eq(knowledgeTopics.type, type));
+    const topicIds = themes.map(t => t.id);
     
-    if (themeIds.length === 0) return [];
+    if (topicIds.length === 0) return [];
     
-    const allMetrics: { themeId: string; themeName: string; date: string; completion: string; importance: number }[] = [];
+    const allMetrics: { topicId: string; themeName: string; date: string; completion: string; importance: number }[] = [];
     
     for (const theme of themes) {
       const metrics = await db.select().from(knowledgeMetrics)
-        .where(eq(knowledgeMetrics.themeId, theme.id))
+        .where(eq(knowledgeMetrics.topicId, theme.id))
         .orderBy(asc(knowledgeMetrics.date));
       
       const importance = await this.calculateWeightedCompletion(theme.id);
       
       for (const m of metrics) {
         allMetrics.push({
-          themeId: theme.id,
+          topicId: theme.id,
           themeName: theme.name,
           date: m.date,
           completion: m.completion,
