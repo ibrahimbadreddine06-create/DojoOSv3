@@ -65,6 +65,7 @@ export default function Languages() {
       return { previous };
     },
     onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ["/api/knowledge-metrics-all", "language"] });
       toast({ title: "Language deleted" });
     },
     onError: (err, id, context: any) => {
@@ -80,10 +81,15 @@ export default function Languages() {
       return { chartData: [], chartConfig: {} };
     }
 
+    // Create a set of currently existing language names
+    const existingLanguageNames = new Set(languages.map(l => l.name));
+
     const dateMap = new Map<string, Record<string, number>>();
     const themeNames = new Set<string>();
 
+    // Filter metrics to only include currently existing languages
     for (const m of metricsData) {
+      if (!existingLanguageNames.has(m.themeName)) continue;
       const completionVal = parseFloat(m.completion);
       if (isNaN(completionVal)) continue;
       themeNames.add(m.themeName);
@@ -94,15 +100,37 @@ export default function Languages() {
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
-    const data = sortedDates.map(date => ({
-      date: format(parseISO(date), "MMM d"),
-      fullDate: date,
-      ...dateMap.get(date),
-    }));
+    
+    // Build continuous data with all languages on each date (fill gaps with previous value or 0)
+    const languageNames = Array.from(themeNames).sort();
+    const data = sortedDates.map((date, idx) => {
+      const dayData: Record<string, string | number> = {
+        date: format(parseISO(date), "MMM d"),
+        fullDate: date,
+      };
+      
+      for (const langName of languageNames) {
+        // Get value for this date, or use previous value, or default to 0
+        if (dateMap.get(date)?.[langName] !== undefined) {
+          dayData[langName] = dateMap.get(date)![langName];
+        } else {
+          // Find last known value
+          let lastValue = 0;
+          for (let i = idx - 1; i >= 0; i--) {
+            if (dateMap.get(sortedDates[i])?.[langName] !== undefined) {
+              lastValue = dateMap.get(sortedDates[i])![langName];
+              break;
+            }
+          }
+          dayData[langName] = lastValue;
+        }
+      }
+      return dayData;
+    });
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of Array.from(themeNames)) {
+    for (const name of languageNames) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],

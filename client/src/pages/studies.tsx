@@ -97,6 +97,7 @@ export default function Studies() {
       return { previous };
     },
     onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ["/api/course-metrics-all"] });
       toast({ title: "Course deleted" });
     },
     onError: (err, id, context: any) => {
@@ -123,10 +124,15 @@ export default function Studies() {
       return { chartData: [], chartConfig: {} };
     }
 
+    // Create a set of currently existing course names
+    const existingCourseNames = new Set(courses.map(c => c.name));
+
     const dateMap = new Map<string, Record<string, number>>();
     const courseNames = new Set<string>();
 
+    // Filter metrics to only include currently existing courses
     for (const m of metricsData) {
+      if (!existingCourseNames.has(m.courseName)) continue;
       const completionVal = parseFloat(m.completion);
       if (isNaN(completionVal)) continue;
       courseNames.add(m.courseName);
@@ -137,15 +143,37 @@ export default function Studies() {
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
-    const data = sortedDates.map(date => ({
-      date: format(parseISO(date), "MMM d"),
-      fullDate: date,
-      ...dateMap.get(date),
-    }));
+    
+    // Build continuous data with all courses on each date (fill gaps with previous value or 0)
+    const courseNamesList = Array.from(courseNames).sort();
+    const data = sortedDates.map((date, idx) => {
+      const dayData: Record<string, string | number> = {
+        date: format(parseISO(date), "MMM d"),
+        fullDate: date,
+      };
+      
+      for (const courseName of courseNamesList) {
+        // Get value for this date, or use previous value, or default to 0
+        if (dateMap.get(date)?.[courseName] !== undefined) {
+          dayData[courseName] = dateMap.get(date)![courseName];
+        } else {
+          // Find last known value
+          let lastValue = 0;
+          for (let i = idx - 1; i >= 0; i--) {
+            if (dateMap.get(sortedDates[i])?.[courseName] !== undefined) {
+              lastValue = dateMap.get(sortedDates[i])![courseName];
+              break;
+            }
+          }
+          dayData[courseName] = lastValue;
+        }
+      }
+      return dayData;
+    });
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of Array.from(courseNames)) {
+    for (const name of courseNamesList) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],

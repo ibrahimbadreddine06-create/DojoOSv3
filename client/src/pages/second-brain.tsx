@@ -65,6 +65,7 @@ export default function SecondBrain() {
       return { previous };
     },
     onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ["/api/knowledge-metrics-all", "second_brain"] });
       toast({ title: "Theme deleted" });
     },
     onError: (err, id, context: any) => {
@@ -80,10 +81,15 @@ export default function SecondBrain() {
       return { chartData: [], chartConfig: {} };
     }
 
+    // Create a set of currently existing theme names
+    const existingThemeNames = new Set(themes.map(t => t.name));
+
     const dateMap = new Map<string, Record<string, number>>();
     const themeNames = new Set<string>();
 
+    // Filter metrics to only include currently existing themes
     for (const m of metricsData) {
+      if (!existingThemeNames.has(m.themeName)) continue;
       const completionVal = parseFloat(m.completion);
       if (isNaN(completionVal)) continue;
       themeNames.add(m.themeName);
@@ -94,15 +100,37 @@ export default function SecondBrain() {
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
-    const data = sortedDates.map(date => ({
-      date: format(parseISO(date), "MMM d"),
-      fullDate: date,
-      ...dateMap.get(date),
-    }));
+    
+    // Build continuous data with all themes on each date (fill gaps with previous value or 0)
+    const themeNamesList = Array.from(themeNames).sort();
+    const data = sortedDates.map((date, idx) => {
+      const dayData: Record<string, string | number> = {
+        date: format(parseISO(date), "MMM d"),
+        fullDate: date,
+      };
+      
+      for (const themeName of themeNamesList) {
+        // Get value for this date, or use previous value, or default to 0
+        if (dateMap.get(date)?.[themeName] !== undefined) {
+          dayData[themeName] = dateMap.get(date)![themeName];
+        } else {
+          // Find last known value
+          let lastValue = 0;
+          for (let i = idx - 1; i >= 0; i--) {
+            if (dateMap.get(sortedDates[i])?.[themeName] !== undefined) {
+              lastValue = dateMap.get(sortedDates[i])![themeName];
+              break;
+            }
+          }
+          dayData[themeName] = lastValue;
+        }
+      }
+      return dayData;
+    });
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of Array.from(themeNames)) {
+    for (const name of themeNamesList) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],
