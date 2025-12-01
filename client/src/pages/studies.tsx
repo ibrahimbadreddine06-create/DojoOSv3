@@ -5,7 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, Archive, ArchiveRestore } from "lucide-react";
+import { GraduationCap, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -78,6 +87,20 @@ export default function Studies() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/courses/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/course-metrics-all"] });
+      toast({ title: "Course deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete course", variant: "destructive" });
+    },
+  });
+
   const semesters = courses
     ? Array.from(new Set(courses.filter(c => c.semester).map(c => c.semester!)))
     : [];
@@ -116,7 +139,7 @@ export default function Studies() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of courseNames) {
+    for (const name of Array.from(courseNames)) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],
@@ -273,23 +296,49 @@ export default function Studies() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                archiveMutation.mutate({ id: course.id, archived: !course.archived });
-                              }}
-                              data-testid={`button-archive-${course.id}`}
-                            >
-                              {course.archived ? (
-                                <ArchiveRestore className="w-4 h-4" />
-                              ) : (
-                                <Archive className="w-4 h-4" />
-                              )}
-                            </Button>
-                            <GraduationCap className="w-5 h-5 text-chart-1" />
-                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                data-testid={`button-delete-${course.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogTitle>Delete course?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete "{course.name}" and all associated data. This cannot be undone.
+                              </AlertDialogDescription>
+                              <div className="flex gap-3 justify-end">
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMutation.mutate(course.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </div>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              archiveMutation.mutate({ id: course.id, archived: !course.archived });
+                            }}
+                            data-testid={`button-archive-${course.id}`}
+                          >
+                            {course.archived ? (
+                              <ArchiveRestore className="w-4 h-4" />
+                            ) : (
+                              <Archive className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <GraduationCap className="w-5 h-5 text-chart-1" />
+                        </div>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">

@@ -1,16 +1,28 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Languages as LanguagesIcon } from "lucide-react";
+import { Languages as LanguagesIcon, Trash2, Archive } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid } from "recharts";
 import { format, parseISO } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface MetricData {
   themeId: string;
@@ -32,6 +44,8 @@ const CHART_COLORS = [
 
 export default function Languages() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: languages, isLoading } = useQuery<any[]>({
     queryKey: ["/api/knowledge-themes", "language"],
@@ -39,6 +53,20 @@ export default function Languages() {
 
   const { data: metricsData } = useQuery<MetricData[]>({
     queryKey: ["/api/knowledge-metrics-all", "language"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/knowledge-themes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-themes", "language"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics-all", "language"] });
+      toast({ title: "Language deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete language", variant: "destructive" });
+    },
   });
 
   const { chartData, chartConfig } = useMemo(() => {
@@ -68,7 +96,7 @@ export default function Languages() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of themeNames) {
+    for (const name of Array.from(themeNames)) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],
@@ -169,13 +197,12 @@ export default function Languages() {
                 {languages.map((language) => (
                   <Card
                     key={language.id}
-                    className="hover-elevate active-elevate-2 cursor-pointer"
-                    onClick={() => navigate(`/languages/${language.id}`)}
+                    className="hover-elevate active-elevate-2"
                     data-testid={`card-language-${language.id}`}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1">
+                        <div className="space-y-1 flex-1 cursor-pointer" onClick={() => navigate(`/languages/${language.id}`)}>
                           <CardTitle className="text-lg">{language.name}</CardTitle>
                           {language.description && (
                             <CardDescription className="text-sm line-clamp-2">
@@ -183,10 +210,38 @@ export default function Languages() {
                             </CardDescription>
                           )}
                         </div>
-                        <LanguagesIcon className="w-5 h-5 text-chart-2" />
+                        <div className="flex items-center gap-1">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                data-testid={`button-delete-${language.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogTitle>Delete language?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete "{language.name}" and all associated data. This cannot be undone.
+                              </AlertDialogDescription>
+                              <div className="flex gap-3 justify-end">
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMutation.mutate(language.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </div>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <LanguagesIcon className="w-5 h-5 text-chart-2" />
+                        </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 cursor-pointer" onClick={() => navigate(`/languages/${language.id}`)}>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Completion</span>
