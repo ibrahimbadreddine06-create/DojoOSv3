@@ -131,39 +131,47 @@ export default function Studies() {
   }) || [];
 
   const { chartData, chartConfig } = useMemo(() => {
-    if (!metricsData || metricsData.length === 0 || !courses) {
+    if (!courses) {
       return { chartData: [], chartConfig: {} };
     }
 
     // Create a set of currently existing course names
     const existingCourseNames = new Set(courses.map(c => c.name));
+    const courseNamesList = Array.from(existingCourseNames).sort();
 
     const dateMap = new Map<string, Record<string, number>>();
-    const courseNames = new Set<string>();
 
-    // Filter metrics to only include currently existing courses
-    for (const m of metricsData) {
-      if (!existingCourseNames.has(m.courseName)) continue;
-      const completionVal = parseFloat(m.completion);
-      if (isNaN(completionVal)) continue;
-      courseNames.add(m.courseName);
-      if (!dateMap.has(m.date)) {
-        dateMap.set(m.date, {});
+    // Add all metrics data if available
+    if (metricsData && metricsData.length > 0) {
+      for (const m of metricsData) {
+        if (!existingCourseNames.has(m.courseName)) continue;
+        const completionVal = parseFloat(m.completion);
+        if (isNaN(completionVal)) continue;
+        if (!dateMap.has(m.date)) {
+          dateMap.set(m.date, {});
+        }
+        dateMap.get(m.date)![m.courseName] = completionVal;
       }
-      dateMap.get(m.date)![m.courseName] = completionVal;
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
     
+    // If no metrics yet, create initial data with 0 completion
+    if (sortedDates.length === 0 && courseNamesList.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      sortedDates.push(today);
+      dateMap.set(today, {});
+    }
+    
     // Build continuous data with all courses on each date (fill gaps with previous value or 0)
-    const courseNamesList = Array.from(courseNames).sort();
+    const finalCourseNamesList = courseNamesList;
     const data = sortedDates.map((date, idx) => {
       const dayData: Record<string, string | number> = {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
       
-      for (const courseName of courseNamesList) {
+      for (const courseName of finalCourseNamesList) {
         // Get value for this date, or use previous value, or default to 0
         if (dateMap.get(date)?.[courseName] !== undefined) {
           dayData[courseName] = dateMap.get(date)![courseName];
@@ -184,7 +192,7 @@ export default function Studies() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of courseNamesList) {
+    for (const name of finalCourseNamesList) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],

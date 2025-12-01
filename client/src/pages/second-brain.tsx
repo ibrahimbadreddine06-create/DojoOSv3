@@ -88,39 +88,47 @@ export default function SecondBrain() {
   });
 
   const { chartData, chartConfig } = useMemo(() => {
-    if (!metricsData || metricsData.length === 0 || !themes) {
+    if (!themes) {
       return { chartData: [], chartConfig: {} };
     }
 
     // Create a set of currently existing theme names
     const existingThemeNames = new Set(themes.map(t => t.name));
+    const topicNamesList = Array.from(existingThemeNames).sort();
 
     const dateMap = new Map<string, Record<string, number>>();
-    const topicNames = new Set<string>();
 
-    // Filter metrics to only include currently existing themes
-    for (const m of metricsData) {
-      if (!existingThemeNames.has(m.topicName)) continue;
-      const completionVal = parseFloat(m.completion);
-      if (isNaN(completionVal)) continue;
-      topicNames.add(m.topicName);
-      if (!dateMap.has(m.date)) {
-        dateMap.set(m.date, {});
+    // Add all metrics data if available
+    if (metricsData && metricsData.length > 0) {
+      for (const m of metricsData) {
+        if (!existingThemeNames.has(m.topicName)) continue;
+        const completionVal = parseFloat(m.completion);
+        if (isNaN(completionVal)) continue;
+        if (!dateMap.has(m.date)) {
+          dateMap.set(m.date, {});
+        }
+        dateMap.get(m.date)![m.topicName] = completionVal;
       }
-      dateMap.get(m.date)![m.topicName] = completionVal;
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
     
+    // If no metrics yet, create initial data with 0 completion
+    if (sortedDates.length === 0 && topicNamesList.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      sortedDates.push(today);
+      dateMap.set(today, {});
+    }
+    
     // Build continuous data with all themes on each date (fill gaps with previous value or 0)
-    const topicNamesList = Array.from(topicNames).sort();
+    const finalTopicNamesList = topicNamesList;
     const data = sortedDates.map((date, idx) => {
       const dayData: Record<string, string | number> = {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
       
-      for (const topicName of topicNamesList) {
+      for (const topicName of finalTopicNamesList) {
         // Get value for this date, or use previous value, or default to 0
         if (dateMap.get(date)?.[topicName] !== undefined) {
           dayData[topicName] = dateMap.get(date)![topicName];
@@ -141,7 +149,7 @@ export default function SecondBrain() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of topicNamesList) {
+    for (const name of finalTopicNamesList) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],

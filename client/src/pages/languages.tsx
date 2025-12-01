@@ -88,39 +88,47 @@ export default function Languages() {
   });
 
   const { chartData, chartConfig } = useMemo(() => {
-    if (!metricsData || metricsData.length === 0 || !languages) {
+    if (!languages) {
       return { chartData: [], chartConfig: {} };
     }
 
     // Create a set of currently existing language names
     const existingLanguageNames = new Set(languages.map(l => l.name));
+    const languageNames = Array.from(existingLanguageNames).sort();
 
     const dateMap = new Map<string, Record<string, number>>();
-    const topicNames = new Set<string>();
 
-    // Filter metrics to only include currently existing languages
-    for (const m of metricsData) {
-      if (!existingLanguageNames.has(m.topicName)) continue;
-      const completionVal = parseFloat(m.completion);
-      if (isNaN(completionVal)) continue;
-      topicNames.add(m.topicName);
-      if (!dateMap.has(m.date)) {
-        dateMap.set(m.date, {});
+    // Add all metrics data if available
+    if (metricsData && metricsData.length > 0) {
+      for (const m of metricsData) {
+        if (!existingLanguageNames.has(m.topicName)) continue;
+        const completionVal = parseFloat(m.completion);
+        if (isNaN(completionVal)) continue;
+        if (!dateMap.has(m.date)) {
+          dateMap.set(m.date, {});
+        }
+        dateMap.get(m.date)![m.topicName] = completionVal;
       }
-      dateMap.get(m.date)![m.topicName] = completionVal;
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
     
+    // If no metrics yet, create initial data with 0 completion
+    if (sortedDates.length === 0 && languageNames.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      sortedDates.push(today);
+      dateMap.set(today, {});
+    }
+    
     // Build continuous data with all languages on each date (fill gaps with previous value or 0)
-    const languageNames = Array.from(topicNames).sort();
+    const finalLanguageNames = languageNames;
     const data = sortedDates.map((date, idx) => {
       const dayData: Record<string, string | number> = {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
       
-      for (const langName of languageNames) {
+      for (const langName of finalLanguageNames) {
         // Get value for this date, or use previous value, or default to 0
         if (dateMap.get(date)?.[langName] !== undefined) {
           dayData[langName] = dateMap.get(date)![langName];
@@ -141,7 +149,7 @@ export default function Languages() {
 
     const config: Record<string, { label: string; color: string }> = {};
     let colorIndex = 0;
-    for (const name of languageNames) {
+    for (const name of finalLanguageNames) {
       config[name] = {
         label: name,
         color: CHART_COLORS[colorIndex % CHART_COLORS.length],
