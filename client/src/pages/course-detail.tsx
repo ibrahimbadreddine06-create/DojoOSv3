@@ -293,7 +293,16 @@ export default function CourseDetail() {
   }, [flashcards]);
 
   const chartData = useMemo(() => {
-    if (!knowledgeMetrics || knowledgeMetrics.length === 0) return [];
+    if (!knowledgeMetrics || knowledgeMetrics.length === 0) {
+      // Show initial data point at 0% for today
+      const today = new Date().toISOString().split('T')[0];
+      return [{
+        date: format(parseISO(today), "MMM d"),
+        fullDate: today,
+        completion: 0,
+        readiness: 0,
+      }];
+    }
     return knowledgeMetrics.map(m => ({
       date: format(parseISO(m.date), "MMM d"),
       fullDate: m.date,
