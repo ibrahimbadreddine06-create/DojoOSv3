@@ -160,6 +160,19 @@ export default function SecondBrain() {
     return { chartData: data, chartConfig: config };
   }, [metricsData, themes]);
 
+  const totalFlashcards = useMemo(() => {
+    return themes?.reduce((sum, theme) => {
+      const chapters = theme.chapters || [];
+      return sum + chapters.reduce((chSum: number, ch: any) => chSum + (ch.flashcards?.length || 0), 0);
+    }, 0) || 0;
+  }, [themes]);
+
+  const averageCompletion = useMemo(() => {
+    if (!themes || themes.length === 0) return 0;
+    const completions = themes.map((t) => latestMetrics[t.id]?.completion || 0);
+    return Math.round(completions.reduce((a, b) => a + b, 0) / completions.length);
+  }, [themes, latestMetrics]);
+
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
       <div className="space-y-6">
@@ -175,9 +188,56 @@ export default function SecondBrain() {
           <AddThemeDialog type="second_brain" />
         </div>
 
+        {/* Dashboard Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Themes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{themes?.length || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">knowledge themes</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Flashcards</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{totalFlashcards}</div>
+              <p className="text-xs text-muted-foreground mt-1">across all themes</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Avg Completion</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{averageCompletion}%</div>
+              <Progress value={averageCompletion} className="h-2 mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{metricsData?.length || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">metric entries</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Today's Sessions */}
+        <TodaySessions module="second_brain" />
+
+        {/* Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Overall Metrics</CardTitle>
+            <CardTitle>Learning Trajectory</CardTitle>
             <CardDescription>Completion progress over time for each theme</CardDescription>
           </CardHeader>
           <CardContent>

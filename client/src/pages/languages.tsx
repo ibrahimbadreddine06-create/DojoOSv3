@@ -160,6 +160,19 @@ export default function Languages() {
     return { chartData: data, chartConfig: config };
   }, [metricsData, languages]);
 
+  const totalFlashcards = useMemo(() => {
+    return languages?.reduce((sum, lang) => {
+      const chapters = lang.chapters || [];
+      return sum + chapters.reduce((chSum: number, ch: any) => chSum + (ch.flashcards?.length || 0), 0);
+    }, 0) || 0;
+  }, [languages]);
+
+  const averageCompletion = useMemo(() => {
+    if (!languages || languages.length === 0) return 0;
+    const completions = languages.map((l) => latestMetrics[l.id]?.completion || 0);
+    return Math.round(completions.reduce((a, b) => a + b, 0) / completions.length);
+  }, [languages, latestMetrics]);
+
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
       <div className="space-y-6">
@@ -175,9 +188,56 @@ export default function Languages() {
           <AddThemeDialog type="language" />
         </div>
 
+        {/* Dashboard Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Languages</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{languages?.length || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">languages tracked</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Flashcards</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{totalFlashcards}</div>
+              <p className="text-xs text-muted-foreground mt-1">across all languages</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Avg Completion</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{averageCompletion}%</div>
+              <Progress value={averageCompletion} className="h-2 mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{metricsData?.length || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">metric entries</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Today's Sessions */}
+        <TodaySessions module="languages" />
+
+        {/* Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Overall Metrics</CardTitle>
+            <CardTitle>Learning Trajectory</CardTitle>
             <CardDescription>Completion progress over time for each language</CardDescription>
           </CardHeader>
           <CardContent>
