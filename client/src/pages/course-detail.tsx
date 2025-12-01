@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2, TrendingUp } from "lucide-react";
+import { ChevronLeft, Plus, ChevronRight, ChevronDown, Check, Trash2, Menu, TrendingUp, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,19 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { TodaySessions } from "@/components/today-sessions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ChapterContentArea } from "@/components/chapter-content-area";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -37,11 +25,9 @@ interface ChapterWithChildren extends LearnPlanItem {
 function buildChapterTree(items: LearnPlanItem[]): ChapterWithChildren[] {
   const map = new Map<string, ChapterWithChildren>();
   const roots: ChapterWithChildren[] = [];
-
   items.forEach(item => {
     map.set(item.id, { ...item, children: [] });
   });
-
   items.forEach(item => {
     const node = map.get(item.id)!;
     if (item.parentId && map.has(item.parentId)) {
@@ -50,137 +36,55 @@ function buildChapterTree(items: LearnPlanItem[]): ChapterWithChildren[] {
       roots.push(node);
     }
   });
-
   const sortByOrder = (a: ChapterWithChildren, b: ChapterWithChildren) => a.order - b.order;
   const sortRecursive = (nodes: ChapterWithChildren[]) => {
     nodes.sort(sortByOrder);
     nodes.forEach(node => sortRecursive(node.children));
   };
   sortRecursive(roots);
-
   return roots;
 }
 
-function ChapterItem({ 
-  chapter, 
-  depth = 0, 
-  selectedId,
-  onSelect,
-  onToggleComplete,
-  onAddSubchapter,
-  onDelete
-}: { 
-  chapter: ChapterWithChildren; 
-  depth?: number;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onToggleComplete: (id: string, completed: boolean) => void;
-  onAddSubchapter: (parentId: string) => void;
-  onDelete: (id: string) => void;
-}) {
+function ChapterItem({ chapter, depth = 0, selectedId, onSelect, onToggleComplete, onAddSubchapter, onDelete }: any) {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = chapter.children.length > 0;
   const isSelected = selectedId === chapter.id;
 
-  const importanceColors: Record<number, string> = {
-    1: "bg-muted/50",
-    2: "bg-blue-500/10",
-    3: "bg-yellow-500/10",
-    4: "bg-orange-500/10",
-    5: "bg-red-500/10",
-  };
-
   return (
     <div>
       <div
-        className={`group flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer hover-elevate ${
-          isSelected ? "bg-accent" : ""
-        } ${importanceColors[chapter.importance] || ""}`}
+        className={`group flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer hover-elevate ${isSelected ? "bg-accent" : ""}`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onSelect(chapter.id)}
         data-testid={`chapter-item-${chapter.id}`}
       >
         {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            data-testid={`button-toggle-chapter-${chapter.id}`}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
+          <Button variant="ghost" size="icon" className="h-5 w-5 p-0" onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}>
+            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
-        ) : (
-          <div className="w-5" />
-        )}
-        
+        ) : <div className="w-5" />}
         <Button
-          variant="ghost"
-          size="icon"
-          className={`h-5 w-5 p-0 ${chapter.completed ? "text-primary" : "text-muted-foreground"}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleComplete(chapter.id, !chapter.completed);
-          }}
-          data-testid={`button-complete-chapter-${chapter.id}`}
+          variant="ghost" size="icon" className={`h-5 w-5 p-0 ${chapter.completed ? "text-primary" : "text-muted-foreground"}`}
+          onClick={(e) => { e.stopPropagation(); onToggleComplete(chapter.id, !chapter.completed); }}
         >
-          <div className={`h-3.5 w-3.5 rounded-sm border ${chapter.completed ? "bg-primary border-primary" : "border-muted-foreground"} flex items-center justify-center`}>
-            {chapter.completed && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+          <div className={`h-3.5 w-3.5 rounded-sm border ${chapter.completed ? "bg-primary border-primary" : "border-muted-foreground"}`}>
+            {chapter.completed && <Check className="h-2.5 w-2.5" />}
           </div>
         </Button>
-
-        <span className={`flex-1 text-sm truncate ${chapter.completed ? "line-through text-muted-foreground" : ""}`}>
-          {chapter.title}
-        </span>
-
+        <span className={`flex-1 text-sm truncate ${chapter.completed ? "line-through text-muted-foreground" : ""}`}>{chapter.title}</span>
         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddSubchapter(chapter.id);
-            }}
-            data-testid={`button-add-subchapter-${chapter.id}`}
-          >
+          <Button variant="ghost" size="icon" className="h-5 w-5 p-0" onClick={(e) => { e.stopPropagation(); onAddSubchapter(chapter.id); }}>
             <Plus className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 p-0 text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(chapter.id);
-            }}
-            data-testid={`button-delete-chapter-${chapter.id}`}
-          >
+          <Button variant="ghost" size="icon" className="h-5 w-5 p-0 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(chapter.id); }}>
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
-
       {hasChildren && isExpanded && (
         <div>
-          {chapter.children.map(child => (
-            <ChapterItem
-              key={child.id}
-              chapter={child}
-              depth={depth + 1}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onToggleComplete={onToggleComplete}
-              onAddSubchapter={onAddSubchapter}
-              onDelete={onDelete}
-            />
+          {chapter.children.map((child: ChapterWithChildren) => (
+            <ChapterItem key={child.id} chapter={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} onToggleComplete={onToggleComplete} onAddSubchapter={onAddSubchapter} onDelete={onDelete} />
           ))}
         </div>
       )}
@@ -188,67 +92,30 @@ function ChapterItem({
   );
 }
 
-function AddChapterDialog({ 
-  courseId, 
-  parentId = null, 
-  onClose 
-}: { 
-  courseId: string; 
-  parentId?: string | null;
-  onClose: () => void;
-}) {
+function AddChapterDialog({ courseId, parentId = null, onClose }: any) {
   const [title, setTitle] = useState("");
   const [importance, setImportance] = useState(3);
-
   const createMutation = useMutation({
-    mutationFn: async (data: { courseId: string; parentId?: string | null; title: string; importance: number }) => {
-      return apiRequest("POST", "/api/learn-plan-items", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
-      onClose();
-    },
+    mutationFn: async (data: any) => apiRequest("POST", "/api/learn-plan-items", data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] }); onClose(); },
   });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
     createMutation.mutate({ courseId, parentId, title: title.trim(), importance });
   };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <label className="text-sm font-medium">Chapter Title</label>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter chapter title..."
-          data-testid="input-chapter-title"
-          autoFocus
-        />
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter chapter title..." data-testid="input-chapter-title" autoFocus />
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Importance Level: {importance}
-        </label>
-        <Slider
-          value={[importance]}
-          onValueChange={(v) => setImportance(v[0])}
-          min={1}
-          max={5}
-          step={1}
-          data-testid="slider-chapter-importance"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Low</span>
-          <span>High</span>
-        </div>
+        <label className="text-sm font-medium">Importance Level: {importance}</label>
+        <Slider value={[importance]} onValueChange={(v) => setImportance(v[0])} min={1} max={5} step={1} data-testid="slider-chapter-importance" />
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
+        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
         <Button type="submit" disabled={!title.trim() || createMutation.isPending} data-testid="button-create-chapter">
           {createMutation.isPending ? "Creating..." : "Create Chapter"}
         </Button>
@@ -265,43 +132,30 @@ export default function CourseDetail() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [addChapterOpen, setAddChapterOpen] = useState(false);
   const [parentIdForNew, setParentIdForNew] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { data: course, isLoading: courseLoading } = useQuery<Course>({
-    queryKey: ["/api/courses", courseId],
-    enabled: !!courseId,
-  });
+  const { data: course, isLoading: courseLoading } = useQuery<Course>({ queryKey: ["/api/courses", courseId], enabled: !!courseId });
+  const { data: chapters = [], isLoading: chaptersLoading } = useQuery<LearnPlanItem[]>({ queryKey: ["/api/learn-plan-items/course", courseId], enabled: !!courseId });
+  const { data: flashcards = [] } = useQuery<Flashcard[]>({ queryKey: ["/api/flashcards/course", courseId], enabled: !!courseId });
+  const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({ queryKey: ["/api/knowledge-metrics", courseId], enabled: !!courseId });
 
-  const { data: chapters = [], isLoading: chaptersLoading } = useQuery<LearnPlanItem[]>({
-    queryKey: ["/api/learn-plan-items/course", courseId],
-    enabled: !!courseId,
-  });
+  const chapterTree = useMemo(() => buildChapterTree(chapters), [chapters]);
+  const selectedChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
 
-  const { data: flashcards = [] } = useQuery<Flashcard[]>({
-    queryKey: ["/api/flashcards/course", courseId],
-    enabled: !!courseId,
-  });
+  const completionPercent = useMemo(() => {
+    if (chapters.length === 0) return 0;
+    const completed = chapters.filter(c => c.completed).length;
+    return Math.round((completed / chapters.length) * 100);
+  }, [chapters]);
 
-  const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({
-    queryKey: ["/api/knowledge-metrics", courseId],
-    enabled: !!courseId,
-  });
-
-  const [metricsOpen, setMetricsOpen] = useState(false);
-
-  const readinessPercent = useMemo(() => {
-    return calculateReadinessWithDecay(flashcards);
-  }, [flashcards]);
+  const readinessPercent = useMemo(() => calculateReadinessWithDecay(flashcards), [flashcards]);
+  const completedChapters = chapters.filter(c => c.completed).length;
+  const totalChapters = chapters.length;
 
   const chartData = useMemo(() => {
     if (!knowledgeMetrics || knowledgeMetrics.length === 0) {
-      // Show initial data point at 0% for today
       const today = new Date().toISOString().split('T')[0];
-      return [{
-        date: format(parseISO(today), "MMM d"),
-        fullDate: today,
-        completion: 0,
-        readiness: 0,
-      }];
+      return [{ date: format(parseISO(today), "MMM d"), fullDate: today, completion: 0, readiness: 0 }];
     }
     return knowledgeMetrics.map(m => ({
       date: format(parseISO(m.date), "MMM d"),
@@ -311,66 +165,21 @@ export default function CourseDetail() {
     }));
   }, [knowledgeMetrics]);
 
-  const chartConfig = {
-    completion: {
-      label: "Completion",
-      color: "hsl(var(--primary))",
-    },
-    readiness: {
-      label: "Readiness",
-      color: "hsl(var(--chart-2))",
-    },
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/learn-plan-items/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] }),
+  });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; completed?: boolean; importance?: number; notes?: string }) => {
-      return apiRequest("PATCH", `/api/learn-plan-items/${id}`, data);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
-      const updatedChapters = queryClient.getQueryData<LearnPlanItem[]>(["/api/learn-plan-items/course", courseId]);
-      const updatedFlashcards = queryClient.getQueryData<Flashcard[]>(["/api/flashcards/course", courseId]) || [];
-      
-      if (updatedChapters && updatedChapters.length > 0 && courseId) {
-        const total = updatedChapters.length;
-        const completed = updatedChapters.filter(c => c.completed).length;
-        const completion = Math.round((completed / total) * 100);
-        const readiness = calculateReadinessWithDecay(updatedFlashcards);
-        
-        const today = format(new Date(), "yyyy-MM-dd");
-        await apiRequest("PUT", `/api/knowledge-metrics/${courseId}/${today}`, { completion, readiness });
-        queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", courseId] });
-      }
-    },
+    mutationFn: async ({ id, ...data }: any) => apiRequest("PATCH", `/api/learn-plan-items/${id}`, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] }),
   });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/learn-plan-items/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
-      if (selectedChapterId) {
-        setSelectedChapterId(null);
-      }
-    },
-  });
-
-  const chapterTree = buildChapterTree(chapters);
-  const selectedChapter = chapters.find(c => c.id === selectedChapterId);
-
-  const totalChapters = chapters.length;
-  const completedChapters = chapters.filter(c => c.completed).length;
-  const completionPercent = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
 
   if (courseLoading) {
     return (
-      <div className="p-6">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <div className="grid grid-cols-[280px,1fr] gap-6 h-[calc(100vh-200px)]">
-          <Skeleton className="h-full" />
-          <Skeleton className="h-full" />
-        </div>
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
@@ -379,8 +188,7 @@ export default function CourseDetail() {
     return (
       <div className="p-6">
         <Button variant="ghost" onClick={() => navigate("/studies")} className="mb-4">
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back
+          <ChevronLeft className="h-4 w-4 mr-2" /> Back
         </Button>
         <Card className="p-8 text-center">
           <p className="text-muted-foreground">Course not found</p>
@@ -391,185 +199,193 @@ export default function CourseDetail() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 gap-3 border-b">
+      <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/studies")} data-testid="button-back">
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold truncate" data-testid="text-course-title">{course.name}</h1>
-            <div className="flex items-center gap-2 flex-wrap">
-              {course.semester && (
-                <span className="text-sm text-muted-foreground">{course.semester}</span>
-              )}
-              {course.description && (
-                <span className="text-sm text-muted-foreground truncate">- {course.description}</span>
-              )}
+          <div>
+            <h1 className="text-lg font-semibold" data-testid="text-course-title">{course.name}</h1>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {course.semester && <span>{course.semester}</span>}
+              {course.description && <span>- {course.description}</span>}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap pl-11 sm:pl-0">
-          <Badge variant="outline" className="text-xs" data-testid="badge-completion">
-            {completionPercent}% Complete
-          </Badge>
-          <Badge variant="outline" className="text-xs" data-testid="badge-readiness">
-            {readinessPercent}% Ready
-          </Badge>
-          <Badge variant="secondary" className="text-xs" data-testid="badge-chapter-count">
-            {completedChapters}/{totalChapters} Chapters
-          </Badge>
-        </div>
+        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} data-testid="button-toggle-trajectory">
+          <Menu className="h-5 w-5" />
+        </Button>
       </div>
 
-      <div className="px-4 py-3 border-b bg-muted/20">
-        {chartData.length === 0 ? (
-          <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
-            Complete chapters and review flashcards to start tracking progress
-          </div>
+      <div className="flex-1 flex overflow-hidden">
+        {selectedChapterId && selectedChapter ? (
+          <>
+            {sidebarOpen && (
+              <div className="w-72 border-r bg-muted/30 overflow-auto">
+                <div className="p-3 border-b flex items-center justify-between sticky top-0 bg-muted/50">
+                  <h3 className="font-medium text-sm">Learning Trajectory</h3>
+                  <Dialog open={addChapterOpen} onOpenChange={(open) => { setAddChapterOpen(open); if (!open) setParentIdForNew(null); }}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="ghost" data-testid="button-add-chapter">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>{parentIdForNew ? "Add Sub-Chapter" : "Add Chapter"}</DialogTitle></DialogHeader>
+                      <AddChapterDialog courseId={courseId!} parentId={parentIdForNew} onClose={() => { setAddChapterOpen(false); setParentIdForNew(null); }} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <ScrollArea className="flex-1">
+                  <div className="p-2">
+                    {chaptersLoading ? (
+                      <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-8" />)}</div>
+                    ) : chapterTree.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
+                        <Button size="sm" onClick={() => setAddChapterOpen(true)} data-testid="button-add-first-chapter">
+                          <Plus className="h-4 w-4 mr-2" /> Add First Chapter
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {chapterTree.map(chapter => (
+                          <ChapterItem
+                            key={chapter.id} chapter={chapter} selectedId={selectedChapterId} onSelect={setSelectedChapterId}
+                            onToggleComplete={(id: string, completed: boolean) => updateMutation.mutate({ id, completed })}
+                            onAddSubchapter={(parentId: string) => { setParentIdForNew(parentId); setAddChapterOpen(true); }}
+                            onDelete={(id: string) => deleteMutation.mutate(id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 p-6 overflow-y-auto">
+                <div className="max-w-3xl mx-auto">
+                  <ChapterContentArea chapter={selectedChapter} courseId={courseId} onNotesChange={() => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] })} />
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
-          <ChartContainer config={chartConfig} className="h-32 w-full">
-            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                tickLine={false} 
-                axisLine={false}
-                tick={{ fontSize: 10 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                domain={[0, 100]} 
-                tickLine={false} 
-                axisLine={false}
-                tick={{ fontSize: 10 }}
-                width={30}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line 
-                type="monotone" 
-                dataKey="completion" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ fill: "hsl(var(--primary))", r: 3 }}
-                name="Completion"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="readiness" 
-                stroke="hsl(var(--chart-2))" 
-                strokeWidth={2}
-                dot={{ fill: "hsl(var(--chart-2))", r: 3 }}
-                name="Readiness"
-              />
-              <Legend />
-            </LineChart>
-          </ChartContainer>
-        )}
-      </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-6xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Completion</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-center">
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full border-4 border-muted" />
+                          <div className="absolute inset-0 rounded-full border-4 border-primary" style={{ background: `conic-gradient(hsl(var(--primary)) 0deg ${(completionPercent / 100) * 360}deg, transparent ${(completionPercent / 100) * 360}deg)` }} />
+                          <span className="text-2xl font-bold text-center z-10">{completionPercent}%</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-4">{completedChapters} of {totalChapters} chapters</p>
+                    </CardContent>
+                  </Card>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <div className="w-full md:w-72 border-b md:border-b-0 md:border-r flex-shrink-0 flex flex-col bg-muted/30 max-h-[40vh] md:max-h-none overflow-auto md:overflow-visible">
-          <div className="p-3 border-b flex items-center justify-between">
-            <h3 className="font-medium text-sm">Learning Trajectory</h3>
-            <Dialog open={addChapterOpen} onOpenChange={(open) => {
-              setAddChapterOpen(open);
-              if (!open) setParentIdForNew(null);
-            }}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="ghost" data-testid="button-add-chapter">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {parentIdForNew ? "Add Sub-Chapter" : "Add Chapter"}
-                  </DialogTitle>
-                </DialogHeader>
-                <AddChapterDialog
-                  courseId={courseId!}
-                  parentId={parentIdForNew}
-                  onClose={() => {
-                    setAddChapterOpen(false);
-                    setParentIdForNew(null);
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Readiness</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-center">
+                        <div className="relative w-24 h-24 flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full border-4 border-muted" />
+                          <div className="absolute inset-0 rounded-full border-4" style={{ background: `conic-gradient(hsl(var(--chart-2)) 0deg ${(readinessPercent / 100) * 360}deg, transparent ${(readinessPercent / 100) * 360}deg)` }} />
+                          <span className="text-2xl font-bold text-center z-10">{readinessPercent}%</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-4">Spaced repetition readiness</p>
+                    </CardContent>
+                  </Card>
 
-          <ScrollArea className="flex-1">
-            <div className="p-2">
-              {chaptersLoading ? (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">Flashcards</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-end justify-center gap-2 h-24">
+                        <div className="text-4xl font-bold text-primary">{flashcards.length}</div>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center mt-4">Total flashcards created</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Progress Over Time</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {chartData.length === 0 ? (
+                        <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+                      ) : (
+                        <ChartContainer config={{ completion: { label: "Completion", color: "hsl(var(--primary))" }, readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } }} className="h-32 w-full">
+                          <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                            <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                            <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
+                            <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
+                            <Legend />
+                          </LineChart>
+                        </ChartContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Chapters</h2>
+                  <Dialog open={addChapterOpen} onOpenChange={(open) => { setAddChapterOpen(open); if (!open) setParentIdForNew(null); }}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" data-testid="button-add-chapter-dashboard">
+                        <Plus className="h-4 w-4 mr-2" /> Add Chapter
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Add Chapter</DialogTitle></DialogHeader>
+                      <AddChapterDialog courseId={courseId!} parentId={null} onClose={() => { setAddChapterOpen(false); setParentIdForNew(null); }} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <Skeleton key={i} className="h-8" />
-                  ))}
+                  {chaptersLoading ? (
+                    <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10" />)}</div>
+                  ) : chapterTree.length === 0 ? (
+                    <Card className="p-6 text-center"><p className="text-muted-foreground">No chapters yet. Create one to get started!</p></Card>
+                  ) : (
+                    <div className="space-y-2">
+                      {chapterTree.map(chapter => (
+                        <Card key={chapter.id} className="p-3 cursor-pointer hover-elevate" onClick={() => setSelectedChapterId(chapter.id)}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className={`h-4 w-4 rounded-sm border ${chapter.completed ? "bg-primary border-primary" : "border-muted-foreground"}`} />
+                              <span className={chapter.completed ? "line-through text-muted-foreground" : ""}>{chapter.title}</span>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : chapterTree.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
-                  <Button
-                    size="sm"
-                    onClick={() => setAddChapterOpen(true)}
-                    data-testid="button-add-first-chapter"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add First Chapter
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-0.5">
-                  {chapterTree.map(chapter => (
-                    <ChapterItem
-                      key={chapter.id}
-                      chapter={chapter}
-                      selectedId={selectedChapterId}
-                      onSelect={setSelectedChapterId}
-                      onToggleComplete={(id, completed) => updateMutation.mutate({ id, completed })}
-                      onAddSubchapter={(parentId) => {
-                        setParentIdForNew(parentId);
-                        setAddChapterOpen(true);
-                      }}
-                      onDelete={(id) => deleteMutation.mutate(id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {selectedChapter ? (
-            <div className="flex-1 p-6 overflow-y-auto">
-              <div className="max-w-3xl mx-auto">
-                <ChapterContentArea 
-                  chapter={selectedChapter} 
-                  courseId={courseId}
-                  onNotesChange={() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] });
-                  }}
-                />
               </div>
             </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-muted-foreground mb-2">Select a chapter to view its content</p>
-                <p className="text-sm text-muted-foreground">
-                  Or add a new chapter from the sidebar
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="border-t p-4 bg-muted/20">
-            <h3 className="font-medium text-sm mb-3">Today's Sessions</h3>
-            <TodaySessions module="studies" itemId={courseId} />
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
