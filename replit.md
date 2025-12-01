@@ -4,7 +4,19 @@
 
 Dojo OS V2 is a focused personal operating system with 6 core active modules (Homepage, Daily Planner, Goals, Second Brain, Languages, Studies) and 10+ locked "Coming Soon" modules. It provides a unified platform for tracking daily activities, long-term goals, and knowledge acquisition with beautiful UI, mobile responsiveness, and Replit Auth integration.
 
-## Recent Changes (November 2024)
+## Recent Changes (December 2024)
+
+### Time-Series Charts for Knowledge Modules
+- **Unified Chart Structure**: Languages, Second Brain, and Studies pages now share identical structure with metrics chart and tabbed content
+- **Time-Series LineCharts**: All three knowledge modules display multi-line charts with:
+  - X-axis: Date progression (formatted as "MMM d")
+  - Y-axis: Completion percentage (0-100% with 10% intervals)
+  - Multiple lines: One line per language/theme/course showing individual progress
+- **courseMetrics Table**: Added database table for tracking course completion over time
+- **API Endpoints**: New endpoints `/api/knowledge-metrics-all/:type` and `/api/course-metrics-all` for time-series data
+- **Data Validation**: Server-side validation for metrics (0-100 range) with NaN guards in chart rendering
+
+## Changes (November 2024)
 
 ### Completed Features
 1. **Authentication & Onboarding**: Beautiful landing page, Replit Auth integration, Profile page
