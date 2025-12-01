@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ChapterContentArea } from "@/components/chapter-content-area";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { Course, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
@@ -291,57 +291,59 @@ export default function CourseDetail() {
             <div className="max-w-6xl mx-auto space-y-6">
               <div>
                 <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">Completion</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{completionPercent}%</div>
-                      <p className="text-xs text-muted-foreground mt-2">{completedChapters} of {totalChapters} chapters</p>
-                    </CardContent>
-                  </Card>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium">Completion</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{completionPercent}%</div>
+                        <p className="text-xs text-muted-foreground mt-1">{completedChapters}/{totalChapters}</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium">Readiness</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{readinessPercent}%</div>
+                        <p className="text-xs text-muted-foreground mt-1">Ready</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-medium">Flashcards</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-primary">{flashcards.length}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Total</p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
                   <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">Readiness</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold">{readinessPercent}%</div>
-                      <p className="text-xs text-muted-foreground mt-2">Spaced repetition ready</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">Flashcards</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-bold text-primary">{flashcards.length}</div>
-                      <p className="text-xs text-muted-foreground mt-2">Total created</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="md:col-span-2 lg:col-span-3">
                     <CardHeader>
                       <CardTitle className="text-sm font-medium">Flashcard Status</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {flashcards.length === 0 ? (
-                        <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
+                        <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
                       ) : (
-                        <div className="flex items-center justify-center h-32">
-                          <ChartContainer config={{}} className="w-full">
-                            <PieChart width={300} height={128}>
-                              <Pie data={flashcardCategories} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value">
+                        <div className="w-full h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={flashcardCategories} cx="40%" cy="50%" innerRadius={30} outerRadius={50} paddingAngle={1} dataKey="value">
                                 <Cell fill="hsl(var(--primary))" />
                                 <Cell fill="hsl(var(--chart-2))" />
                                 <Cell fill="hsl(var(--chart-3))" />
                               </Pie>
                               <ChartTooltip formatter={(value) => `${value} cards`} />
                             </PieChart>
-                          </ChartContainer>
-                          <div className="ml-4 text-xs space-y-1">
+                          </ResponsiveContainer>
+                          <div className="mt-3 grid grid-cols-1 gap-1 text-xs">
                             {flashcardCategories.map((cat, i) => (
                               <div key={cat.name} className="flex items-center gap-2">
                                 <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
@@ -354,7 +356,7 @@ export default function CourseDetail() {
                     </CardContent>
                   </Card>
 
-                  <Card className="md:col-span-2 lg:col-span-3">
+                  <Card>
                     <CardHeader>
                       <CardTitle className="text-sm font-medium">Progress Over Time</CardTitle>
                     </CardHeader>
