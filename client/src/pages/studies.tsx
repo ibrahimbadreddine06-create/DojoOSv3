@@ -67,9 +67,20 @@ export default function Studies() {
     queryKey: ["/api/courses"],
   });
 
-  const { data: metricsData } = useQuery<MetricData[]>({
+  const { data: metricsData } = useQuery<any[]>({
     queryKey: ["/api/course-metrics-all"],
   });
+
+  const latestMetrics = useMemo(() => {
+    if (!metricsData) return {};
+    const latest: Record<string, { completion: number; importance: number }> = {};
+    for (const m of metricsData) {
+      if (!latest[m.courseId] || m.date > (metricsData.find(x => x.courseId === m.courseId && latest[m.courseId])?.date || '')) {
+        latest[m.courseId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
+      }
+    }
+    return latest;
+  }, [metricsData]);
 
   const archiveMutation = useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
@@ -378,12 +389,20 @@ export default function Studies() {
                       <CardContent className="space-y-3">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Progress</span>
+                            <span className="text-muted-foreground">Progress (Weighted)</span>
                             <span className="font-mono font-medium">
-                              {completedLessons}/{totalLessons} lessons
+                              {latestMetrics[course.id]?.completion || 0}%
                             </span>
                           </div>
-                          <Progress value={progress} className="h-2" />
+                          <Progress value={latestMetrics[course.id]?.completion || 0} className="h-2" />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Lessons</span>
+                            <span className="font-mono font-medium">
+                              {completedLessons}/{totalLessons}
+                            </span>
+                          </div>
                         </div>
                         {course.averageGrade && (
                           <div className="flex items-center justify-between text-sm pt-2 border-t">

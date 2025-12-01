@@ -313,6 +313,42 @@ export class DatabaseStorage implements IStorage {
     await db.delete(knowledgeThemes).where(eq(knowledgeThemes.id, id));
   }
 
+  async calculateWeightedCompletion(themeId: string): Promise<number> {
+    const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId));
+    if (items.length === 0) return 0;
+    
+    let totalWeight = 0;
+    let completedWeight = 0;
+    
+    for (const item of items) {
+      const importance = item.importance || 3;
+      totalWeight += importance;
+      if (item.completed) {
+        completedWeight += importance;
+      }
+    }
+    
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }
+
+  async calculateCourseWeightedCompletion(courseId: string): Promise<number> {
+    const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.courseId, courseId));
+    if (items.length === 0) return 0;
+    
+    let totalWeight = 0;
+    let completedWeight = 0;
+    
+    for (const item of items) {
+      const importance = item.importance || 3;
+      totalWeight += importance;
+      if (item.completed) {
+        completedWeight += importance;
+      }
+    }
+    
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }
+
   async getLearnPlanItems(themeId: string): Promise<LearnPlanItem[]> {
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId)).orderBy(asc(learnPlanItems.order));
   }
@@ -666,35 +702,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric> {
+    const weightedCompletion = await this.calculateWeightedCompletion(themeId);
     const [existing] = await db.select().from(knowledgeMetrics)
       .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)));
     
     if (existing) {
       const [updated] = await db.update(knowledgeMetrics)
-        .set({ completion: completion.toString(), readiness: readiness.toString() })
+        .set({ completion: weightedCompletion.toString(), readiness: readiness.toString() })
         .where(and(eq(knowledgeMetrics.themeId, themeId), eq(knowledgeMetrics.date, date)))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(knowledgeMetrics)
-        .values({ themeId, date, completion: completion.toString(), readiness: readiness.toString() })
+        .values({ themeId, date, completion: weightedCompletion.toString(), readiness: readiness.toString() })
         .returning();
       return created;
     }
   }
 
-  async getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string }[]> {
+  async getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string; importance: number }[]> {
     const themes = await db.select().from(knowledgeThemes).where(eq(knowledgeThemes.type, type));
     const themeIds = themes.map(t => t.id);
     
     if (themeIds.length === 0) return [];
     
-    const allMetrics: { themeId: string; themeName: string; date: string; completion: string }[] = [];
+    const allMetrics: { themeId: string; themeName: string; date: string; completion: string; importance: number }[] = [];
     
     for (const theme of themes) {
       const metrics = await db.select().from(knowledgeMetrics)
         .where(eq(knowledgeMetrics.themeId, theme.id))
         .orderBy(asc(knowledgeMetrics.date));
+      
+      const importance = await this.calculateWeightedCompletion(theme.id);
       
       for (const m of metrics) {
         allMetrics.push({
@@ -702,6 +741,7 @@ export class DatabaseStorage implements IStorage {
           themeName: theme.name,
           date: m.date,
           completion: m.completion,
+          importance,
         });
       }
     }
@@ -715,17 +755,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(courseMetrics.date));
   }
 
-  async getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string }[]> {
+  async getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string; importance: number }[]> {
     const allCourses = await db.select().from(courses).where(eq(courses.archived, false));
     
     if (allCourses.length === 0) return [];
     
-    const allMetrics: { courseId: string; courseName: string; date: string; completion: string }[] = [];
+    const allMetrics: { courseId: string; courseName: string; date: string; completion: string; importance: number }[] = [];
     
     for (const course of allCourses) {
       const metrics = await db.select().from(courseMetrics)
         .where(eq(courseMetrics.courseId, course.id))
         .orderBy(asc(courseMetrics.date));
+      
+      const importance = await this.calculateCourseWeightedCompletion(course.id);
       
       for (const m of metrics) {
         allMetrics.push({
@@ -733,6 +775,7 @@ export class DatabaseStorage implements IStorage {
           courseName: course.name,
           date: m.date,
           completion: m.completion,
+          importance,
         });
       }
     }
@@ -741,18 +784,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertCourseMetric(courseId: string, date: string, completion: number): Promise<CourseMetric> {
+    const weightedCompletion = await this.calculateCourseWeightedCompletion(courseId);
     const [existing] = await db.select().from(courseMetrics)
       .where(and(eq(courseMetrics.courseId, courseId), eq(courseMetrics.date, date)));
     
     if (existing) {
       const [updated] = await db.update(courseMetrics)
-        .set({ completion: completion.toString() })
+        .set({ completion: weightedCompletion.toString() })
         .where(and(eq(courseMetrics.courseId, courseId), eq(courseMetrics.date, date)))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(courseMetrics)
-        .values({ courseId, date, completion: completion.toString() })
+        .values({ courseId, date, completion: weightedCompletion.toString() })
         .returning();
       return created;
     }

@@ -48,9 +48,20 @@ export default function Languages() {
     queryKey: ["/api/knowledge-themes", "language"],
   });
 
-  const { data: metricsData } = useQuery<MetricData[]>({
+  const { data: metricsData } = useQuery<any[]>({
     queryKey: ["/api/knowledge-metrics-all", "language"],
   });
+
+  const latestMetrics = useMemo(() => {
+    if (!metricsData) return {};
+    const latest: Record<string, { completion: number; importance: number }> = {};
+    for (const m of metricsData) {
+      if (!latest[m.themeId] || m.date > (metricsData.find(x => x.themeId === m.themeId && latest[m.themeId])?.date || '')) {
+        latest[m.themeId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
+      }
+    }
+    return latest;
+  }, [metricsData]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -277,12 +288,12 @@ export default function Languages() {
                     <CardContent className="space-y-3 cursor-pointer" onClick={() => navigate(`/languages/${language.id}`)}>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Completion</span>
+                          <span className="text-muted-foreground">Completion (Weighted)</span>
                           <span className="font-mono font-medium">
-                            {language.completion || 0}%
+                            {latestMetrics[language.id]?.completion || 0}%
                           </span>
                         </div>
-                        <Progress value={language.completion || 0} className="h-2" />
+                        <Progress value={latestMetrics[language.id]?.completion || 0} className="h-2" />
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
