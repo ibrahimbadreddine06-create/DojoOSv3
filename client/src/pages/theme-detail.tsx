@@ -287,139 +287,126 @@ export default function ThemeDetail() {
             </div>
           </>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium">Completion</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{completionPercent}%</div>
-                        <p className="text-xs text-muted-foreground mt-1">{completedChapters}/{totalChapters}</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium">Readiness</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold">{readinessPercent}%</div>
-                        <p className="text-xs text-muted-foreground mt-1">Ready</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium">Flashcards</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-2xl font-bold text-primary">{flashcards.length}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Total</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Flashcard Status</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {flashcards.length === 0 ? (
-                        <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
-                      ) : (
-                        <div className="w-full h-48">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie data={flashcardCategories} cx="40%" cy="50%" innerRadius={30} outerRadius={50} paddingAngle={1} dataKey="value">
-                                <Cell fill="hsl(var(--primary))" />
-                                <Cell fill="hsl(var(--chart-2))" />
-                                <Cell fill="hsl(var(--chart-3))" />
-                              </Pie>
-                              <ChartTooltip formatter={(value) => `${value} cards`} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                          <div className="mt-3 grid grid-cols-1 gap-1 text-xs">
-                            {flashcardCategories.map((cat, i) => (
-                              <div key={cat.name} className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
-                                <span className="capitalize text-muted-foreground">{cat.name}: {cat.value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Progress Over Time</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {chartData.length === 0 ? (
-                        <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
-                      ) : (
-                        <ChartContainer config={{ completion: { label: "Completion", color: "hsl(var(--primary))" }, readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } }} className="h-32 w-full">
-                          <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                            <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
-                            <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
-                            <Legend />
-                          </LineChart>
-                        </ChartContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">Chapters</h2>
+          <>
+            {sidebarOpen && (
+              <div className="w-72 border-r bg-muted/30 overflow-auto">
+                <div className="p-3 border-b flex items-center justify-between sticky top-0 bg-muted/50">
+                  <h3 className="font-medium text-sm">Learning Trajectory</h3>
                   <Dialog open={addChapterOpen} onOpenChange={(open) => { setAddChapterOpen(open); if (!open) setParentIdForNew(null); }}>
                     <DialogTrigger asChild>
-                      <Button size="sm" data-testid="button-add-chapter-dashboard">
-                        <Plus className="h-4 w-4 mr-2" /> Add Chapter
+                      <Button size="sm" variant="ghost" data-testid="button-add-chapter">
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
-                      <DialogHeader><DialogTitle>Add Chapter</DialogTitle></DialogHeader>
-                      <AddChapterDialog topicId={topicId!} parentId={null} onClose={() => { setAddChapterOpen(false); setParentIdForNew(null); }} />
+                      <DialogHeader><DialogTitle>{parentIdForNew ? "Add Sub-Chapter" : "Add Chapter"}</DialogTitle></DialogHeader>
+                      <AddChapterDialog topicId={topicId!} parentId={parentIdForNew} onClose={() => { setAddChapterOpen(false); setParentIdForNew(null); }} />
                     </DialogContent>
                   </Dialog>
                 </div>
-                <div className="space-y-2">
-                  {chaptersLoading ? (
-                    <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-10" />)}</div>
-                  ) : chapterTree.length === 0 ? (
-                    <Card className="p-6 text-center"><p className="text-muted-foreground">No chapters yet. Create one to get started!</p></Card>
-                  ) : (
-                    <div className="space-y-2">
-                      {chapterTree.map(chapter => (
-                        <Card key={chapter.id} className="p-3 cursor-pointer hover-elevate" onClick={() => setSelectedChapterId(chapter.id)}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className={`h-4 w-4 rounded-sm border ${chapter.completed ? "bg-primary border-primary" : "border-muted-foreground"}`} />
-                              <span className={chapter.completed ? "line-through text-muted-foreground" : ""}>{chapter.title}</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </Card>
-                      ))}
+                <ScrollArea className="flex-1">
+                  <div className="p-2">
+                    {chaptersLoading ? (
+                      <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-8" />)}</div>
+                    ) : chapterTree.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
+                        <Button size="sm" onClick={() => setAddChapterOpen(true)} data-testid="button-add-first-chapter">
+                          <Plus className="h-4 w-4 mr-2" /> Add First
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {chapterTree.map(chapter => (
+                          <ChapterItem
+                            key={chapter.id} chapter={chapter} selectedId={selectedChapterId} onSelect={setSelectedChapterId}
+                            onToggleComplete={(id: string, completed: boolean) => updateMutation.mutate({ id, completed })}
+                            onAddSubchapter={(parentId: string) => { setParentIdForNew(parentId); setAddChapterOpen(true); }}
+                            onDelete={(id: string) => deleteMutation.mutate(id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div>
+                  <h2 className="text-2xl font-semibold mb-6">Overview</h2>
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="bg-card border rounded-lg p-4">
+                          <p className="text-xs text-muted-foreground mb-1">Completion</p>
+                          <p className="text-3xl font-bold">{completionPercent}%</p>
+                          <p className="text-xs text-muted-foreground mt-2">{completedChapters} of {totalChapters}</p>
+                        </div>
+                        <div className="bg-card border rounded-lg p-4">
+                          <p className="text-xs text-muted-foreground mb-1">Readiness</p>
+                          <p className="text-3xl font-bold">{readinessPercent}%</p>
+                          <p className="text-xs text-muted-foreground mt-2">Ready to review</p>
+                        </div>
+                        <div className="bg-card border rounded-lg p-4">
+                          <p className="text-xs text-muted-foreground mb-1">Flashcards</p>
+                          <p className="text-3xl font-bold text-primary">{flashcards.length}</p>
+                          <p className="text-xs text-muted-foreground mt-2">Created</p>
+                        </div>
+                      </div>
                     </div>
+                  </div>
+                </div>
+
+                <div className="bg-card border rounded-lg p-6">
+                  <h3 className="font-semibold mb-4">Flashcard Categories</h3>
+                  {flashcards.length === 0 ? (
+                    <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
+                  ) : (
+                    <div className="w-full h-40">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={flashcardCategories} cx="35%" cy="50%" innerRadius={25} outerRadius={45} paddingAngle={1} dataKey="value">
+                            <Cell fill="hsl(var(--primary))" />
+                            <Cell fill="hsl(var(--chart-2))" />
+                            <Cell fill="hsl(var(--chart-3))" />
+                          </Pie>
+                          <ChartTooltip formatter={(value) => `${value} cards`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                        {flashcardCategories.map((cat, i) => (
+                          <div key={cat.name} className="text-center">
+                            <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
+                            <p className="text-muted-foreground capitalize">{cat.name}</p>
+                            <p className="font-semibold">{cat.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-card border rounded-lg p-6">
+                  <h3 className="font-semibold mb-4">Progress Trend</h3>
+                  {chartData.length === 0 ? (
+                    <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+                  ) : (
+                    <ChartContainer config={{ completion: { label: "Completion", color: "hsl(var(--primary))" }, readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } }} className="h-40 w-full">
+                      <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                        <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                        <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
+                        <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
+                        <Legend />
+                      </LineChart>
+                    </ChartContainer>
                   )}
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
