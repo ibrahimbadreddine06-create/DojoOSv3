@@ -420,8 +420,23 @@ export const courseExercises = pgTable("course_exercises", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const courseMetrics = pgTable("course_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  courseId: varchar("course_id").notNull(),
+  date: date("date").notNull(),
+  completion: decimal("completion", { precision: 5, scale: 2 }).notNull(),
+});
+
 export const coursesRelations = relations(courses, ({ many }) => ({
   lessons: many(lessons),
+  metrics: many(courseMetrics),
+}));
+
+export const courseMetricsRelations = relations(courseMetrics, ({ one }) => ({
+  course: one(courses, {
+    fields: [courseMetrics.courseId],
+    references: [courses.id],
+  }),
 }));
 
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
@@ -619,3 +634,4 @@ export type InsertPageSetting = z.infer<typeof insertPageSettingSchema>;
 export type DailyMetric = typeof dailyMetrics.$inferSelect;
 export type InsertDailyMetric = z.infer<typeof insertDailyMetricSchema>;
 export type KnowledgeMetric = typeof knowledgeMetrics.$inferSelect;
+export type CourseMetric = typeof courseMetrics.$inferSelect;

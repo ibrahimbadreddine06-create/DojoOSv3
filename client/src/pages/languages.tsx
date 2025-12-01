@@ -9,7 +9,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid } from "recharts";
+import { format, parseISO } from "date-fns";
+
+interface MetricData {
+  themeId: string;
+  themeName: string;
+  date: string;
+  completion: string;
+}
+
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+  "hsl(210, 70%, 50%)",
+  "hsl(280, 60%, 55%)",
+  "hsl(30, 80%, 50%)",
+];
 
 export default function Languages() {
   const [, navigate] = useLocation();
@@ -18,26 +37,47 @@ export default function Languages() {
     queryKey: ["/api/knowledge-themes", "language"],
   });
 
-  const chartData = useMemo(() => {
-    if (!languages || languages.length === 0) return [];
-    return languages.map(lang => ({
-      name: lang.name.length > 15 ? lang.name.substring(0, 12) + "..." : lang.name,
-      fullName: lang.name,
-      completion: lang.completion || 0,
-      readiness: lang.readiness || 0,
-    }));
-  }, [languages]);
+  const { data: metricsData } = useQuery<MetricData[]>({
+    queryKey: ["/api/knowledge-metrics-all", "language"],
+  });
 
-  const chartConfig = {
-    completion: {
-      label: "Completion",
-      color: "hsl(var(--chart-1))",
-    },
-    readiness: {
-      label: "Readiness",
-      color: "hsl(var(--chart-2))",
-    },
-  };
+  const { chartData, chartConfig } = useMemo(() => {
+    if (!metricsData || metricsData.length === 0 || !languages) {
+      return { chartData: [], chartConfig: {} };
+    }
+
+    const dateMap = new Map<string, Record<string, number>>();
+    const themeNames = new Set<string>();
+
+    for (const m of metricsData) {
+      const completionVal = parseFloat(m.completion);
+      if (isNaN(completionVal)) continue;
+      themeNames.add(m.themeName);
+      if (!dateMap.has(m.date)) {
+        dateMap.set(m.date, {});
+      }
+      dateMap.get(m.date)![m.themeName] = completionVal;
+    }
+
+    const sortedDates = Array.from(dateMap.keys()).sort();
+    const data = sortedDates.map(date => ({
+      date: format(parseISO(date), "MMM d"),
+      fullDate: date,
+      ...dateMap.get(date),
+    }));
+
+    const config: Record<string, { label: string; color: string }> = {};
+    let colorIndex = 0;
+    for (const name of themeNames) {
+      config[name] = {
+        label: name,
+        color: CHART_COLORS[colorIndex % CHART_COLORS.length],
+      };
+      colorIndex++;
+    }
+
+    return { chartData: data, chartConfig: config };
+  }, [metricsData, languages]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
@@ -57,59 +97,51 @@ export default function Languages() {
         <Card>
           <CardHeader>
             <CardTitle>Overall Metrics</CardTitle>
-            <CardDescription>Completion and readiness across all languages</CardDescription>
+            <CardDescription>Completion progress over time for each language</CardDescription>
           </CardHeader>
           <CardContent>
-            {languages && languages.length > 0 ? (
-              <div className="overflow-x-auto">
-                <div style={{ minWidth: Math.max(400, chartData.length * 150) }}>
-                  <ChartContainer config={chartConfig} className="h-96 w-full">
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 12, bottom: 40 }}>
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fontSize: 14 }}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis 
-                        domain={[0, 100]} 
-                        ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                        tick={{ fontSize: 14 }} 
-                        width={50}
-                        tickFormatter={(v) => `${v}%`}
-                      />
-                      <ChartTooltip 
-                        content={
-                          <ChartTooltipContent 
-                            formatter={(value, name, item) => (
-                              <span>
-                                {item.payload.fullName}: {value}%
-                              </span>
-                            )}
-                          />
-                        } 
-                      />
-                      <Legend wrapperStyle={{ fontSize: 14 }} />
-                      <Bar 
-                        dataKey="completion" 
-                        fill="var(--color-completion)" 
-                        name="Completion"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="readiness" 
-                        fill="var(--color-readiness)" 
-                        name="Readiness"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                </div>
-              </div>
+            {chartData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-80 w-full">
+                <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                    tick={{ fontSize: 12 }} 
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <ChartTooltip 
+                    content={<ChartTooltipContent />} 
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                  {Object.keys(chartConfig).map((key) => (
+                    <Line
+                      key={key}
+                      type="monotone"
+                      dataKey={key}
+                      name={chartConfig[key].label}
+                      stroke={chartConfig[key].color}
+                      strokeWidth={2}
+                      dot={{ fill: chartConfig[key].color, r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  ))}
+                </LineChart>
+              </ChartContainer>
             ) : (
-              <div className="h-96 flex items-center justify-center text-muted-foreground">
-                Add languages to see metrics chart
+              <div className="h-80 flex items-center justify-center text-muted-foreground">
+                {languages && languages.length > 0 
+                  ? "No metrics data yet - track your progress to see the chart"
+                  : "Add languages to see metrics chart"
+                }
               </div>
             )}
           </CardContent>

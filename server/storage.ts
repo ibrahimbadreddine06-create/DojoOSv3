@@ -3,7 +3,7 @@ import {
   users, timeBlocks, dayPresets, activityPresets, goals, knowledgeThemes, learnPlanItems,
   materials, flashcards, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
-  possessions, outfits, courses, lessons, courseExercises, businesses, workProjects, tasks,
+  possessions, outfits, courses, lessons, courseExercises, courseMetrics, businesses, workProjects, tasks,
   socialActivities, people, pageSettings, dailyMetrics, knowledgeMetrics,
   type User, type UpsertUser,
   type TimeBlock, type InsertTimeBlock, type DayPreset, type InsertDayPreset,
@@ -18,7 +18,7 @@ import {
   type Masterpiece, type InsertMasterpiece, type MasterpieceSection, type InsertMasterpieceSection,
   type Possession, type InsertPossession, type Outfit, type InsertOutfit,
   type Course, type InsertCourse, type Lesson, type InsertLesson,
-  type CourseExercise, type InsertCourseExercise, type Business, type InsertBusiness,
+  type CourseExercise, type InsertCourseExercise, type CourseMetric, type Business, type InsertBusiness,
   type WorkProject, type InsertWorkProject, type Task, type InsertTask,
   type SocialActivity, type InsertSocialActivity, type Person, type InsertPerson,
   type PageSetting, type InsertPageSetting, type DailyMetric, type InsertDailyMetric,
@@ -146,7 +146,11 @@ export interface IStorage {
   upsertDailyMetric(date: string, completion: number): Promise<DailyMetric>;
   createDailyMetric(data: InsertDailyMetric): Promise<DailyMetric>;
   getKnowledgeMetrics(themeId: string): Promise<KnowledgeMetric[]>;
+  getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string }[]>;
   upsertKnowledgeMetric(themeId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric>;
+  getCourseMetrics(courseId: string): Promise<CourseMetric[]>;
+  getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string }[]>;
+  upsertCourseMetric(courseId: string, date: string, completion: number): Promise<CourseMetric>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -664,6 +668,81 @@ export class DatabaseStorage implements IStorage {
     } else {
       const [created] = await db.insert(knowledgeMetrics)
         .values({ themeId, date, completion: completion.toString(), readiness: readiness.toString() })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAllKnowledgeMetricsByType(type: string): Promise<{ themeId: string; themeName: string; date: string; completion: string }[]> {
+    const themes = await db.select().from(knowledgeThemes).where(eq(knowledgeThemes.type, type));
+    const themeIds = themes.map(t => t.id);
+    
+    if (themeIds.length === 0) return [];
+    
+    const allMetrics: { themeId: string; themeName: string; date: string; completion: string }[] = [];
+    
+    for (const theme of themes) {
+      const metrics = await db.select().from(knowledgeMetrics)
+        .where(eq(knowledgeMetrics.themeId, theme.id))
+        .orderBy(asc(knowledgeMetrics.date));
+      
+      for (const m of metrics) {
+        allMetrics.push({
+          themeId: theme.id,
+          themeName: theme.name,
+          date: m.date,
+          completion: m.completion,
+        });
+      }
+    }
+    
+    return allMetrics;
+  }
+
+  async getCourseMetrics(courseId: string): Promise<CourseMetric[]> {
+    return await db.select().from(courseMetrics)
+      .where(eq(courseMetrics.courseId, courseId))
+      .orderBy(asc(courseMetrics.date));
+  }
+
+  async getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string }[]> {
+    const allCourses = await db.select().from(courses).where(eq(courses.archived, false));
+    
+    if (allCourses.length === 0) return [];
+    
+    const allMetrics: { courseId: string; courseName: string; date: string; completion: string }[] = [];
+    
+    for (const course of allCourses) {
+      const metrics = await db.select().from(courseMetrics)
+        .where(eq(courseMetrics.courseId, course.id))
+        .orderBy(asc(courseMetrics.date));
+      
+      for (const m of metrics) {
+        allMetrics.push({
+          courseId: course.id,
+          courseName: course.name,
+          date: m.date,
+          completion: m.completion,
+        });
+      }
+    }
+    
+    return allMetrics;
+  }
+
+  async upsertCourseMetric(courseId: string, date: string, completion: number): Promise<CourseMetric> {
+    const [existing] = await db.select().from(courseMetrics)
+      .where(and(eq(courseMetrics.courseId, courseId), eq(courseMetrics.date, date)));
+    
+    if (existing) {
+      const [updated] = await db.update(courseMetrics)
+        .set({ completion: completion.toString() })
+        .where(and(eq(courseMetrics.courseId, courseId), eq(courseMetrics.date, date)))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(courseMetrics)
+        .values({ courseId, date, completion: completion.toString() })
         .returning();
       return created;
     }

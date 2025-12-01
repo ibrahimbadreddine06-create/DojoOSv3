@@ -564,9 +564,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metrics);
   });
 
+  app.get("/api/knowledge-metrics-all/:type", isAuthenticated, async (req, res) => {
+    const metrics = await storage.getAllKnowledgeMetricsByType(req.params.type);
+    res.json(metrics);
+  });
+
   app.put("/api/knowledge-metrics/:themeId/:date", isAuthenticated, async (req, res) => {
     const { completion, readiness } = req.body;
     const metric = await storage.upsertKnowledgeMetric(req.params.themeId, req.params.date, completion, readiness);
+    res.json(metric);
+  });
+
+  app.get("/api/course-metrics/:courseId", isAuthenticated, async (req, res) => {
+    const metrics = await storage.getCourseMetrics(req.params.courseId);
+    res.json(metrics);
+  });
+
+  app.get("/api/course-metrics-all", isAuthenticated, async (req, res) => {
+    const metrics = await storage.getAllCourseMetrics();
+    res.json(metrics);
+  });
+
+  app.put("/api/course-metrics/:courseId/:date", isAuthenticated, async (req, res) => {
+    const { completion } = req.body;
+    const completionNum = Number(completion);
+    if (isNaN(completionNum) || completionNum < 0 || completionNum > 100) {
+      return res.status(400).json({ error: "Completion must be a number between 0 and 100" });
+    }
+    const metric = await storage.upsertCourseMetric(req.params.courseId, req.params.date, completionNum);
     res.json(metric);
   });
 
