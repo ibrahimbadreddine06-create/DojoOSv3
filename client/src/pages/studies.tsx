@@ -203,20 +203,6 @@ export default function Studies() {
     return { chartData: data, chartConfig: config };
   }, [metricsData, courses]);
 
-  const totalLessons = useMemo(() => {
-    return courses?.reduce((sum, course) => sum + (course.lessons?.length || 0), 0) || 0;
-  }, [courses]);
-
-  const completedLessonsTotal = useMemo(() => {
-    return courses?.reduce((sum, course) => sum + (course.lessons?.filter(l => l.completed).length || 0), 0) || 0;
-  }, [courses]);
-
-  const averageCompletion = useMemo(() => {
-    if (!courses || courses.length === 0) return 0;
-    const completions = courses.map((c) => latestMetrics[c.id]?.completion || 0);
-    return Math.round(completions.reduce((a, b) => a + b, 0) / completions.length);
-  }, [courses, latestMetrics]);
-
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
       <div className="space-y-6">
@@ -232,56 +218,9 @@ export default function Studies() {
           <AddCourseDialog defaultSemester={selectedSemester !== "all" ? selectedSemester : undefined} />
         </div>
 
-        {/* Dashboard Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{courses?.filter(c => !c.archived).length || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">active courses</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Lessons</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{completedLessonsTotal}/{totalLessons}</div>
-              <Progress value={totalLessons > 0 ? Math.round((completedLessonsTotal / totalLessons) * 100) : 0} className="h-2 mt-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Avg Completion</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{averageCompletion}%</div>
-              <Progress value={averageCompletion} className="h-2 mt-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{metricsData?.length || 0}</div>
-              <p className="text-xs text-muted-foreground mt-1">metric entries</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Today's Sessions */}
-        <TodaySessions module="studies" />
-
-        {/* Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Learning Trajectory</CardTitle>
+            <CardTitle>Overall Metrics</CardTitle>
             <CardDescription>Completion progress over time for each course</CardDescription>
           </CardHeader>
           <CardContent>
