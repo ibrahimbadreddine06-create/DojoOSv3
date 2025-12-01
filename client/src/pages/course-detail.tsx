@@ -571,7 +571,7 @@ export default function CourseDetail() {
 
           <div className="border-t p-4 bg-muted/20">
             <h3 className="font-medium text-sm mb-3">Today's Sessions</h3>
-            <TodaySessions linkedModule="studies" linkedItemId={courseId} />
+            <TodaySessions module="studies" itemId={courseId} />
           </div>
         </div>
       </div>

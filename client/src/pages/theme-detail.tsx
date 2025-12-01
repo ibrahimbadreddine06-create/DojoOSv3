@@ -570,7 +570,7 @@ export default function ThemeDetail() {
 
           <div className="border-t p-4 bg-muted/20">
             <h3 className="font-medium text-sm mb-3">Today's Sessions</h3>
-            <TodaySessions linkedModule={moduleType} linkedItemId={themeId} />
+            <TodaySessions module={moduleType as "second_brain" | "languages"} itemId={themeId} />
           </div>
         </div>
       </div>
