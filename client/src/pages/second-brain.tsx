@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Trash2 } from "lucide-react";
+import { Brain, Trash2, MoreVertical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
@@ -15,14 +15,11 @@ import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MetricData {
   themeId: string;
@@ -59,12 +56,21 @@ export default function SecondBrain() {
     mutationFn: async (id: string) => {
       return await apiRequest("DELETE", `/api/knowledge-themes/${id}`);
     },
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-themes", "second_brain"] });
+      const previous = queryClient.getQueryData(["/api/knowledge-themes", "second_brain"]);
+      queryClient.setQueryData(["/api/knowledge-themes", "second_brain"], (old: any[]) =>
+        old.filter((theme) => theme.id !== id)
+      );
+      return { previous };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-themes", "second_brain"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics-all", "second_brain"] });
       toast({ title: "Theme deleted" });
     },
-    onError: () => {
+    onError: (err, id, context: any) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/knowledge-themes", "second_brain"], context.previous);
+      }
       toast({ title: "Failed to delete theme", variant: "destructive" });
     },
   });
@@ -211,32 +217,31 @@ export default function SecondBrain() {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 size="icon"
                                 variant="ghost"
+                                data-testid={`button-menu-${theme.id}`}
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (confirm(`Delete "${theme.name}"? This cannot be undone.`)) {
+                                    deleteMutation.mutate(theme.id);
+                                  }
+                                }}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                 data-testid={`button-delete-${theme.id}`}
                               >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogTitle>Delete theme?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete "{theme.name}" and all associated data. This cannot be undone.
-                              </AlertDialogDescription>
-                              <div className="flex gap-3 justify-end">
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteMutation.mutate(theme.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Brain className="w-5 h-5 text-chart-3" />
                         </div>
                       </div>

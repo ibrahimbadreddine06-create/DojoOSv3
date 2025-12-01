@@ -5,16 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { GraduationCap, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { GraduationCap, Archive, ArchiveRestore, Trash2, MoreVertical } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -91,12 +88,21 @@ export default function Studies() {
     mutationFn: async (id: string) => {
       return await apiRequest("DELETE", `/api/courses/${id}`);
     },
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/courses"] });
+      const previous = queryClient.getQueryData(["/api/courses"]);
+      queryClient.setQueryData(["/api/courses"], (old: any[]) =>
+        old.filter((course) => course.id !== id)
+      );
+      return { previous };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/courses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/course-metrics-all"] });
       toast({ title: "Course deleted" });
     },
-    onError: () => {
+    onError: (err, id, context: any) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/courses"], context.previous);
+      }
       toast({ title: "Failed to delete course", variant: "destructive" });
     },
   });
@@ -296,50 +302,50 @@ export default function Studies() {
                             )}
                           </div>
                           <div className="flex items-center gap-1">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                data-testid={`button-delete-${course.id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogTitle>Delete course?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete "{course.name}" and all associated data. This cannot be undone.
-                              </AlertDialogDescription>
-                              <div className="flex gap-3 justify-end">
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteMutation.mutate(course.id)}
-                                  className="bg-destructive hover:bg-destructive/90"
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  data-testid={`button-menu-${course.id}`}
                                 >
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => archiveMutation.mutate({ id: course.id, archived: !course.archived })}
+                                  data-testid={`button-archive-${course.id}`}
+                                >
+                                  {course.archived ? (
+                                    <>
+                                      <ArchiveRestore className="w-4 h-4 mr-2" />
+                                      Restore
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Archive className="w-4 h-4 mr-2" />
+                                      Archive
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (confirm(`Delete "${course.name}"? This cannot be undone.`)) {
+                                      deleteMutation.mutate(course.id);
+                                    }
+                                  }}
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                  data-testid={`button-delete-${course.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
-                                </AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              archiveMutation.mutate({ id: course.id, archived: !course.archived });
-                            }}
-                            data-testid={`button-archive-${course.id}`}
-                          >
-                            {course.archived ? (
-                              <ArchiveRestore className="w-4 h-4" />
-                            ) : (
-                              <Archive className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <GraduationCap className="w-5 h-5 text-chart-1" />
-                        </div>
-                        </div>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <GraduationCap className="w-5 h-5 text-chart-1" />
+                          </div>
+                          </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="space-y-2">
