@@ -308,6 +308,11 @@ export class DatabaseStorage implements IStorage {
     return theme;
   }
 
+  async deleteKnowledgeTheme(id: string): Promise<void> {
+    await db.delete(knowledgeMetrics).where(eq(knowledgeMetrics.themeId, id));
+    await db.delete(knowledgeThemes).where(eq(knowledgeThemes.id, id));
+  }
+
   async getLearnPlanItems(themeId: string): Promise<LearnPlanItem[]> {
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.themeId, themeId)).orderBy(asc(learnPlanItems.order));
   }
@@ -531,6 +536,11 @@ export class DatabaseStorage implements IStorage {
   async updateCourse(id: string, data: Partial<InsertCourse>): Promise<Course> {
     const [course] = await db.update(courses).set(data).where(eq(courses.id, id)).returning();
     return course;
+  }
+
+  async deleteCourse(id: string): Promise<void> {
+    await db.delete(courseMetrics).where(eq(courseMetrics.courseId, id));
+    await db.delete(courses).where(eq(courses.id, id));
   }
 
   async getLessons(courseId: string): Promise<Lesson[]> {

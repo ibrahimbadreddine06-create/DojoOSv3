@@ -161,6 +161,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(theme);
   });
 
+  app.delete("/api/knowledge-themes/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteKnowledgeTheme(req.params.id);
+    res.json({ success: true });
+  });
+
   // Route for course chapters must come first (more specific path)
   app.get("/api/learn-plan-items/course/:courseId", isAuthenticated, async (req, res) => {
     const items = await storage.getCourseLearnPlanItems(req.params.courseId);
@@ -439,6 +444,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/courses/:id", isAuthenticated, async (req, res) => {
     const course = await storage.updateCourse(req.params.id, req.body);
     res.json(course);
+  });
+
+  app.delete("/api/courses/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteCourse(req.params.id);
+    res.json({ success: true });
   });
 
   app.get("/api/courses/:id/lessons", isAuthenticated, async (req, res) => {
