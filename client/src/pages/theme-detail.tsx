@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ChapterContentArea } from "@/components/chapter-content-area";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Cell } from "recharts";
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { KnowledgeTopic, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
@@ -168,6 +168,21 @@ export default function ThemeDetail() {
     }));
   }, [knowledgeMetrics]);
 
+  const flashcardCategories = useMemo(() => {
+    const now = new Date().getTime();
+    const categories = { new: 0, learning: 0, mastered: 0 };
+    flashcards.forEach(card => {
+      if (!card.nextReview || card.nextReview === null) {
+        categories.new++;
+      } else {
+        const nextTime = new Date(card.nextReview).getTime();
+        if (nextTime > now) categories.mastered++;
+        else categories.learning++;
+      }
+    });
+    return Object.entries(categories).map(([name, value]) => ({ name, value }));
+  }, [flashcards]);
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/learn-plan-items/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] }),
@@ -282,14 +297,8 @@ export default function ThemeDetail() {
                       <CardTitle className="text-sm font-medium">Completion</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-24 h-24 flex items-center justify-center">
-                          <div className="absolute inset-0 rounded-full border-4 border-muted" />
-                          <div className="absolute inset-0 rounded-full border-4 border-primary" style={{ background: `conic-gradient(hsl(var(--primary)) 0deg ${(completionPercent / 100) * 360}deg, transparent ${(completionPercent / 100) * 360}deg)` }} />
-                          <span className="text-2xl font-bold text-center z-10">{completionPercent}%</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center mt-4">{completedChapters} of {totalChapters} chapters</p>
+                      <div className="text-3xl font-bold">{completionPercent}%</div>
+                      <p className="text-xs text-muted-foreground mt-2">{completedChapters} of {totalChapters} chapters</p>
                     </CardContent>
                   </Card>
 
@@ -298,14 +307,8 @@ export default function ThemeDetail() {
                       <CardTitle className="text-sm font-medium">Readiness</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-24 h-24 flex items-center justify-center">
-                          <div className="absolute inset-0 rounded-full border-4 border-muted" />
-                          <div className="absolute inset-0 rounded-full border-4" style={{ background: `conic-gradient(hsl(var(--chart-2)) 0deg ${(readinessPercent / 100) * 360}deg, transparent ${(readinessPercent / 100) * 360}deg)` }} />
-                          <span className="text-2xl font-bold text-center z-10">{readinessPercent}%</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center mt-4">Spaced repetition readiness</p>
+                      <div className="text-3xl font-bold">{readinessPercent}%</div>
+                      <p className="text-xs text-muted-foreground mt-2">Spaced repetition ready</p>
                     </CardContent>
                   </Card>
 
@@ -314,10 +317,40 @@ export default function ThemeDetail() {
                       <CardTitle className="text-sm font-medium">Flashcards</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-end justify-center gap-2 h-24">
-                        <div className="text-4xl font-bold text-primary">{flashcards.length}</div>
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center mt-4">Total flashcards created</p>
+                      <div className="text-3xl font-bold text-primary">{flashcards.length}</div>
+                      <p className="text-xs text-muted-foreground mt-2">Total created</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="md:col-span-2 lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-medium">Flashcard Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {flashcards.length === 0 ? (
+                        <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
+                      ) : (
+                        <div className="flex items-center justify-center h-32">
+                          <ChartContainer config={{}} className="w-full">
+                            <PieChart width={300} height={128}>
+                              <Pie data={flashcardCategories} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value">
+                                <Cell fill="hsl(var(--primary))" />
+                                <Cell fill="hsl(var(--chart-2))" />
+                                <Cell fill="hsl(var(--chart-3))" />
+                              </Pie>
+                              <ChartTooltip formatter={(value) => `${value} cards`} />
+                            </PieChart>
+                          </ChartContainer>
+                          <div className="ml-4 text-xs space-y-1">
+                            {flashcardCategories.map((cat, i) => (
+                              <div key={cat.name} className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
+                                <span className="capitalize text-muted-foreground">{cat.name}: {cat.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
