@@ -6,6 +6,20 @@ Dojo OS V2 is a focused personal operating system with 6 core active modules (Ho
 
 ## Recent Changes (December 2024)
 
+### Comprehensive Note-Taking System
+- **Notes Database Table**: New `notes` table with title, content (rich HTML), and chapter associations
+- **Rich Text Editor**: Full-featured note editor with formatting toolbar (bold, italic, underline, strikethrough, headings H1-H3, bullet lists, numbered lists, text alignment, links, undo/redo)
+- **File-Based Notes**: Notes displayed as clickable file list that opens in the editor; auto-save with debouncing
+- **Materials File Upload**: Materials now support both URL links and direct file uploads (base64 encoded) with PDF, Word, PowerPoint, Excel, images, and videos
+- **Hierarchical Content Aggregation**: Parent chapters automatically show content from all child chapters:
+  - New API endpoints: `/api/materials/chapter/:id/with-children`, `/api/flashcards/chapter/:id/with-children`, `/api/notes/chapter/:id/with-children`
+  - Child chapter IDs passed as query parameter for efficient fetching
+- **Redesigned Chapter Content Area Layout**:
+  - Row 1: Flashcards (left) + Progress metrics with completion/readiness bars (right)
+  - Row 2: Materials section (full width)
+  - Row 3: Notes section (full width)
+- **Modernized UI**: Removed flashcard pie chart legends for cleaner look
+
 ### Time-Series Charts for Knowledge Modules
 - **Unified Chart Structure**: Languages, Second Brain, and Studies pages now share identical structure with metrics chart and tabbed content
 - **Time-Series LineCharts**: All three knowledge modules display multi-line charts with:
