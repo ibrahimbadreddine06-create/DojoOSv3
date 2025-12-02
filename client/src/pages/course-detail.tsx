@@ -339,8 +339,8 @@ export default function CourseDetail() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       <Card>
                         <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-medium">Completion</CardTitle>
-                      </CardHeader>
+                          <CardTitle className="text-xs font-medium">Completion</CardTitle>
+                        </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{completionPercent}%</div>
                         <p className="text-xs text-muted-foreground mt-1">{completedChapters}/{totalChapters}</p>
@@ -375,7 +375,7 @@ export default function CourseDetail() {
                     <CardTitle className="text-sm font-medium">Flashcard Status</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      {flashcards.length === 0 ? (
+                    {flashcards.length === 0 ? (
                         <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No flashcards yet</div>
                       ) : (
                         <div className="w-full h-48">
@@ -403,29 +403,27 @@ export default function CourseDetail() {
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Progress Over Time</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {chartData.length === 0 ? (
-                        <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
-                      ) : (
-                        <ChartContainer config={{ completion: { label: "Completion", color: "hsl(var(--primary))" }, readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } }} className="h-32 w-full">
-                          <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                            <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                            <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
-                            <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
-                            <Legend />
-                          </LineChart>
-                        </ChartContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-                </div>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">Progress Over Time</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {chartData.length === 0 ? (
+                      <div className="h-32 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
+                    ) : (
+                      <ChartContainer config={{ completion: { label: "Completion", color: "hsl(var(--primary))" }, readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } }} className="h-32 w-full">
+                        <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                          <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                          <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
+                          <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
+                          <Legend />
+                        </LineChart>
+                      </ChartContainer>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </>

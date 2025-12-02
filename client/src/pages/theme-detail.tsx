@@ -355,7 +355,6 @@ export default function ThemeDetail() {
                       </div>
                     </div>
                   </div>
-                </div>
 
                 <div className="bg-card border rounded-lg p-6">
                   <h3 className="font-semibold mb-4">Flashcard Categories</h3>
