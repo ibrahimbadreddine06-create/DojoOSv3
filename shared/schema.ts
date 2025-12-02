@@ -153,6 +153,8 @@ export const materials = pgTable("materials", {
   title: text("title").notNull(),
   content: text("content"),
   url: text("url"),
+  fileName: text("file_name"), // Original file name for uploads
+  fileData: text("file_data"), // Base64 encoded file data for uploads
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -237,6 +239,33 @@ export const knowledgeMetricsRelations = relations(knowledgeMetrics, ({ one }) =
   topic: one(knowledgeTopics, {
     fields: [knowledgeMetrics.topicId],
     references: [knowledgeTopics.id],
+  }),
+}));
+
+// ===== CHAPTER NOTES (separate note files per chapter) =====
+export const chapterNotes = pgTable("chapter_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chapterId: varchar("chapter_id").notNull(),
+  topicId: varchar("topic_id"),
+  courseId: varchar("course_id"),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const chapterNotesRelations = relations(chapterNotes, ({ one }) => ({
+  chapter: one(learnPlanItems, {
+    fields: [chapterNotes.chapterId],
+    references: [learnPlanItems.id],
+  }),
+  topic: one(knowledgeTopics, {
+    fields: [chapterNotes.topicId],
+    references: [knowledgeTopics.id],
+  }),
+  course: one(courses, {
+    fields: [chapterNotes.courseId],
+    references: [courses.id],
   }),
 }));
 
@@ -542,6 +571,7 @@ export const insertGoalSchema = createInsertSchema(goals).omit({ id: true, creat
 export const insertKnowledgeTopicSchema = createInsertSchema(knowledgeTopics).omit({ id: true, createdAt: true });
 export const insertLearnPlanItemSchema = createInsertSchema(learnPlanItems).omit({ id: true, createdAt: true });
 export const insertMaterialSchema = createInsertSchema(materials).omit({ id: true, createdAt: true });
+export const insertChapterNoteSchema = createInsertSchema(chapterNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true, createdAt: true });
 export const insertWorkoutSchema = createInsertSchema(workouts).omit({ id: true, createdAt: true });
 export const insertExerciseSchema = createInsertSchema(exercises).omit({ id: true });
@@ -583,6 +613,8 @@ export type LearnPlanItem = typeof learnPlanItems.$inferSelect;
 export type InsertLearnPlanItem = z.infer<typeof insertLearnPlanItemSchema>;
 export type Material = typeof materials.$inferSelect;
 export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
+export type ChapterNote = typeof chapterNotes.$inferSelect;
+export type InsertChapterNote = z.infer<typeof insertChapterNoteSchema>;
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type Workout = typeof workouts.$inferSelect;
