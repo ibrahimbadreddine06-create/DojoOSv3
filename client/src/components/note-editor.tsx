@@ -236,14 +236,28 @@ interface NotesListProps {
   chapterId: string;
   topicId?: string;
   courseId?: string;
+  childChapterIds?: string[];
 }
 
-export function NotesList({ chapterId, topicId, courseId }: NotesListProps) {
+export function NotesList({ chapterId, topicId, courseId, childChapterIds = [] }: NotesListProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState<string | undefined>();
 
+  const hasChildren = childChapterIds.length > 0;
+  const childIdsParam = childChapterIds.join(',');
+
   const { data: notes = [], isLoading } = useQuery<ChapterNote[]>({
-    queryKey: ["/api/notes/chapter", chapterId],
+    queryKey: hasChildren 
+      ? ["/api/notes/chapter", chapterId, "with-children", childIdsParam]
+      : ["/api/notes/chapter", chapterId],
+    queryFn: async () => {
+      const url = hasChildren
+        ? `/api/notes/chapter/${chapterId}/with-children?childIds=${childIdsParam}`
+        : `/api/notes/chapter/${chapterId}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch notes');
+      return res.json();
+    },
   });
 
   const deleteMutation = useMutation({
@@ -252,6 +266,9 @@ export function NotesList({ chapterId, topicId, courseId }: NotesListProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notes/chapter", chapterId] });
+      if (hasChildren) {
+        queryClient.invalidateQueries({ queryKey: ["/api/notes/chapter", chapterId, "with-children"] });
+      }
     },
   });
 

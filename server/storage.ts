@@ -66,12 +66,14 @@ export interface IStorage {
   getMaterials(topicId: string): Promise<Material[]>;
   getMaterialsByCourse(courseId: string): Promise<Material[]>;
   getMaterialsByChapter(chapterId: string): Promise<Material[]>;
+  getMaterialsByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<Material[]>;
   createMaterial(data: InsertMaterial): Promise<Material>;
   updateMaterial(id: string, data: Partial<InsertMaterial>): Promise<Material>;
   deleteMaterial(id: string): Promise<void>;
   getFlashcardsByTheme(topicId: string): Promise<Flashcard[]>;
   getFlashcardsByCourse(courseId: string): Promise<Flashcard[]>;
   getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]>;
+  getFlashcardsByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<Flashcard[]>;
   createFlashcard(data: InsertFlashcard): Promise<Flashcard>;
   updateFlashcard(id: string, data: Partial<InsertFlashcard>): Promise<Flashcard>;
   deleteFlashcard(id: string): Promise<void>;
@@ -392,6 +394,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(materials).where(eq(materials.chapterId, chapterId));
   }
 
+  async getMaterialsByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<Material[]> {
+    const allChapterIds = [chapterId, ...childChapterIds];
+    const results = await Promise.all(
+      allChapterIds.map(id => db.select().from(materials).where(eq(materials.chapterId, id)))
+    );
+    return results.flat().sort((a, b) => 
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+  }
+
   async createMaterial(data: InsertMaterial): Promise<Material> {
     const [material] = await db.insert(materials).values(data).returning();
     return material;
@@ -416,6 +428,16 @@ export class DatabaseStorage implements IStorage {
 
   async getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]> {
     return await db.select().from(flashcards).where(eq(flashcards.chapterId, chapterId));
+  }
+
+  async getFlashcardsByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<Flashcard[]> {
+    const allChapterIds = [chapterId, ...childChapterIds];
+    const results = await Promise.all(
+      allChapterIds.map(id => db.select().from(flashcards).where(eq(flashcards.chapterId, id)))
+    );
+    return results.flat().sort((a, b) => 
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
   }
 
   async createFlashcard(data: InsertFlashcard): Promise<Flashcard> {

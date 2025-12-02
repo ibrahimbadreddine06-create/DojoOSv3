@@ -45,6 +45,27 @@ function buildChapterTree(items: LearnPlanItem[]): ChapterWithChildren[] {
   return roots;
 }
 
+function getAllChildChapterIds(chapter: ChapterWithChildren): string[] {
+  const ids: string[] = [];
+  const collectIds = (node: ChapterWithChildren) => {
+    node.children.forEach(child => {
+      ids.push(child.id);
+      collectIds(child);
+    });
+  };
+  collectIds(chapter);
+  return ids;
+}
+
+function findChapterInTree(tree: ChapterWithChildren[], id: string): ChapterWithChildren | undefined {
+  for (const chapter of tree) {
+    if (chapter.id === id) return chapter;
+    const found = findChapterInTree(chapter.children, id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 function ChapterItem({ chapter, depth = 0, selectedId, onSelect, onToggleComplete, onAddSubchapter, onDelete }: any) {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = chapter.children.length > 0;
@@ -141,6 +162,12 @@ export default function CourseDetail() {
 
   const chapterTree = useMemo(() => buildChapterTree(chapters), [chapters]);
   const selectedChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
+  
+  const selectedChapterChildIds = useMemo(() => {
+    if (!selectedChapterId) return [];
+    const chapterNode = findChapterInTree(chapterTree, selectedChapterId);
+    return chapterNode ? getAllChildChapterIds(chapterNode) : [];
+  }, [chapterTree, selectedChapterId]);
 
   const completionPercent = useMemo(() => {
     if (chapters.length === 0) return 0;
@@ -281,7 +308,7 @@ export default function CourseDetail() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-1 p-6 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
-                  <ChapterContentArea chapter={selectedChapter} courseId={courseId} />
+                  <ChapterContentArea chapter={selectedChapter} courseId={courseId} childChapterIds={selectedChapterChildIds} />
                 </div>
               </div>
             </div>

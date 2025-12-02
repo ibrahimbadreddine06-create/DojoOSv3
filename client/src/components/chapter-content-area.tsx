@@ -31,6 +31,7 @@ interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
   topicId?: string;
   courseId?: string;
+  childChapterIds?: string[];
 }
 
 const materialTypeIcons: Record<string, typeof FileText> = {
@@ -373,17 +374,40 @@ function AddFlashcardDialog({
   );
 }
 
-export function ChapterContentArea({ chapter, topicId, courseId }: ChapterContentAreaProps) {
+export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds = [] }: ChapterContentAreaProps) {
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
   const [learningSessionOpen, setLearningSessionOpen] = useState(false);
 
+  const hasChildren = childChapterIds.length > 0;
+  const childIdsParam = childChapterIds.join(',');
+
   const { data: materials = [], isLoading: materialsLoading } = useQuery<Material[]>({
-    queryKey: ["/api/materials/chapter", chapter.id],
+    queryKey: hasChildren 
+      ? ["/api/materials/chapter", chapter.id, "with-children", childIdsParam]
+      : ["/api/materials/chapter", chapter.id],
+    queryFn: async () => {
+      const url = hasChildren 
+        ? `/api/materials/chapter/${chapter.id}/with-children?childIds=${childIdsParam}`
+        : `/api/materials/chapter/${chapter.id}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch materials');
+      return res.json();
+    },
   });
 
   const { data: flashcards = [], isLoading: flashcardsLoading } = useQuery<Flashcard[]>({
-    queryKey: ["/api/flashcards/chapter", chapter.id],
+    queryKey: hasChildren
+      ? ["/api/flashcards/chapter", chapter.id, "with-children", childIdsParam]
+      : ["/api/flashcards/chapter", chapter.id],
+    queryFn: async () => {
+      const url = hasChildren
+        ? `/api/flashcards/chapter/${chapter.id}/with-children?childIds=${childIdsParam}`
+        : `/api/flashcards/chapter/${chapter.id}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch flashcards');
+      return res.json();
+    },
   });
 
   const deleteMaterialMutation = useMutation({
@@ -392,6 +416,9 @@ export function ChapterContentArea({ chapter, topicId, courseId }: ChapterConten
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/materials/chapter", chapter.id] });
+      if (hasChildren) {
+        queryClient.invalidateQueries({ queryKey: ["/api/materials/chapter", chapter.id, "with-children"] });
+      }
     },
   });
 
@@ -579,6 +606,7 @@ export function ChapterContentArea({ chapter, topicId, courseId }: ChapterConten
           chapterId={chapter.id}
           topicId={topicId}
           courseId={courseId}
+          childChapterIds={childChapterIds}
         />
       </Card>
     </div>

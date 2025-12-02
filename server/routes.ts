@@ -195,6 +195,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Materials routes - more specific routes first
+  app.get("/api/materials/chapter/:chapterId/with-children", isAuthenticated, async (req, res) => {
+    const { childIds } = req.query;
+    const childChapterIds = typeof childIds === 'string' ? childIds.split(',').filter(Boolean) : [];
+    const materials = await storage.getMaterialsByChapterWithChildren(req.params.chapterId, childChapterIds);
+    res.json(materials);
+  });
+
   app.get("/api/materials/chapter/:chapterId", isAuthenticated, async (req, res) => {
     const materials = await storage.getMaterialsByChapter(req.params.chapterId);
     res.json(materials);
@@ -265,6 +272,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Flashcards routes - more specific routes first
+  app.get("/api/flashcards/chapter/:chapterId/with-children", isAuthenticated, async (req, res) => {
+    const { childIds } = req.query;
+    const childChapterIds = typeof childIds === 'string' ? childIds.split(',').filter(Boolean) : [];
+    const flashcards = await storage.getFlashcardsByChapterWithChildren(req.params.chapterId, childChapterIds);
+    res.json(flashcards);
+  });
+
   app.get("/api/flashcards/chapter/:chapterId", isAuthenticated, async (req, res) => {
     const flashcards = await storage.getFlashcardsByChapter(req.params.chapterId);
     res.json(flashcards);
