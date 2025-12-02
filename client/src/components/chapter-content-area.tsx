@@ -26,7 +26,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LearningSession } from "@/components/learning-session";
 import { NotesList } from "@/components/note-editor";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
-import type { LearnPlanItem, Material, Flashcard, Note } from "@shared/schema";
+import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
