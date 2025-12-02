@@ -43,13 +43,10 @@ const materialTypeIcons: Record<string, typeof FileText> = {
 };
 
 function CompletionReadinessMetrics({ flashcards, chapter }: { flashcards: Flashcard[]; chapter: LearnPlanItem }) {
+  const safeFlashcards = Array.isArray(flashcards) ? flashcards : [];
   const readiness = useMemo(() => {
-    if (flashcards.length === 0) return 0;
-    const totalReadiness = flashcards.reduce((sum, f) => {
-      return sum + calculateReadinessWithDecay(f.mastery, f.lastReviewedAt);
-    }, 0);
-    return Math.round(totalReadiness / flashcards.length);
-  }, [flashcards]);
+    return calculateReadinessWithDecay(safeFlashcards);
+  }, [safeFlashcards]);
 
   const completion = chapter.completed ? 100 : 0;
 
