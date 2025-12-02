@@ -124,9 +124,12 @@ function AddMaterialDialog({
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [content, setContent] = useState("");
+  const [uploadMode, setUploadMode] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [fileData, setFileData] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: async (data: { type: string; title: string; url?: string; content?: string; chapterId: string; topicId?: string; courseId?: string }) => {
+    mutationFn: async (data: { type: string; title: string; url?: string; content?: string; fileName?: string; fileData?: string; chapterId: string; topicId?: string; courseId?: string }) => {
       return apiRequest("POST", "/api/materials", data);
     },
     onSuccess: () => {
@@ -135,14 +138,43 @@ function AddMaterialDialog({
     },
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setFileName(file.name);
+    if (!title.trim()) {
+      setTitle(file.name.replace(/\.[^/.]+$/, ""));
+    }
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setFileData(base64);
+    };
+    reader.readAsDataURL(file);
+    
+    if (file.type.includes("pdf")) {
+      setType("pdf");
+    } else if (file.type.includes("video")) {
+      setType("video");
+    } else {
+      setType("file");
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (uploadMode && !fileData) return;
+    
     createMutation.mutate({
       type,
       title: title.trim(),
-      url: url.trim() || undefined,
+      url: uploadMode ? undefined : (url.trim() || undefined),
       content: content.trim() || undefined,
+      fileName: uploadMode ? fileName : undefined,
+      fileData: uploadMode ? fileData : undefined,
       chapterId,
       topicId,
       courseId,
@@ -151,20 +183,74 @@ function AddMaterialDialog({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Type</label>
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger data-testid="select-material-type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="link">Link</SelectItem>
-            <SelectItem value="pdf">PDF</SelectItem>
-            <SelectItem value="video">Video</SelectItem>
-            <SelectItem value="file">File</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex gap-2">
+        <Button 
+          type="button" 
+          variant={!uploadMode ? "default" : "outline"} 
+          size="sm"
+          onClick={() => setUploadMode(false)}
+          data-testid="button-link-mode"
+        >
+          <Link2 className="h-4 w-4 mr-2" />
+          Add Link
+        </Button>
+        <Button 
+          type="button" 
+          variant={uploadMode ? "default" : "outline"} 
+          size="sm"
+          onClick={() => setUploadMode(true)}
+          data-testid="button-upload-mode"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Upload File
+        </Button>
       </div>
+
+      {uploadMode ? (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">File</label>
+          <div className="border-2 border-dashed rounded-md p-4 text-center hover-elevate cursor-pointer">
+            <input
+              type="file"
+              onChange={handleFileChange}
+              className="hidden"
+              id="material-file-input"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.mp4,.mp3,.png,.jpg,.jpeg,.gif"
+              data-testid="input-material-file"
+            />
+            <label htmlFor="material-file-input" className="cursor-pointer">
+              {fileName ? (
+                <div className="flex items-center justify-center gap-2">
+                  <File className="h-5 w-5" />
+                  <span className="text-sm">{fileName}</span>
+                </div>
+              ) : (
+                <div className="text-muted-foreground">
+                  <Upload className="h-8 w-8 mx-auto mb-2" />
+                  <p className="text-sm">Click to upload a file</p>
+                  <p className="text-xs">PDF, Word, PowerPoint, Excel, images, videos</p>
+                </div>
+              )}
+            </label>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Type</label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger data-testid="select-material-type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="link">Link</SelectItem>
+              <SelectItem value="pdf">PDF</SelectItem>
+              <SelectItem value="video">Video</SelectItem>
+              <SelectItem value="file">File</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      
       <div className="space-y-2">
         <label className="text-sm font-medium">Title</label>
         <Input
@@ -172,35 +258,42 @@ function AddMaterialDialog({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Material title..."
           data-testid="input-material-title"
-          autoFocus
+          autoFocus={!uploadMode}
         />
       </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">URL</label>
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://..."
-          data-testid="input-material-url"
-        />
-      </div>
-      {(type === "pdf" || type === "file") && (
+      
+      {!uploadMode && (
         <div className="space-y-2">
-          <label className="text-sm font-medium">Notes</label>
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Additional notes..."
-            data-testid="textarea-material-notes"
-            rows={3}
+          <label className="text-sm font-medium">URL</label>
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+            data-testid="input-material-url"
           />
         </div>
       )}
+      
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Notes (optional)</label>
+        <Textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Additional notes..."
+          data-testid="textarea-material-notes"
+          rows={2}
+        />
+      </div>
+      
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={!title.trim() || createMutation.isPending} data-testid="button-create-material">
+        <Button 
+          type="submit" 
+          disabled={!title.trim() || (uploadMode && !fileData) || createMutation.isPending} 
+          data-testid="button-create-material"
+        >
           {createMutation.isPending ? "Adding..." : "Add Material"}
         </Button>
       </div>
@@ -362,6 +455,17 @@ export function ChapterContentArea({ chapter, topicId, courseId }: ChapterConten
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {materials.map((material) => {
                 const Icon = materialTypeIcons[material.type] || File;
+                const hasUploadedFile = !!(material as any).fileData;
+                const handleOpen = () => {
+                  if (hasUploadedFile) {
+                    const link = document.createElement("a");
+                    link.href = (material as any).fileData;
+                    link.download = (material as any).fileName || material.title;
+                    link.click();
+                  } else if (material.url) {
+                    window.open(material.url, "_blank");
+                  }
+                };
                 return (
                   <div
                     key={material.id}
@@ -369,13 +473,21 @@ export function ChapterContentArea({ chapter, topicId, courseId }: ChapterConten
                     data-testid={`material-item-${material.id}`}
                   >
                     <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm flex-1 truncate">{material.title}</span>
-                    {material.url && (
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm truncate block">{material.title}</span>
+                      {hasUploadedFile && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Upload className="h-3 w-3" />
+                          {(material as any).fileName}
+                        </span>
+                      )}
+                    </div>
+                    {(material.url || hasUploadedFile) && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={() => window.open(material.url!, "_blank")}
+                        onClick={handleOpen}
                         data-testid={`button-open-material-${material.id}`}
                       >
                         <ExternalLink className="h-3 w-3" />
