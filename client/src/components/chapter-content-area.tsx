@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload } from "lucide-react";
+import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,8 @@ import {
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LearningSession } from "@/components/learning-session";
 import { NotesList } from "@/components/note-editor";
-import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
+import { calculateReadinessWithDecay } from "@/lib/readiness";
+import type { LearnPlanItem, Material, Flashcard, Note } from "@shared/schema";
 
 interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
@@ -40,6 +41,53 @@ const materialTypeIcons: Record<string, typeof FileText> = {
   link: Link2,
   file: File,
 };
+
+function CompletionReadinessMetrics({ flashcards, chapter }: { flashcards: Flashcard[]; chapter: LearnPlanItem }) {
+  const readiness = useMemo(() => {
+    if (flashcards.length === 0) return 0;
+    const totalReadiness = flashcards.reduce((sum, f) => {
+      return sum + calculateReadinessWithDecay(f.mastery, f.lastReviewedAt);
+    }, 0);
+    return Math.round(totalReadiness / flashcards.length);
+  }, [flashcards]);
+
+  const completion = chapter.completed ? 100 : 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Completion</span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all" 
+              style={{ width: `${completion}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{completion}%</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="h-4 w-4 text-chart-2" />
+            <span className="text-sm font-medium">Readiness</span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-chart-2 transition-all" 
+              style={{ width: `${readiness}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{readiness}%</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FlashcardCircleChart({ flashcards }: { flashcards: Flashcard[] }) {
   const total = flashcards.length;
@@ -445,99 +493,6 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-sm">Materials</h3>
-            <Dialog open={addMaterialOpen} onOpenChange={setAddMaterialOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="ghost" data-testid="button-add-material">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Material</DialogTitle>
-                  <DialogDescription>
-                    Add a link, PDF, video, or file to this chapter.
-                  </DialogDescription>
-                </DialogHeader>
-                <AddMaterialDialog
-                  chapterId={chapter.id}
-                  topicId={topicId}
-                  courseId={courseId}
-                  onClose={() => setAddMaterialOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {materialsLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8" />
-              <Skeleton className="h-8" />
-            </div>
-          ) : materials.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No materials yet
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {materials.map((material) => {
-                const Icon = materialTypeIcons[material.type] || File;
-                const hasUploadedFile = !!(material as any).fileData;
-                const handleOpen = () => {
-                  if (hasUploadedFile) {
-                    const link = document.createElement("a");
-                    link.href = (material as any).fileData;
-                    link.download = (material as any).fileName || material.title;
-                    link.click();
-                  } else if (material.url) {
-                    window.open(material.url, "_blank");
-                  }
-                };
-                return (
-                  <div
-                    key={material.id}
-                    className="flex items-center gap-2 p-2 rounded-md bg-muted/50 group"
-                    data-testid={`material-item-${material.id}`}
-                  >
-                    <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm truncate block">{material.title}</span>
-                      {hasUploadedFile && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Upload className="h-3 w-3" />
-                          {(material as any).fileName}
-                        </span>
-                      )}
-                    </div>
-                    {(material.url || hasUploadedFile) && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                        onClick={handleOpen}
-                        data-testid={`button-open-material-${material.id}`}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100"
-                      onClick={() => deleteMaterialMutation.mutate(material.id)}
-                      data-testid={`button-delete-material-${material.id}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm">Flashcards</h3>
             <Dialog open={addFlashcardOpen} onOpenChange={setAddFlashcardOpen}>
               <DialogTrigger asChild>
@@ -590,6 +545,11 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
             </div>
           )}
         </Card>
+
+        <Card className="p-4">
+          <h3 className="font-medium text-sm mb-4">Progress</h3>
+          <CompletionReadinessMetrics flashcards={flashcards} chapter={chapter} />
+        </Card>
       </div>
 
       <LearningSession
@@ -600,6 +560,99 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
         open={learningSessionOpen}
         onClose={() => setLearningSessionOpen(false)}
       />
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-sm">Materials</h3>
+          <Dialog open={addMaterialOpen} onOpenChange={setAddMaterialOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="ghost" data-testid="button-add-material">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Material</DialogTitle>
+                <DialogDescription>
+                  Add a link, PDF, video, or file to this chapter.
+                </DialogDescription>
+              </DialogHeader>
+              <AddMaterialDialog
+                chapterId={chapter.id}
+                topicId={topicId}
+                courseId={courseId}
+                onClose={() => setAddMaterialOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {materialsLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+          </div>
+        ) : materials.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No materials yet
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {materials.map((material) => {
+              const Icon = materialTypeIcons[material.type] || File;
+              const hasUploadedFile = !!(material as any).fileData;
+              const handleOpen = () => {
+                if (hasUploadedFile) {
+                  const link = document.createElement("a");
+                  link.href = (material as any).fileData;
+                  link.download = (material as any).fileName || material.title;
+                  link.click();
+                } else if (material.url) {
+                  window.open(material.url, "_blank");
+                }
+              };
+              return (
+                <div
+                  key={material.id}
+                  className="flex items-center gap-2 p-2 rounded-md bg-muted/50 group"
+                  data-testid={`material-item-${material.id}`}
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm truncate block">{material.title}</span>
+                    {hasUploadedFile && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Upload className="h-3 w-3" />
+                        {(material as any).fileName}
+                      </span>
+                    )}
+                  </div>
+                  {(material.url || hasUploadedFile) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={handleOpen}
+                      data-testid={`button-open-material-${material.id}`}
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100"
+                    onClick={() => deleteMaterialMutation.mutate(material.id)}
+                    data-testid={`button-delete-material-${material.id}`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
 
       <Card className="p-4">
         <NotesList
