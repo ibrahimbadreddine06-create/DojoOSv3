@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap } from "lucide-react";
+import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,13 +24,13 @@ import {
 } from "@/components/ui/select";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LearningSession } from "@/components/learning-session";
+import { NotesList } from "@/components/note-editor";
 import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
   topicId?: string;
   courseId?: string;
-  onNotesChange?: (notes: string) => void;
 }
 
 const materialTypeIcons: Record<string, typeof FileText> = {
@@ -280,11 +280,10 @@ function AddFlashcardDialog({
   );
 }
 
-export function ChapterContentArea({ chapter, topicId, courseId, onNotesChange }: ChapterContentAreaProps) {
+export function ChapterContentArea({ chapter, topicId, courseId }: ChapterContentAreaProps) {
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
   const [learningSessionOpen, setLearningSessionOpen] = useState(false);
-  const [notes, setNotes] = useState(chapter.notes || "");
 
   const { data: materials = [], isLoading: materialsLoading } = useQuery<Material[]>({
     queryKey: ["/api/materials/chapter", chapter.id],
@@ -302,21 +301,6 @@ export function ChapterContentArea({ chapter, topicId, courseId, onNotesChange }
       queryClient.invalidateQueries({ queryKey: ["/api/materials/chapter", chapter.id] });
     },
   });
-
-  const updateNotesMutation = useMutation({
-    mutationFn: async (notes: string) => {
-      return apiRequest("PATCH", `/api/learn-plan-items/${chapter.id}`, { notes });
-    },
-    onSuccess: () => {
-      onNotesChange?.(notes);
-    },
-  });
-
-  const handleNotesBlur = () => {
-    if (notes !== chapter.notes) {
-      updateNotesMutation.mutate(notes);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -479,18 +463,11 @@ export function ChapterContentArea({ chapter, topicId, courseId, onNotesChange }
       />
 
       <Card className="p-4">
-        <h3 className="font-medium text-sm mb-3">Notes</h3>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          onBlur={handleNotesBlur}
-          placeholder="Add your notes here... (Markdown supported)"
-          className="min-h-[200px] resize-y"
-          data-testid="textarea-chapter-notes"
+        <NotesList
+          chapterId={chapter.id}
+          topicId={topicId}
+          courseId={courseId}
         />
-        {updateNotesMutation.isPending && (
-          <p className="text-xs text-muted-foreground mt-1">Saving...</p>
-        )}
       </Card>
     </div>
   );

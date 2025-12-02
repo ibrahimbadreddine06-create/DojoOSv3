@@ -281,7 +281,7 @@ export default function ThemeDetail() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-1 p-6 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
-                  <ChapterContentArea chapter={selectedChapter} topicId={topicId} onNotesChange={() => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items", topicId] })} />
+                  <ChapterContentArea chapter={selectedChapter} topicId={topicId} />
                 </div>
               </div>
             </div>

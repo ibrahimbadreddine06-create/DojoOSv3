@@ -281,7 +281,7 @@ export default function CourseDetail() {
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="flex-1 p-6 overflow-y-auto">
                 <div className="max-w-3xl mx-auto">
-                  <ChapterContentArea chapter={selectedChapter} courseId={courseId} onNotesChange={() => queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items/course", courseId] })} />
+                  <ChapterContentArea chapter={selectedChapter} courseId={courseId} />
                 </div>
               </div>
             </div>
