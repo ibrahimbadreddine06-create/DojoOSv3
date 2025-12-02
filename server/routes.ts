@@ -226,6 +226,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
+  // Chapter Notes routes
+  app.get("/api/notes/chapter/:chapterId", isAuthenticated, async (req, res) => {
+    const notes = await storage.getNotesByChapter(req.params.chapterId);
+    res.json(notes);
+  });
+
+  app.get("/api/notes/chapter/:chapterId/with-children", isAuthenticated, async (req, res) => {
+    const { childIds } = req.query;
+    const childChapterIds = typeof childIds === 'string' ? childIds.split(',').filter(Boolean) : [];
+    const notes = await storage.getNotesByChapterWithChildren(req.params.chapterId, childChapterIds);
+    res.json(notes);
+  });
+
+  app.get("/api/notes/:id", isAuthenticated, async (req, res) => {
+    const note = await storage.getNote(req.params.id);
+    if (!note) {
+      return res.status(404).json({ message: "Note not found" });
+    }
+    res.json(note);
+  });
+
+  app.post("/api/notes", isAuthenticated, async (req, res) => {
+    const { insertChapterNoteSchema } = await import("@shared/schema");
+    const data = insertChapterNoteSchema.parse(req.body);
+    const note = await storage.createNote(data);
+    res.json(note);
+  });
+
+  app.patch("/api/notes/:id", isAuthenticated, async (req, res) => {
+    const note = await storage.updateNote(req.params.id, req.body);
+    res.json(note);
+  });
+
+  app.delete("/api/notes/:id", isAuthenticated, async (req, res) => {
+    await storage.deleteNote(req.params.id);
+    res.json({ success: true });
+  });
+
   // Flashcards routes - more specific routes first
   app.get("/api/flashcards/chapter/:chapterId", isAuthenticated, async (req, res) => {
     const flashcards = await storage.getFlashcardsByChapter(req.params.chapterId);

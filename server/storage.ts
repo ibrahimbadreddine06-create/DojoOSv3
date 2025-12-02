@@ -1,7 +1,7 @@
 // Referenced from javascript_database blueprint - comprehensive storage for all Dojo OS modules
 import {
   users, timeBlocks, dayPresets, activityPresets, goals, knowledgeTopics, learnPlanItems,
-  materials, flashcards, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
+  materials, flashcards, chapterNotes, workouts, exercises, intakeLogs, sleepLogs, hygieneRoutines,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, courseMetrics, businesses, workProjects, tasks,
   socialActivities, people, pageSettings, dailyMetrics, knowledgeMetrics,
@@ -10,6 +10,7 @@ import {
   type ActivityPreset, type InsertActivityPreset, type Goal, type InsertGoal,
   type KnowledgeTopic, type InsertKnowledgeTopic, type LearnPlanItem, type InsertLearnPlanItem,
   type Material, type InsertMaterial, type Flashcard, type InsertFlashcard,
+  type ChapterNote, type InsertChapterNote,
   type Workout, type InsertWorkout, type Exercise, type InsertExercise,
   type IntakeLog, type InsertIntakeLog, type SleepLog, type InsertSleepLog,
   type HygieneRoutine, type InsertHygieneRoutine, type SalahLog, type InsertSalahLog,
@@ -56,7 +57,7 @@ export interface IStorage {
   // Knowledge Tracking
   getKnowledgeTopics(type: string): Promise<KnowledgeTopic[]>;
   getKnowledgeTopic(id: string): Promise<KnowledgeTopic | undefined>;
-  createKnowledgeTopic(data: InsertKnowledgeTheme): Promise<KnowledgeTopic>;
+  createKnowledgeTopic(data: InsertKnowledgeTopic): Promise<KnowledgeTopic>;
   getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]>;
   getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]>;
   createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem>;
@@ -74,6 +75,14 @@ export interface IStorage {
   createFlashcard(data: InsertFlashcard): Promise<Flashcard>;
   updateFlashcard(id: string, data: Partial<InsertFlashcard>): Promise<Flashcard>;
   deleteFlashcard(id: string): Promise<void>;
+  
+  // Chapter Notes
+  getNotesByChapter(chapterId: string): Promise<ChapterNote[]>;
+  getNotesByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<ChapterNote[]>;
+  getNote(id: string): Promise<ChapterNote | undefined>;
+  createNote(data: InsertChapterNote): Promise<ChapterNote>;
+  updateNote(id: string, data: Partial<InsertChapterNote>): Promise<ChapterNote>;
+  deleteNote(id: string): Promise<void>;
 
   // Body
   getWorkouts(date: string): Promise<Workout[]>;
@@ -303,7 +312,7 @@ export class DatabaseStorage implements IStorage {
     return theme;
   }
 
-  async createKnowledgeTopic(data: InsertKnowledgeTheme): Promise<KnowledgeTopic> {
+  async createKnowledgeTopic(data: InsertKnowledgeTopic): Promise<KnowledgeTopic> {
     const [theme] = await db.insert(knowledgeTopics).values(data).returning();
     return theme;
   }
@@ -421,6 +430,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFlashcard(id: string): Promise<void> {
     await db.delete(flashcards).where(eq(flashcards.id, id));
+  }
+
+  // Chapter Notes
+  async getNotesByChapter(chapterId: string): Promise<ChapterNote[]> {
+    return await db.select().from(chapterNotes).where(eq(chapterNotes.chapterId, chapterId)).orderBy(desc(chapterNotes.updatedAt));
+  }
+
+  async getNotesByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<ChapterNote[]> {
+    const allChapterIds = [chapterId, ...childChapterIds];
+    const results = await Promise.all(
+      allChapterIds.map(id => db.select().from(chapterNotes).where(eq(chapterNotes.chapterId, id)))
+    );
+    return results.flat().sort((a, b) => 
+      new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+    );
+  }
+
+  async getNote(id: string): Promise<ChapterNote | undefined> {
+    const [note] = await db.select().from(chapterNotes).where(eq(chapterNotes.id, id));
+    return note;
+  }
+
+  async createNote(data: InsertChapterNote): Promise<ChapterNote> {
+    const [note] = await db.insert(chapterNotes).values(data).returning();
+    return note;
+  }
+
+  async updateNote(id: string, data: Partial<InsertChapterNote>): Promise<ChapterNote> {
+    const [note] = await db.update(chapterNotes).set({ ...data, updatedAt: new Date() }).where(eq(chapterNotes.id, id)).returning();
+    return note;
+  }
+
+  async deleteNote(id: string): Promise<void> {
+    await db.delete(chapterNotes).where(eq(chapterNotes.id, id));
   }
 
   // Body
