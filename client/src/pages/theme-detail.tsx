@@ -399,15 +399,6 @@ export default function ThemeDetail() {
                           <ChartTooltip formatter={(value) => `${value} cards`} />
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                        {flashcardCategories.map((cat, i) => (
-                          <div key={cat.name} className="text-center">
-                            <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
-                            <p className="text-muted-foreground capitalize">{cat.name}</p>
-                            <p className="font-semibold">{cat.value}</p>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   )}
                 </div>

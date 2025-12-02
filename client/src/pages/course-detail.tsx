@@ -416,14 +416,6 @@ export default function CourseDetail() {
                               <ChartTooltip formatter={(value) => `${value} cards`} />
                             </PieChart>
                           </ResponsiveContainer>
-                          <div className="mt-3 grid grid-cols-1 gap-1 text-xs">
-                            {flashcardCategories.map((cat, i) => (
-                              <div key={cat.name} className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-chart-2' : 'bg-chart-3'}`} />
-                                <span className="capitalize text-muted-foreground">{cat.name}: {cat.value}</span>
-                              </div>
-                            ))}
-                          </div>
                         </div>
                       )}
                   </CardContent>
