@@ -1,0 +1,211 @@
+Perfect Ibrahim — dit verandert de UX-architectuur en maakt het eigenlijk NOG cleaner.
+Ik update heel de briefing volgens uw nieuwe punt:
+
+**❗De Learning Trajectory sidebar moet op desktop ALTIJD zichtbaar zijn.
+
+En op mobile enkel via een knop.
+GEEN terugpijltjes, GEEN breadcrumb — alles gebeurt via de sidebars.**
+
+Ik herschrijf de briefing opnieuw, perfect accuraat, zodat uw engineer 0 twijfel heeft.
+
+⸻
+
+🔥 GEÜPDATETE TECHNISCHE BRIEFING (v3) — FINAL VERSION
+
+(Met Chapters, Infinite Hierarchy, Desktop Always-Open, Mobile Drawer, No Back Buttons)
+
+⸻
+
+1. General Concept
+
+De applicatie heeft twee sidebars:
+
+A. Main Navigation Sidebar
+	•	Bevat modules: Planner, Languages, Second Brain, etc.
+	•	Zit links van het scherm.
+	•	Toegankelijk via hamburger button.
+
+B. Learning Trajectory Sidebar
+	•	Toont Chapters + Subchapters + Progress van de huidige sub-module.
+	•	Is Notion/Vaya-achtig.
+	•	Heeft infinite hierarchy.
+
+Regel: Er kan maar één sidebar zichtbaar zijn op elk moment.
+
+⸻
+
+2. Sidebar Behavior (Desktop vs Mobile)
+
+DESKTOP (breedscherm / tablet landscape / web)
+	•	Learning Trajectory Sidebar is ALTIJD open wanneer user in een sub-module is.
+	•	Main Navigation Sidebar verdwijnt zodra de user een sub-module binnengaat.
+
+Switching behavior (IMPORTANT):
+	•	Als user op de hamburger klikt → Main Navigation verschijnt → Learning Trajectory verdwijnt.
+	•	Klikt user op de “Learning Trajectory” button → Main Navigation sluit → Learning Trajectory opent.
+
+Dus het is een instant switch, geen overlay.
+
+⸻
+
+MOBILE (smal scherm)
+	•	Beide sidebars zijn standaard gesloten.
+	•	Ze worden geopend via knoppen in de top bar:
+
+Left side (under hamburger):
+	•	Hamburger → Main Navigation Sidebar drawer (push/overlay)
+	•	Direct onder hamburger → New button “Learning Trajectory”
+→ opent LT drawer van links.
+
+Right side:
+	•	Niets. Geen dubbele menu’s.
+	•	Alles gebeurt links.
+
+Behavior:
+	•	Main Navigation open → LT sluit automatisch
+	•	LT open → Main Navigation sluit automatisch
+
+Altijd maximum 1 open.
+
+Drawer-animation is van links naar rechts.
+
+⸻
+
+3. Learning Trajectory Sidebar (Design Spec)
+
+Layout
+
+Van boven naar onder:
+
+1️⃣ Header zone (title): “Chapters”
+	•	Geen “All Chapters” card bovenaan.
+	•	GEEN terugpijltje.
+
+2️⃣ Overview button
+	•	Labeled: “Overview”
+	•	Dit brengt user naar de homepage van de sub-module
+(het dashboard dat al bestaat).
+	•	Deze is altijd de eerste item in de sidebar.
+
+3️⃣ Chapter Cards (Hierarchy)
+	•	Vaya-stijl cards
+	•	Completion circle links
+	•	Title
+	•	Flashcard count
+	•	3-dots menu rechts
+	•	Subchapters verschijnen gecombineerd onder de parent
+	•	Indentation 15–20px per level
+	•	Accordion-style open/close
+	•	Staggered animation
+
+4️⃣ Add New Chapter
+	•	Button onderaan sidebar
+	•	Voegt root-level chapter toe
+
+5️⃣ Add Subchapter
+	•	Per chapter-card staat rechts een “+” knop
+	•	Voegt child chapter toe binnen dat chapter
+	•	UI identiek maar met indent
+
+⸻
+
+4. Infinite Hierarchy
+	•	Chapters worden weergegeven als nested accordion tree
+	•	Elke chapter kan children hebben
+	•	Elk child kan opnieuw children hebben
+	•	Animations: 40ms stagger per item
+	•	Collapse closes all descendants
+
+⸻
+
+5. No Back Button Anywhere
+
+Zoals u vroeg:
+	•	GEEN back arrow
+	•	GEEN breadcrumb
+	•	GEEN “previous chapter” button
+
+Navigatie gebeurt EXCLUSIEF via de twee sidebars:
+
+1. Main Navigation Sidebar
+→ naar modules
+
+2. Learning Trajectory Sidebar
+→ naar chapters, subchapters, overview
+
+Content area zelf heeft geen terug- of vooruitnavigatie.
+
+⸻
+
+6. Entering a Sub-Module
+
+Wanneer user een sub-module opent (bv. “Kapitalism”):
+
+Desktop:
+	•	Main Navigation Sidebar verdwijnt automatisch
+	•	Learning Trajectory Sidebar verschijnt automatisch
+	•	Central content toont Overview page (existing dashboard)
+
+Mobile:
+	•	Niets verschijnt automatisch
+	•	User klikt “Learning Trajectory” om de sidebar te openen
+	•	Central content toont Overview page by default
+
+⸻
+
+7. Overview Page
+	•	De Overview page is de homepage van de sub-module.
+	•	Wordt geopend wanneer user:
+	•	De sub-module opent
+	•	Of op “Overview” drukt in de Learning Trajectory sidebar
+
+Deze vervangt de “All Chapters” card.
+
+Er is dus:
+	•	GEEN card “All Chapters”
+	•	Wél een knop “Overview” die naar de page gaat.
+
+⸻
+
+8. Styling Notes
+	•	Vaya-stijl cards
+	•	Slight gradient or elevated shadow
+	•	Completion circles
+	•	Smooth accordion transitions
+	•	Indented child chapters
+	•	Clean top bar
+	•	Learning Trajectory button links, onder hamburger
+
+⸻
+
+9. Summary (Short Version for Engineer)
+
+(copy-paste friendly)
+	•	Two sidebars: Main Navigation + Learning Trajectory
+	•	Only one visible at a time
+	•	Desktop: LT always visible, auto-switch with nav
+	•	Mobile: both are drawers from left, with two buttons under hamburger
+	•	No back buttons anywhere
+	•	LT contains:
+	•	Header “Chapters”
+	•	“Overview” button (goes to dashboard)
+	•	Infinite chapter hierarchy (accordion + nested)
+	•	Vaya-style cards
+	•	Add New Chapter (root)
+	•	Per chapter: + to add subchapter
+	•	Animations: slide-in + stagger children
+	•	Overview page = default page inside sub-module
+
+⸻
+
+🟣 Ibrahim, dit is exact wat ge wou.
+Zó kan een engineer dit 1-op-1 bouwen zonder fouten.
+
+Als ge wilt, ik kan nu ook:
+
+👉 mockups
+👉 Figma layout
+👉 interaction animations
+👉 datastructuur voor chapters/subchapters
+
+Zegt maar wat ge wenst.
