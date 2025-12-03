@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain } from "lucide-react";
+import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain, MoreHorizontal, Users, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LearningSession } from "@/components/learning-session";
 import { NotesList } from "@/components/note-editor";
@@ -88,23 +94,32 @@ function CompletionReadinessMetrics({ flashcards, chapter }: { flashcards: Flash
 
 function FlashcardCircleChart({ flashcards }: { flashcards: Flashcard[] }) {
   const total = flashcards.length;
+  const mastered = flashcards.filter(f => f.mastery === 4).length;
+  const toLearn = flashcards.filter(f => f.mastery < 4).length;
+
   if (total === 0) {
     return (
-      <div className="relative w-24 h-24 mx-auto">
-        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-          <circle
-            cx="18"
-            cy="18"
-            r="15.91549"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-muted"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-lg font-semibold">0</span>
-          <span className="text-xs text-muted-foreground">cards</span>
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative w-20 h-20">
+          <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+            <circle
+              cx="18"
+              cy="18"
+              r="15.91549"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              className="text-muted"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">0</span>
+          </div>
+        </div>
+        <div className="text-center space-y-1 text-xs text-muted-foreground">
+          <p>Mastered: 0</p>
+          <p>To learn: 0</p>
+          <p className="font-medium text-foreground">Total: 0</p>
         </div>
       </div>
     );
@@ -130,26 +145,32 @@ function FlashcardCircleChart({ flashcards }: { flashcards: Flashcard[] }) {
   });
 
   return (
-    <div className="relative w-24 h-24 mx-auto">
-      <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-        {segments.map((seg, i) => (
-          <circle
-            key={i}
-            cx="18"
-            cy="18"
-            r="15.91549"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeDasharray={`${seg.percent} ${100 - seg.percent}`}
-            strokeDashoffset={-seg.offset}
-            className={seg.color}
-          />
-        ))}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-semibold">{total}</span>
-        <span className="text-xs text-muted-foreground">cards</span>
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-20 h-20">
+        <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+          {segments.map((seg, i) => (
+            <circle
+              key={i}
+              cx="18"
+              cy="18"
+              r="15.91549"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeDasharray={`${seg.percent} ${100 - seg.percent}`}
+              strokeDashoffset={-seg.offset}
+              className={seg.color}
+            />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-lg font-semibold">{total}</span>
+        </div>
+      </div>
+      <div className="text-center space-y-1 text-xs text-muted-foreground">
+        <p>Mastered: <span className="text-green-500 font-medium">{mastered}</span></p>
+        <p>To learn: <span className="text-primary font-medium">{toLearn}</span></p>
+        <p className="font-medium text-foreground">Total: {total}</p>
       </div>
     </div>
   );
@@ -516,29 +537,20 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
 
           {flashcardsLoading ? (
             <div className="flex justify-center py-4">
-              <Skeleton className="w-24 h-24 rounded-full" />
+              <Skeleton className="w-20 h-20 rounded-full" />
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-4">
               <FlashcardCircleChart flashcards={flashcards} />
-              {flashcards.length > 0 && (
-                <Button 
-                  size="sm" 
-                  className="w-full" 
-                  onClick={() => setLearningSessionOpen(true)}
-                  data-testid="button-start-learning"
-                >
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Start Learning
-                </Button>
-              )}
-              <div className="flex flex-wrap gap-1 justify-center text-xs">
-                <Badge variant="outline" className="text-muted-foreground">New: {flashcards.filter(f => f.mastery === 0).length}</Badge>
-                <Badge variant="outline" className="text-red-500 border-red-500/30">Bad: {flashcards.filter(f => f.mastery === 1).length}</Badge>
-                <Badge variant="outline" className="text-yellow-500 border-yellow-500/30">Okay: {flashcards.filter(f => f.mastery === 2).length}</Badge>
-                <Badge variant="outline" className="text-blue-500 border-blue-500/30">Good: {flashcards.filter(f => f.mastery === 3).length}</Badge>
-                <Badge variant="outline" className="text-green-500 border-green-500/30">Perfect: {flashcards.filter(f => f.mastery === 4).length}</Badge>
-              </div>
+              <Button 
+                className="w-full" 
+                onClick={() => setLearningSessionOpen(true)}
+                disabled={flashcards.length === 0}
+                data-testid="button-start-learning"
+              >
+                <GraduationCap className="h-4 w-4 mr-2" />
+                Start Learning
+              </Button>
             </div>
           )}
         </Card>
@@ -585,16 +597,16 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
         </div>
 
         {materialsLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-8" />
-            <Skeleton className="h-8" />
+          <div className="space-y-3">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
           </div>
         ) : materials.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No materials yet
+          <p className="text-sm text-muted-foreground text-center py-6">
+            No materials yet. Add PDFs, links, or files to study from.
           </p>
         ) : (
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="space-y-3">
             {materials.map((material) => {
               const Icon = materialTypeIcons[material.type] || File;
               const hasUploadedFile = !!(material as any).fileData;
@@ -611,39 +623,42 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
               return (
                 <div
                   key={material.id}
-                  className="flex items-center gap-2 p-2 rounded-md bg-muted/50 group"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover-elevate cursor-pointer group"
+                  onClick={handleOpen}
                   data-testid={`material-item-${material.id}`}
                 >
-                  <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm truncate block">{material.title}</span>
-                    {hasUploadedFile && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Upload className="h-3 w-3" />
-                        {(material as any).fileName}
-                      </span>
-                    )}
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  {(material.url || hasUploadedFile) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                      onClick={handleOpen}
-                      data-testid={`button-open-material-${material.id}`}
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100"
-                    onClick={() => deleteMaterialMutation.mutate(material.id)}
-                    data-testid={`button-delete-material-${material.id}`}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{material.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {material.type.toUpperCase()}
+                      {hasUploadedFile && ` • ${(material as any).fileName}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-material-menu-${material.id}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={(e) => { e.stopPropagation(); deleteMaterialMutation.mutate(material.id); }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               );
             })}

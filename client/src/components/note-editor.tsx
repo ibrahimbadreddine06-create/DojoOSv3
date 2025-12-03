@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, 
-  AlignRight, Heading1, Heading2, Undo, Redo, Save, X, Link2
+  AlignRight, Heading1, Heading2, Undo, Redo, Save, X, Link2, FileText, MoreHorizontal, Trash2, Edit
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface NoteEditorProps {
   noteId?: string;
@@ -302,42 +308,64 @@ export function NotesList({ chapterId, topicId, courseId, childChapterIds = [] }
 
       {notes.length === 0 ? (
         <div className="text-center py-6 border rounded-md border-dashed">
-          <p className="text-sm text-muted-foreground mb-2">No notes yet</p>
+          <p className="text-sm text-muted-foreground mb-2">No notes yet. Create notes to organize your thoughts.</p>
           <Button size="sm" onClick={handleCreateNote} data-testid="button-add-first-note">
             Create your first note
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="flex items-center gap-3 p-3 border rounded-md hover-elevate cursor-pointer group"
-              onClick={() => handleEditNote(note.id)}
-              data-testid={`note-item-${note.id}`}
-            >
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm truncate">{note.title}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : 'Just now'}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm("Delete this note?")) {
-                    deleteMutation.mutate(note.id);
-                  }
-                }}
-                data-testid={`button-delete-note-${note.id}`}
+        <div className="space-y-3">
+          {notes.map((note) => {
+            const snippet = note.content 
+              ? note.content.replace(/<[^>]*>/g, '').slice(0, 60) + (note.content.length > 60 ? '...' : '')
+              : 'Empty note';
+            return (
+              <div
+                key={note.id}
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover-elevate cursor-pointer group"
+                onClick={() => handleEditNote(note.id)}
+                data-testid={`note-item-${note.id}`}
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-sm truncate">{note.title}</h4>
+                  <p className="text-xs text-muted-foreground truncate">{snippet}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">
+                    {note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : 'Just now'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-note-menu-${note.id}`}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditNote(note.id); }}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (confirm("Delete this note?")) {
+                            deleteMutation.mutate(note.id);
+                          }
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

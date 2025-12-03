@@ -165,11 +165,15 @@ export const flashcards = pgTable("flashcards", {
   chapterId: varchar("chapter_id"), // Optional: link to specific chapter
   front: text("front").notNull(),
   back: text("back").notNull(),
+  imageUrl: text("image_url"), // Optional image for flashcard
+  audioUrl: text("audio_url"), // Optional audio for flashcard (mp3, max ~30sec)
+  order: integer("order").notNull().default(0), // For manual reordering
   lastReviewed: timestamp("last_reviewed"),
   nextReview: timestamp("next_review"),
   ease: decimal("ease", { precision: 3, scale: 2 }).default("2.5"),
   interval: integer("interval").default(0),
   mastery: integer("mastery").notNull().default(0), // 0=new, 1=bad, 2=okay, 3=good, 4=perfect
+  goodCount: integer("good_count").notNull().default(0), // Tracks consecutive "good" ratings (2x good = mastered in Vaia logic)
   createdAt: timestamp("created_at").defaultNow(),
 });
 

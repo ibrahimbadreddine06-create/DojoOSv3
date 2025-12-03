@@ -1,0 +1,230 @@
+Perfect, Ibrahim.
+Ik ga nu één clean, duidelijk, volledig maar niet-te-complex engineer document schrijven.
+Dit is exact wat jouw AI-engineer nodig heeft om het hele systeem correct te bouwen.
+
+Het bevat:
+	•	Alle redesign regels
+	•	Alle flows
+	•	Alle UI componenten
+	•	Alle desktop/mobile verschillen
+	•	Alle flashcard logic
+	•	Alle animaties/UX verwachtingen
+	•	ZONDER overbodige uitleg
+
+➡️ Je kunt dit letterlijk copy-paste naar je engineer.
+
+⸻
+
+✅ ENGINEER BRIEFING – LEARNING SYSTEM REDESIGN (FINAL SPEC)
+
+(Compact, uitvoerbaar, volledig. Geen fluff.)
+
+⸻
+
+1. GENERAL STRUCTURE
+	•	De Learning Trajectory sidebar en de Main Navigation sidebar kunnen nooit tegelijk open zijn.
+	•	Op desktop (genoeg breedte) is de Learning Trajectory altijd open wanneer de user zich in een submodule bevindt.
+	•	Op mobile is de Learning Trajectory een slide-in sidebar die opent via de button onder de main hamburger.
+
+⸻
+
+2. CHAPTER PAGE REDESIGN
+
+Elke chapter/subchapter page volgt dezelfde lay-out:
+
+2.1 Header
+	•	Titel van de chapter
+	•	Badges: Importance, Completed
+	•	Geen terugpijltjes; navigation gebeurt via sidebars.
+
+2.2 Flashcards Block
+	•	Donut chart (zelfde kleuren als nu, maar minimal zonder legenda).
+	•	Onder donut:
+	•	“Mastered: X”
+	•	“To learn: Y”
+	•	“Total: Z”
+	•	Een centrale button: Start Learning
+	•	Flashcard legend (New/Bad/Okay/Good/Perfect) wordt NIET meer getoond in dit block.
+
+2.3 Progress Block
+	•	Herintroduceer de vorige line chart met twee lijnen:
+	•	Completion
+	•	Readiness
+	•	Chart toont evolutie binnen deze specifieke chapter.
+
+2.4 Materials Section
+	•	Style zoals in Vaya:
+	•	Card per file
+	•	Icon (PDF etc.)
+	•	Title
+	•	Metadata (pages, collaborators)
+	•	3-dots menu
+	•	“Add Material” button blijft bestaan.
+
+2.5 Notes Section
+	•	Note-cards zoals in Vaya:
+	•	Paper icon
+	•	Title
+	•	Snippet
+	•	Date
+	•	3-dots
+	•	“Add Note” button blijft bestaan.
+
+⸻
+
+3. FLASHCARD LIST & EDITING SYSTEM
+
+3.1 Flashcard Overview Page
+
+Wanneer user op “View All Flashcards” klikt:
+	•	Pagina toont ALLE flashcards van deze chapter in een lijst
+	•	Elke flashcard toont:
+	•	Question preview
+	•	Emotion status (Bad/OK/Good/Perfect)
+	•	3-dots edit menu
+	•	User kan flashcards reorderen:
+	•	Desktop: Up/Down arrows rechts
+	•	Mobile: “Reorder Mode” → drag handles
+
+⸻
+
+4. FLASHCARD CREATION (FULL-PAGE SYSTEM)
+
+4.1 Desktop
+
+Two-column layout:
+
+Left column: Flashcard List
+	•	List of all flashcards
+	•	Selecting card = opens in editor
+	•	Button “+ New Flashcard”
+	•	Up/Down arrows per item
+	•	Search bar optional
+
+Right column: Flashcard Editor
+
+Tabs (top):
+	1.	Front
+	2.	Back
+	3.	Formatting (bold/italic/headers/lists)
+	4.	Insert Image
+	5.	Insert Audio (mp3, max ~30 sec)
+
+Rich text editor.
+Images inline.
+Audio upload → embedded player.
+
+No popups. Ever.
+Creation always replaces entire screen content.
+
+⸻
+
+4.2 Mobile
+
+Full-page tabbed editor.
+Same tabs as desktop:
+	•	Front
+	•	Back
+	•	Formatting
+	•	Insert Image
+	•	Insert Audio
+
+Er is geen left-side list op mobile.
+Flashcards worden één-voor-één aangemaakt of bewerkt.
+
+⸻
+
+5. LEARNING SESSION SYSTEM
+
+5.1 Start Learning Modal
+
+Wanneer user op “Start Learning” klikt:
+
+3 options:
+	1.	Learn New Cards
+	2.	Review Learned Cards
+	3.	Review All Cards
+
+Opties zijn ALTIJD aanklikbaar.
+Indien geen kaarten beschikbaar → disable status maar wel clickable → system geeft feedback.
+
+⸻
+
+5.2 Learning Mode (New Cards)
+	•	Full-screen
+	•	Top: transparent progress bar (dot-based)
+	•	Left side = cards to study
+	•	Right side = mastered cards
+	•	Divider in the middle
+	•	Card appears in center
+	•	Button “Show Answer”
+	•	After showing answer:
+	•	Bad (red) → inserted in +3
+	•	OK (yellow) → inserted at end
+	•	Good (green) → if 2× good → moved to “mastered” side
+	•	Perfect (blue) → directly mastered
+
+Logic identical to Vaya.
+
+⸻
+
+5.3 Review Mode (All Cards)
+	•	Top bar shows one long segmented line with the current distribution:
+	•	Red = Bad
+	•	Yellow = OK
+	•	Green = Good
+	•	Blue = Perfect
+	•	Grey = unseen
+
+Selecting answer updates bar instantly.
+
+Cards can be sequential or randomized.
+
+⸻
+
+6. TEST MODE (SHELL ONLY)
+
+Prepare UI placeholder for future use.
+No backend logic required now.
+
+⸻
+
+7. AUDIO & IMAGE SUPPORT
+	•	All flashcards support:
+	•	Inline images
+	•	MP3 up to ~30 seconds
+	•	Audio UI = simple player (play/pause)
+
+⸻
+
+8. DESIGN NOTES
+	•	Keep your existing color palette (violet accent).
+	•	All UI stays minimal, clean, soft shadows like Vaya.
+	•	Animations:
+	•	Learning Trajectory sidebar slides in from left
+	•	Flashcard progress bar updates smoothly
+	•	List reordering is animated
+
+⸻
+
+9. EDGE CASE RULES
+	•	If a chapter has 0 flashcards → show “No flashcards yet” + CTA
+	•	If user leaves mid-session → show confirmation modal (like Vaya)
+	•	Editing a card during session is allowed but session resets
+
+⸻
+
+✔ DIT IS DE COMPLETE SPEC
+
+Dit is precies wat je engineer nodig heeft.
+Niet te lang, niet te vaag, geen over-explaining.
+
+Als je wilt kan ik:
+
+– een Figma wireframe maken (beschreven in woorden)
+
+– een UX flowchart maken
+
+– een clean PDF-engineer document genereren
+
+Zeg het maar.
