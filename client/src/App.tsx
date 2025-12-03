@@ -171,45 +171,43 @@ function MainLayout() {
     : false;
 
   return (
-    <div className="flex h-screen w-full">
-      {isMobile ? (
-        <>
-          <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-            <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
-              <VisuallyHidden.Root>
-                <SheetTitle>Main Navigation</SheetTitle>
-              </VisuallyHidden.Root>
-              <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+    <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+      <div className="flex h-screen w-full">
+        {isMobile ? (
+          <>
+            <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
+              <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
+                <VisuallyHidden.Root>
+                  <SheetTitle>Main Navigation</SheetTitle>
+                </VisuallyHidden.Root>
                 <AppSidebar />
-              </SidebarProvider>
-            </SheetContent>
-          </Sheet>
-          
-          <Sheet open={trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-            <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
-              <VisuallyHidden.Root>
-                <SheetTitle>Learning Trajectory</SheetTitle>
-              </VisuallyHidden.Root>
-              <LearningTrajectorySidebar isMobileSheet />
-            </SheetContent>
-          </Sheet>
-        </>
-      ) : (
-        <>
-          <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+              </SheetContent>
+            </Sheet>
+            
+            <Sheet open={trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
+              <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
+                <VisuallyHidden.Root>
+                  <SheetTitle>Learning Trajectory</SheetTitle>
+                </VisuallyHidden.Root>
+                <LearningTrajectorySidebar isMobileSheet />
+              </SheetContent>
+            </Sheet>
+          </>
+        ) : (
+          <>
             {desktopShowMainNav && <AppSidebar />}
-          </SidebarProvider>
-          {desktopShowTrajectory && <LearningTrajectorySidebar />}
-        </>
-      )}
-      
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <DualSidebarHeader />
-        <main className="flex-1 bg-background overflow-y-auto">
-          <AuthenticatedRouter />
-        </main>
+            {desktopShowTrajectory && <LearningTrajectorySidebar />}
+          </>
+        )}
+        
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <DualSidebarHeader />
+          <main className="flex-1 bg-background overflow-y-auto">
+            <AuthenticatedRouter />
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
 
