@@ -6,6 +6,25 @@ Dojo OS V2 is a focused personal operating system with 6 core active modules (Ho
 
 ## Recent Changes (December 2024)
 
+### Full-Screen Page Architecture (No Dialogs)
+All creation and editing workflows now use full-screen pages instead of popup dialogs for a cleaner, more immersive experience:
+- **Full-Screen Routes** (rendered outside MainLayout):
+  - `/learn/:chapterId` - Immersive flashcard study mode with rectangular progress bar
+  - `/flashcards/new/:chapterId` - Create new flashcard
+  - `/flashcards/edit/:id` - Edit existing flashcard
+  - `/flashcards/:chapterId` - View all flashcards for a chapter
+  - `/materials/new/:chapterId` - Add new material (URL or file upload)
+  - `/notes/new` and `/notes/:id` - Create/edit notes with rich text editor
+  - `/chapters/new` - Create new chapter or sub-chapter
+  - `/themes/new/:type` - Create new theme (Second Brain) or language
+  - `/courses/new` - Create new course (Studies)
+  - `/goals/new` - Create new goal
+- **Common UI Pattern**: Each full-screen page has:
+  - Header with close (X) button, centered title with icon, and action button (Save/Create)
+  - `return` query parameter for navigation back to the originating page
+  - Consistent `fixed inset-0 bg-background flex flex-col` layout
+- **Navigation Flow**: All components now use `navigate()` with return URLs instead of Dialog components
+
 ### Dual-Sidebar UX Architecture
 - **Main Navigation Sidebar**: Primary navigation for all Dojo modules (Home, Daily Planner, Goals, Second Brain, Languages, Studies)
 - **Learning Trajectory Sidebar**: Vaya-style chapter navigation for knowledge sub-modules with completion circles, flashcard counts, and infinite hierarchy (16px indent per depth)

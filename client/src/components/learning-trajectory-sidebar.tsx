@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   Plus, 
@@ -11,10 +12,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Slider } from "@/components/ui/slider";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -129,47 +127,40 @@ function ChapterCard({
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              strokeDasharray={`${(completionPercent / 100) * 62.83} 62.83`}
-              className={chapter.completed ? "text-primary" : "text-muted-foreground"}
+              strokeDasharray={`${completionPercent * 0.628} 62.8`}
+              className="text-primary transition-all duration-500"
             />
           </svg>
           {chapter.completed && (
-            <Check className="absolute inset-0 m-auto w-3 h-3 text-primary" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Check className="w-3 h-3 text-primary" />
+            </div>
           )}
         </div>
+
+        {hasChildren && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+            className="p-0.5 hover:bg-muted rounded"
+          >
+            {isExpanded 
+              ? <ChevronDown className="w-3 h-3 text-muted-foreground" />
+              : <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            }
+          </button>
+        )}
 
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${chapter.completed ? "text-muted-foreground line-through" : ""}`}>
-            {chapter.title}
-          </p>
+          <p className="text-sm font-medium truncate">{chapter.title}</p>
           {(chapter.flashcardCount ?? 0) > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {chapter.flashcardCount} cards
-            </p>
+            <p className="text-xs text-muted-foreground">{chapter.flashcardCount} cards</p>
           )}
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {hasChildren && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 p-0"
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-              data-testid={`button-toggle-chapter-${chapter.id}`}
-            >
-              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </Button>
-          )}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 p-0"
-                onClick={(e) => e.stopPropagation()}
-                data-testid={`button-menu-chapter-${chapter.id}`}
-              >
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-6 w-6">
                 <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
@@ -222,83 +213,18 @@ function ChapterCard({
   );
 }
 
-interface AddChapterDialogProps {
-  topicId?: string;
-  courseId?: string;
-  parentId: string | null;
-  onClose: () => void;
-}
-
-function AddChapterDialog({ topicId, courseId, parentId, onClose }: AddChapterDialogProps) {
-  const [title, setTitle] = useState("");
-  const [importance, setImportance] = useState(3);
-  
-  const queryKey = courseId 
-    ? ["/api/learn-plan-items/course", courseId]
-    : ["/api/learn-plan-items", topicId];
-
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/learn-plan-items", data),
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey }); 
-      onClose(); 
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    const data: any = { parentId, title: title.trim(), importance };
-    if (courseId) data.courseId = courseId;
-    if (topicId) data.topicId = topicId;
-    createMutation.mutate(data);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Chapter Title</label>
-        <Input 
-          value={title} 
-          onChange={(e) => setTitle(e.target.value)} 
-          placeholder="Enter chapter title..." 
-          data-testid="input-new-chapter-title" 
-          autoFocus 
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Importance Level: {importance}</label>
-        <Slider 
-          value={[importance]} 
-          onValueChange={(v) => setImportance(v[0])} 
-          min={1} max={5} step={1} 
-          data-testid="slider-new-chapter-importance" 
-        />
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit" disabled={!title.trim() || createMutation.isPending} data-testid="button-create-new-chapter">
-          {createMutation.isPending ? "Creating..." : "Create"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 interface LearningTrajectorySidebarProps {
   isMobileSheet?: boolean;
 }
 
 export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTrajectorySidebarProps) {
+  const [, navigate] = useLocation();
   const { 
     subModuleInfo, 
     isMobile,
     learningData,
     closeAllSidebars
   } = useDualSidebar();
-
-  const [addChapterOpen, setAddChapterOpen] = useState(false);
-  const [parentIdForNew, setParentIdForNew] = useState<string | null>(null);
 
   const topicId = subModuleInfo?.type !== "studies" ? subModuleInfo?.id : undefined;
   const courseId = subModuleInfo?.type === "studies" ? subModuleInfo?.id : undefined;
@@ -359,9 +285,14 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
     handleSelectChapter(null);
   };
 
-  const handleAddSubchapter = (parentId: string) => {
-    setParentIdForNew(parentId);
-    setAddChapterOpen(true);
+  const handleAddChapter = (parentId: string | null = null) => {
+    const currentPath = window.location.pathname + window.location.search;
+    const params = new URLSearchParams();
+    if (topicId) params.set("topicId", topicId);
+    if (courseId) params.set("courseId", courseId);
+    if (parentId) params.set("parentId", parentId);
+    params.set("return", currentPath);
+    navigate(`/chapters/new?${params.toString()}`);
   };
 
   const title = theme?.name || course?.name || "Loading...";
@@ -403,7 +334,7 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
               <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
               <Button 
                 size="sm" 
-                onClick={() => setAddChapterOpen(true)} 
+                onClick={() => handleAddChapter(null)} 
                 data-testid="button-add-first-chapter"
               >
                 <Plus className="h-4 w-4 mr-2" /> Add First Chapter
@@ -419,7 +350,7 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
                   selectedId={selectedChapterId}
                   onSelect={handleSelectChapter}
                   onToggleComplete={(id, completed) => updateMutation.mutate({ id, completed })}
-                  onAddSubchapter={handleAddSubchapter}
+                  onAddSubchapter={(parentId) => handleAddChapter(parentId)}
                   onDelete={(id) => deleteMutation.mutate(id)}
                   animationDelay={index}
                 />
@@ -430,33 +361,14 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
       </ScrollArea>
 
       <div className="p-3 border-t">
-        <Dialog 
-          open={addChapterOpen} 
-          onOpenChange={(open) => { 
-            setAddChapterOpen(open); 
-            if (!open) setParentIdForNew(null); 
-          }}
+        <Button 
+          variant="outline" 
+          className="w-full" 
+          onClick={() => handleAddChapter(null)}
+          data-testid="button-add-chapter"
         >
-          <DialogTrigger asChild>
-            <Button variant="outline" className="w-full" data-testid="button-add-chapter">
-              <Plus className="h-4 w-4 mr-2" /> Add New Chapter
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{parentIdForNew ? "Add Sub-Chapter" : "Add Chapter"}</DialogTitle>
-            </DialogHeader>
-            <AddChapterDialog 
-              topicId={topicId}
-              courseId={courseId}
-              parentId={parentIdForNew} 
-              onClose={() => { 
-                setAddChapterOpen(false); 
-                setParentIdForNew(null); 
-              }} 
-            />
-          </DialogContent>
-        </Dialog>
+          <Plus className="h-4 w-4 mr-2" /> Add New Chapter
+        </Button>
       </div>
     </div>
   );

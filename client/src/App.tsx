@@ -34,6 +34,15 @@ import SocialPurpose from "@/pages/social-purpose";
 import UltimateTest from "@/pages/ultimate-test";
 import Profile from "@/pages/profile";
 import LearnPage from "@/pages/learn";
+import FlashcardNewPage from "@/pages/flashcard-new";
+import FlashcardEditPage from "@/pages/flashcard-edit";
+import FlashcardsListPage from "@/pages/flashcards-list";
+import MaterialNewPage from "@/pages/material-new";
+import NoteEditPage from "@/pages/note-edit";
+import ChapterNewPage from "@/pages/chapter-new";
+import ThemeNewPage from "@/pages/theme-new";
+import CourseNewPage from "@/pages/course-new";
+import GoalNewPage from "@/pages/goal-new";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
@@ -60,8 +69,25 @@ function AuthenticatedRouter() {
       <Route path="/social-purpose" component={SocialPurpose} />
       <Route path="/ultimate-test" component={UltimateTest} />
       <Route path="/profile" component={Profile} />
-      <Route path="/learn/:chapterId" component={LearnPage} />
       <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function FullScreenRouter() {
+  return (
+    <Switch>
+      <Route path="/learn/:chapterId" component={LearnPage} />
+      <Route path="/flashcards/new/:chapterId" component={FlashcardNewPage} />
+      <Route path="/flashcards/edit/:id" component={FlashcardEditPage} />
+      <Route path="/flashcards/:chapterId" component={FlashcardsListPage} />
+      <Route path="/materials/new/:chapterId" component={MaterialNewPage} />
+      <Route path="/notes/new" component={NoteEditPage} />
+      <Route path="/notes/:id" component={NoteEditPage} />
+      <Route path="/chapters/new" component={ChapterNewPage} />
+      <Route path="/themes/new/:type" component={ThemeNewPage} />
+      <Route path="/courses/new" component={CourseNewPage} />
+      <Route path="/goals/new" component={GoalNewPage} />
     </Switch>
   );
 }
@@ -150,6 +176,9 @@ function DualSidebarHeader() {
 }
 
 function MainLayout() {
+  const [location] = useLocation();
+  const isFullScreen = isFullScreenRoute(location);
+  
   const { 
     isInSubModule, 
     isMobile, 
@@ -171,6 +200,16 @@ function MainLayout() {
   const desktopShowTrajectory = isInSubModule 
     ? (trajectorySidebarOpen || !mainSidebarOpen)
     : false;
+
+  if (isFullScreen) {
+    return (
+      <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+        <div className="flex h-screen w-full">
+          <FullScreenRouter />
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
@@ -211,6 +250,24 @@ function MainLayout() {
       </div>
     </SidebarProvider>
   );
+}
+
+const fullScreenPaths = [
+  '/learn/',
+  '/flashcards/new/',
+  '/flashcards/edit/',
+  '/flashcards/',
+  '/materials/new/',
+  '/notes/new',
+  '/notes/',
+  '/chapters/new',
+  '/themes/new/',
+  '/courses/new',
+  '/goals/new',
+];
+
+function isFullScreenRoute(path: string): boolean {
+  return fullScreenPaths.some(p => path.startsWith(p));
 }
 
 function AuthenticatedApp() {
