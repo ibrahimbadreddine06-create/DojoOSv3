@@ -6,6 +6,17 @@ Dojo OS V2 is a focused personal operating system with 6 core active modules (Ho
 
 ## Recent Changes (December 2024)
 
+### Dual-Sidebar UX Architecture
+- **Main Navigation Sidebar**: Primary navigation for all Dojo modules (Home, Daily Planner, Goals, Second Brain, Languages, Studies)
+- **Learning Trajectory Sidebar**: Vaya-style chapter navigation for knowledge sub-modules with completion circles, flashcard counts, and infinite hierarchy (16px indent per depth)
+- **Desktop Behavior**: 
+  - Non-sub-module pages: Main Navigation sidebar shown
+  - Sub-module pages (/second-brain/:id, /languages/:id, /studies/:id): Learning Trajectory sidebar shown by default
+  - Toggle buttons in header allow switching between sidebars; at least one always visible
+- **Mobile Behavior**: Both sidebars closed by default, opened via Sheet components with mutual exclusivity
+- **State Management**: DualSidebarContext manages sidebar visibility and ensures atomic state transitions
+- **Chapter Selection Sync**: Learning data flows between sidebar and detail pages via context
+
 ### Comprehensive Note-Taking System
 - **Notes Database Table**: New `notes` table with title, content (rich HTML), and chapter associations
 - **Rich Text Editor**: Full-featured note editor with formatting toolbar (bold, italic, underline, strikethrough, headings H1-H3, bullet lists, numbered lists, text alignment, links, undo/redo)

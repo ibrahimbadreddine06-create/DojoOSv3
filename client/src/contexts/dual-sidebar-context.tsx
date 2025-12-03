@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
-type SidebarMode = "main" | "trajectory";
-
 interface SubModuleInfo {
   type: "second-brain" | "languages" | "studies";
   id: string;
@@ -17,7 +15,6 @@ interface LearningTrajectoryData {
 }
 
 interface DualSidebarContextType {
-  activeSidebar: SidebarMode;
   isInSubModule: boolean;
   subModuleInfo: SubModuleInfo | null;
   isMobile: boolean;
@@ -25,12 +22,10 @@ interface DualSidebarContextType {
   trajectorySidebarOpen: boolean;
   learningData: LearningTrajectoryData | null;
   
-  toggleMainSidebar: () => void;
-  toggleTrajectorySidebar: () => void;
+  setMainSidebarOpen: (open: boolean) => void;
+  setTrajectorySidebarOpen: (open: boolean) => void;
   closeAllSidebars: () => void;
   setLearningData: (data: LearningTrajectoryData | null) => void;
-  switchToMainNav: () => void;
-  switchToTrajectory: () => void;
 }
 
 const DualSidebarContext = createContext<DualSidebarContextType | null>(null);
@@ -43,24 +38,22 @@ export function useDualSidebar() {
   return context;
 }
 
+function isSubModulePath(path: string): boolean {
+  return /^\/(second-brain|languages|studies)\/[^/]+$/.test(path);
+}
+
 interface DualSidebarProviderProps {
   children: ReactNode;
 }
 
 export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   const [location] = useLocation();
-  const [activeSidebar, setActiveSidebar] = useState<SidebarMode>("main");
-  const [mainSidebarOpen, setMainSidebarOpen] = useState(false);
-  const [trajectorySidebarOpen, setTrajectorySidebarOpen] = useState(false);
+  const [mainSidebarOpen, setMainSidebarOpenInternal] = useState(true);
+  const [trajectorySidebarOpen, setTrajectorySidebarOpenInternal] = useState(false);
   const [learningData, setLearningData] = useState<LearningTrajectoryData | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const [prevLocation, setPrevLocation] = useState(location);
+  const [prevIsMobile, setPrevIsMobile] = useState(false);
 
   const subModuleInfo = useMemo<SubModuleInfo | null>(() => {
     const secondBrainMatch = location.match(/^\/second-brain\/([^/]+)$/);
@@ -81,90 +74,116 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   const isInSubModule = !!subModuleInfo;
 
   useEffect(() => {
-    if (isInSubModule) {
-      setActiveSidebar("trajectory");
-      if (!isMobile) {
-        setTrajectorySidebarOpen(true);
-        setMainSidebarOpen(false);
-      } else {
-        setTrajectorySidebarOpen(false);
-        setMainSidebarOpen(false);
-      }
-    } else {
-      setActiveSidebar("main");
-      setTrajectorySidebarOpen(false);
-      setLearningData(null);
-    }
-  }, [isInSubModule, isMobile]);
-
-  const toggleMainSidebar = useCallback(() => {
-    if (isMobile) {
-      setMainSidebarOpen(prev => {
-        if (!prev) setTrajectorySidebarOpen(false);
-        return !prev;
-      });
-    } else {
-      setActiveSidebar("main");
-      setMainSidebarOpen(true);
-      setTrajectorySidebarOpen(false);
-    }
-  }, [isMobile]);
-
-  const toggleTrajectorySidebar = useCallback(() => {
-    if (isMobile) {
-      setTrajectorySidebarOpen(prev => {
-        if (!prev) setMainSidebarOpen(false);
-        return !prev;
-      });
-    } else {
-      setActiveSidebar("trajectory");
-      setTrajectorySidebarOpen(true);
-      setMainSidebarOpen(false);
-    }
-  }, [isMobile]);
-
-  const closeAllSidebars = useCallback(() => {
-    setMainSidebarOpen(false);
-    setTrajectorySidebarOpen(false);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const switchToMainNav = useCallback(() => {
-    setActiveSidebar("main");
-    if (isMobile) {
-      setMainSidebarOpen(true);
-      setTrajectorySidebarOpen(false);
-    } else {
-      setMainSidebarOpen(true);
-      setTrajectorySidebarOpen(false);
+  useEffect(() => {
+    const mobileChanged = isMobile !== prevIsMobile;
+    const locationChanged = location !== prevLocation;
+    
+    if (mobileChanged) {
+      if (isMobile) {
+        setMainSidebarOpenInternal(false);
+        setTrajectorySidebarOpenInternal(false);
+      } else {
+        if (isInSubModule) {
+          setMainSidebarOpenInternal(false);
+          setTrajectorySidebarOpenInternal(true);
+        } else {
+          setMainSidebarOpenInternal(true);
+          setTrajectorySidebarOpenInternal(false);
+        }
+      }
+      setPrevIsMobile(isMobile);
     }
-  }, [isMobile]);
 
-  const switchToTrajectory = useCallback(() => {
-    if (!isInSubModule) return;
-    setActiveSidebar("trajectory");
+    if (locationChanged) {
+      const wasInSubModule = isSubModulePath(prevLocation);
+      const nowInSubModule = isInSubModule;
+
+      if (isMobile) {
+        setMainSidebarOpenInternal(false);
+        setTrajectorySidebarOpenInternal(false);
+      } else {
+        if (!wasInSubModule && nowInSubModule) {
+          setMainSidebarOpenInternal(false);
+          setTrajectorySidebarOpenInternal(true);
+        } else if (wasInSubModule && !nowInSubModule) {
+          setMainSidebarOpenInternal(true);
+          setTrajectorySidebarOpenInternal(false);
+          setLearningData(null);
+        }
+      }
+      
+      setPrevLocation(location);
+    }
+  }, [location, prevLocation, isMobile, prevIsMobile, isInSubModule]);
+
+  const setMainSidebarOpen = useCallback((open: boolean) => {
     if (isMobile) {
-      setTrajectorySidebarOpen(true);
-      setMainSidebarOpen(false);
+      if (open) {
+        setTrajectorySidebarOpenInternal(false);
+      }
+      setMainSidebarOpenInternal(open);
     } else {
-      setTrajectorySidebarOpen(true);
-      setMainSidebarOpen(false);
+      if (isInSubModule) {
+        if (open) {
+          setMainSidebarOpenInternal(true);
+          setTrajectorySidebarOpenInternal(false);
+        } else {
+          setMainSidebarOpenInternal(false);
+          setTrajectorySidebarOpenInternal(true);
+        }
+      } else {
+        setMainSidebarOpenInternal(open);
+      }
     }
   }, [isMobile, isInSubModule]);
 
+  const setTrajectorySidebarOpen = useCallback((open: boolean) => {
+    if (isMobile) {
+      if (open) {
+        setMainSidebarOpenInternal(false);
+      }
+      setTrajectorySidebarOpenInternal(open);
+    } else {
+      if (isInSubModule) {
+        if (open) {
+          setTrajectorySidebarOpenInternal(true);
+          setMainSidebarOpenInternal(false);
+        } else {
+          setTrajectorySidebarOpenInternal(false);
+          setMainSidebarOpenInternal(true);
+        }
+      } else {
+        setTrajectorySidebarOpenInternal(open);
+      }
+    }
+  }, [isMobile, isInSubModule]);
+
+  const closeAllSidebars = useCallback(() => {
+    if (isMobile) {
+      setMainSidebarOpenInternal(false);
+      setTrajectorySidebarOpenInternal(false);
+    }
+  }, [isMobile]);
+
   const value: DualSidebarContextType = {
-    activeSidebar,
     isInSubModule,
     subModuleInfo,
     isMobile,
     mainSidebarOpen,
     trajectorySidebarOpen,
     learningData,
-    toggleMainSidebar,
-    toggleTrajectorySidebar,
+    setMainSidebarOpen,
+    setTrajectorySidebarOpen,
     closeAllSidebars,
     setLearningData,
-    switchToMainNav,
-    switchToTrajectory,
   };
 
   return (

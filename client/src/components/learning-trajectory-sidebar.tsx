@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { 
   Plus, 
   ChevronRight, 
@@ -10,13 +9,11 @@ import {
   MoreHorizontal, 
   LayoutDashboard,
   BookOpen,
-  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -288,11 +285,13 @@ function AddChapterDialog({ topicId, courseId, parentId, onClose }: AddChapterDi
   );
 }
 
-export function LearningTrajectorySidebar() {
-  const [, navigate] = useLocation();
+interface LearningTrajectorySidebarProps {
+  isMobileSheet?: boolean;
+}
+
+export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTrajectorySidebarProps) {
   const { 
     subModuleInfo, 
-    trajectorySidebarOpen, 
     isMobile,
     learningData,
     closeAllSidebars
@@ -351,16 +350,13 @@ export function LearningTrajectorySidebar() {
     if (onSelectChapter) {
       onSelectChapter(id);
     }
-    if (isMobile) {
+    if (isMobile || isMobileSheet) {
       closeAllSidebars();
     }
   };
 
   const handleGoToOverview = () => {
     handleSelectChapter(null);
-    if (isMobile) {
-      closeAllSidebars();
-    }
   };
 
   const handleAddSubchapter = (parentId: string) => {
@@ -372,23 +368,13 @@ export function LearningTrajectorySidebar() {
 
   if (!subModuleInfo) return null;
 
-  const sidebarContent = (
-    <div className="flex flex-col h-full bg-background">
+  return (
+    <div className="flex flex-col h-full bg-background" data-testid="sidebar-trajectory">
       <div className="flex items-center justify-between p-4 border-b">
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Chapters</h2>
           <p className="text-sm font-medium truncate mt-0.5">{title}</p>
         </div>
-        {isMobile && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={closeAllSidebars}
-            data-testid="button-close-trajectory"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
       </div>
 
       <div className="p-2">
@@ -472,42 +458,6 @@ export function LearningTrajectorySidebar() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
-
-  if (isMobile) {
-    return (
-      <AnimatePresence>
-        {trajectorySidebarOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-40"
-              onClick={closeAllSidebars}
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed left-0 top-0 bottom-0 w-80 z-50 shadow-xl"
-              data-testid="sidebar-trajectory"
-            >
-              {sidebarContent}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    );
-  }
-
-  if (!trajectorySidebarOpen) return null;
-
-  return (
-    <div className="w-80 border-r flex-shrink-0" data-testid="sidebar-trajectory">
-      {sidebarContent}
     </div>
   );
 }

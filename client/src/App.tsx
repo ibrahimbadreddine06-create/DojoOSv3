@@ -3,13 +3,14 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LearningTrajectorySidebar } from "@/components/learning-trajectory-sidebar";
 import { DualSidebarProvider, useDualSidebar } from "@/contexts/dual-sidebar-context";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Menu, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -83,34 +84,42 @@ function LoadingScreen() {
 }
 
 function DualSidebarHeader() {
-  const { toggleSidebar } = useSidebar();
   const { 
     isInSubModule, 
     isMobile, 
-    activeSidebar,
-    toggleMainSidebar, 
-    toggleTrajectorySidebar,
     mainSidebarOpen,
-    trajectorySidebarOpen
+    trajectorySidebarOpen,
+    setMainSidebarOpen,
+    setTrajectorySidebarOpen,
   } = useDualSidebar();
 
   const handleMainNavClick = () => {
-    if (isMobile) {
-      toggleSidebar();
+    if (mainSidebarOpen) {
+      setMainSidebarOpen(false);
     } else {
-      toggleMainSidebar();
+      setTrajectorySidebarOpen(false);
+      setMainSidebarOpen(true);
+    }
+  };
+
+  const handleTrajectoryClick = () => {
+    if (trajectorySidebarOpen) {
+      setTrajectorySidebarOpen(false);
+    } else {
+      setMainSidebarOpen(false);
+      setTrajectorySidebarOpen(true);
     }
   };
 
   return (
-    <header className="flex items-center justify-between p-4 border-b bg-background">
+    <header className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-40">
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={handleMainNavClick}
           data-testid="button-sidebar-toggle"
-          className={!isInSubModule || (activeSidebar === "main" && mainSidebarOpen) ? "bg-accent" : ""}
+          className={mainSidebarOpen ? "bg-accent" : ""}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -119,9 +128,9 @@ function DualSidebarHeader() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleTrajectorySidebar}
+            onClick={handleTrajectoryClick}
             data-testid="button-trajectory-toggle"
-            className={activeSidebar === "trajectory" && trajectorySidebarOpen ? "bg-accent" : ""}
+            className={trajectorySidebarOpen ? "bg-accent" : ""}
           >
             <BookOpen className="h-5 w-5" />
           </Button>
@@ -138,14 +147,56 @@ function DualSidebarHeader() {
 }
 
 function MainLayout() {
-  const { isInSubModule, mainSidebarOpen, isMobile, activeSidebar } = useDualSidebar();
+  const { 
+    isInSubModule, 
+    isMobile, 
+    mainSidebarOpen,
+    trajectorySidebarOpen,
+    setMainSidebarOpen,
+    setTrajectorySidebarOpen,
+  } = useDualSidebar();
+
+  const sidebarStyle = {
+    "--sidebar-width": "20rem",
+    "--sidebar-width-icon": "4rem",
+  };
+
+  const desktopShowMainNav = !isInSubModule 
+    ? mainSidebarOpen 
+    : mainSidebarOpen && !trajectorySidebarOpen;
   
-  const showMainSidebar = !isInSubModule || (mainSidebarOpen && activeSidebar === "main");
+  const desktopShowTrajectory = isInSubModule 
+    ? (trajectorySidebarOpen || !mainSidebarOpen)
+    : false;
 
   return (
     <div className="flex h-screen w-full">
-      {showMainSidebar && !isMobile && <AppSidebar />}
-      <LearningTrajectorySidebar />
+      {isMobile ? (
+        <>
+          <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
+            <SheetContent side="left" className="p-0 w-80">
+              <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+                <AppSidebar />
+              </SidebarProvider>
+            </SheetContent>
+          </Sheet>
+          
+          <Sheet open={trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
+            <SheetContent side="left" className="p-0 w-80">
+              <LearningTrajectorySidebar isMobileSheet />
+            </SheetContent>
+          </Sheet>
+        </>
+      ) : (
+        <>
+          {desktopShowMainNav && (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+              <AppSidebar />
+            </SidebarProvider>
+          )}
+          {desktopShowTrajectory && <LearningTrajectorySidebar />}
+        </>
+      )}
       
       <div className="flex flex-col flex-1 overflow-hidden">
         <DualSidebarHeader />
@@ -158,16 +209,9 @@ function MainLayout() {
 }
 
 function AuthenticatedApp() {
-  const style = {
-    "--sidebar-width": "20rem",
-    "--sidebar-width-icon": "4rem",
-  };
-
   return (
     <DualSidebarProvider>
-      <SidebarProvider style={style as React.CSSProperties}>
-        <MainLayout />
-      </SidebarProvider>
+      <MainLayout />
     </DualSidebarProvider>
   );
 }
