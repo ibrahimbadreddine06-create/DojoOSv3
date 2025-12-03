@@ -1,9 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { X, RotateCcw, BookOpen, Lock, Brain, Sparkles, ChevronLeft, Trophy, CheckCircle2 } from "lucide-react";
+import { X, RotateCcw, BookOpen, Lock, Brain, Sparkles, ChevronLeft, Trophy, CheckCircle2, Shuffle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -43,14 +45,67 @@ interface StudyCard extends Flashcard {
   position: number;
 }
 
+function SegmentedMasteryBar({ flashcards }: { flashcards: Flashcard[] }) {
+  const segments = useMemo(() => {
+    const total = flashcards.length;
+    if (total === 0) return [];
+    
+    const counts = {
+      new: flashcards.filter(f => f.mastery === 0).length,
+      bad: flashcards.filter(f => f.mastery === 1).length,
+      ok: flashcards.filter(f => f.mastery === 2).length,
+      good: flashcards.filter(f => f.mastery === 3).length,
+      mastered: flashcards.filter(f => f.mastery === 4).length,
+    };
+
+    return [
+      { key: "new", count: counts.new, color: "bg-gray-400", label: "New" },
+      { key: "bad", count: counts.bad, color: "bg-red-500", label: "Bad" },
+      { key: "ok", count: counts.ok, color: "bg-yellow-500", label: "OK" },
+      { key: "good", count: counts.good, color: "bg-blue-500", label: "Good" },
+      { key: "mastered", count: counts.mastered, color: "bg-green-500", label: "Mastered" },
+    ].filter(s => s.count > 0);
+  }, [flashcards]);
+
+  const total = flashcards.length;
+
+  if (total === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+        {segments.map((segment) => (
+          <div
+            key={segment.key}
+            className={`${segment.color} transition-all`}
+            style={{ width: `${(segment.count / total) * 100}%` }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-3 justify-center text-xs">
+        {segments.map((segment) => (
+          <div key={segment.key} className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${segment.color}`} />
+            <span className="text-muted-foreground">
+              {segment.label}: {segment.count}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DotProgressBar({ 
   total, 
   current, 
-  completed 
+  completed,
+  queue,
 }: { 
   total: number; 
   current: number; 
   completed: Set<string>;
+  queue?: StudyCard[];
 }) {
   const dotsToShow = Math.min(total, 20);
   const startIndex = Math.max(0, Math.min(current - 5, total - dotsToShow));
@@ -62,16 +117,29 @@ function DotProgressBar({
         const isCompleted = index < current;
         const isCurrent = index === current;
         
+        const card = queue?.[index - completed.size];
+        let dotColor = "bg-muted-foreground/30";
+        
+        if (isCompleted) {
+          dotColor = "bg-green-500";
+        } else if (card) {
+          switch (card.mastery) {
+            case 0: dotColor = "bg-gray-400"; break;
+            case 1: dotColor = "bg-red-400"; break;
+            case 2: dotColor = "bg-yellow-400"; break;
+            case 3: dotColor = "bg-blue-400"; break;
+            case 4: dotColor = "bg-green-400"; break;
+          }
+        }
+        
         return (
           <div
             key={index}
             className={`
               rounded-full transition-all duration-200
               ${isCurrent 
-                ? "w-3 h-3 bg-primary ring-2 ring-primary/30" 
-                : isCompleted 
-                  ? "w-2 h-2 bg-green-500" 
-                  : "w-2 h-2 bg-muted-foreground/30"
+                ? `w-3 h-3 ${dotColor} ring-2 ring-primary/30` 
+                : `w-2 h-2 ${dotColor}`
               }
             `}
           />
@@ -245,12 +313,13 @@ export function LearningSession({
   const [masteredCount, setMasteredCount] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [learnCount, setLearnCount] = useState(10);
+  const [shuffleMode, setShuffleMode] = useState(true);
 
   const newCardsCount = flashcards.filter(f => f.mastery === 0).length;
   const learnedCardsCount = flashcards.filter(f => f.mastery > 0 && f.mastery < 4).length;
   const allCardsCount = flashcards.length;
 
-  const initializeQueue = useCallback((selectedMode: SessionMode) => {
+  const initializeQueue = useCallback((selectedMode: SessionMode, shouldShuffle: boolean = true) => {
     let cards: Flashcard[] = [];
     
     switch (selectedMode) {
@@ -265,8 +334,11 @@ export function LearningSession({
         break;
     }
     
-    const shuffled = cards.sort(() => Math.random() - 0.5);
-    const studyCards: StudyCard[] = shuffled.map((card, i) => ({
+    const orderedCards = shouldShuffle 
+      ? cards.sort(() => Math.random() - 0.5)
+      : cards.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+    const studyCards: StudyCard[] = orderedCards.map((card, i) => ({
       ...card,
       goodCount: (card as any).goodCount || 0,
       position: i,
@@ -464,10 +536,31 @@ export function LearningSession({
           </DialogHeader>
 
           {mode === "select" ? (
-            <div className="space-y-3 py-4">
+            <div className="space-y-4 py-4">
+              <SegmentedMasteryBar flashcards={flashcards} />
+              
+              <div className="flex items-center justify-between px-2 py-2 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {shuffleMode ? (
+                    <Shuffle className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label htmlFor="shuffle-toggle" className="text-sm">
+                    {shuffleMode ? "Random order" : "Sequential order"}
+                  </Label>
+                </div>
+                <Switch
+                  id="shuffle-toggle"
+                  checked={shuffleMode}
+                  onCheckedChange={setShuffleMode}
+                  data-testid="switch-shuffle-mode"
+                />
+              </div>
+
               <Card 
                 className={`p-4 cursor-pointer transition-all ${newCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
-                onClick={() => newCardsCount > 0 && initializeQueue("new")}
+                onClick={() => newCardsCount > 0 && initializeQueue("new", shuffleMode)}
                 data-testid="button-mode-new"
               >
                 <div className="flex items-center gap-4">
@@ -502,7 +595,7 @@ export function LearningSession({
 
               <Card 
                 className={`p-4 cursor-pointer transition-all ${learnedCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
-                onClick={() => learnedCardsCount > 0 && initializeQueue("review")}
+                onClick={() => learnedCardsCount > 0 && initializeQueue("review", shuffleMode)}
                 data-testid="button-mode-review"
               >
                 <div className="flex items-center gap-4">
@@ -520,7 +613,7 @@ export function LearningSession({
 
               <Card 
                 className={`p-4 cursor-pointer transition-all ${allCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
-                onClick={() => allCardsCount > 0 && initializeQueue("all")}
+                onClick={() => allCardsCount > 0 && initializeQueue("all", shuffleMode)}
                 data-testid="button-mode-all"
               >
                 <div className="flex items-center gap-4">
@@ -577,6 +670,7 @@ export function LearningSession({
                 total={studyQueue.length + completedCards.size} 
                 current={completedCards.size}
                 completed={completedCards}
+                queue={studyQueue}
               />
 
               <FlashcardDisplay
