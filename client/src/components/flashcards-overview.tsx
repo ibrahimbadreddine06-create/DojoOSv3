@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { 
   ChevronUp, ChevronDown, MoreHorizontal, Trash2, Edit, 
   GripVertical, Brain, Sparkles, CheckCircle, AlertCircle, 
-  HelpCircle, Zap, ChevronLeft, Plus
+  HelpCircle, Zap, ChevronLeft, Plus, Bold, Italic, Underline, 
+  Strikethrough, List, ListOrdered, Image, Mic, Link, X, 
+  AlignLeft, AlignCenter, AlignRight, Type
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +72,87 @@ function getMasteryBadge(mastery: number) {
   );
 }
 
+function RichTextToolbar({ 
+  textareaRef,
+  onFormat 
+}: { 
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  onFormat: (text: string) => void;
+}) {
+  const applyFormat = (wrapper: string, endWrapper?: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    
+    const newText = text.substring(0, start) + 
+      wrapper + selectedText + (endWrapper || wrapper) + 
+      text.substring(end);
+    
+    onFormat(newText);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + wrapper.length, 
+        end + wrapper.length
+      );
+    }, 0);
+  };
+
+  const formatButtons = [
+    { icon: Bold, action: () => applyFormat("**"), tooltip: "Bold" },
+    { icon: Italic, action: () => applyFormat("*"), tooltip: "Italic" },
+    { icon: Underline, action: () => applyFormat("__"), tooltip: "Underline" },
+    { icon: Strikethrough, action: () => applyFormat("~~"), tooltip: "Strikethrough" },
+  ];
+
+  return (
+    <div className="flex items-center gap-1 p-1 bg-muted rounded-md mb-2">
+      {formatButtons.map(({ icon: Icon, action, tooltip }) => (
+        <Button
+          key={tooltip}
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={action}
+          title={tooltip}
+          data-testid={`button-format-${tooltip.toLowerCase()}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </Button>
+      ))}
+      <Separator orientation="vertical" className="h-5 mx-1" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => applyFormat("- ", "\n")}
+        title="Bullet List"
+        data-testid="button-format-list"
+      >
+        <List className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => applyFormat("1. ", "\n")}
+        title="Numbered List"
+        data-testid="button-format-numbered-list"
+      >
+        <ListOrdered className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 function FlashcardEditor({
   flashcard,
   onClose,
@@ -79,10 +164,15 @@ function FlashcardEditor({
 }) {
   const [front, setFront] = useState(flashcard?.front || "");
   const [back, setBack] = useState(flashcard?.back || "");
+  const [imageUrl, setImageUrl] = useState(flashcard?.imageUrl || "");
+  const [audioUrl, setAudioUrl] = useState(flashcard?.audioUrl || "");
+  const [activeTab, setActiveTab] = useState("front");
+  const frontRef = useRef<HTMLTextAreaElement>(null);
+  const backRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const mutation = useMutation({
-    mutationFn: async (data: { front: string; back: string }) => {
+    mutationFn: async (data: { front: string; back: string; imageUrl?: string; audioUrl?: string }) => {
       if (flashcard) {
         return apiRequest("PATCH", `/api/flashcards/${flashcard.id}`, data);
       } else {
@@ -101,52 +191,236 @@ function FlashcardEditor({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!front.trim() || !back.trim()) return;
-    mutation.mutate({ front: front.trim(), back: back.trim() });
+    if (!front.trim() || !back.trim()) {
+      toast({ title: "Please fill in both front and back", variant: "destructive" });
+      return;
+    }
+    mutation.mutate({ 
+      front: front.trim(), 
+      back: back.trim(),
+      imageUrl: imageUrl.trim() || undefined,
+      audioUrl: audioUrl.trim() || undefined,
+    });
   };
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{flashcard ? "Edit Flashcard" : "New Flashcard"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            {flashcard ? "Edit Flashcard" : "Create Flashcard"}
+          </DialogTitle>
           <DialogDescription>
-            {flashcard ? "Update your flashcard content" : "Create a new flashcard for this chapter"}
+            {flashcard ? "Update your flashcard content and media" : "Create a new flashcard with text, images, or audio"}
           </DialogDescription>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Question (Front)</label>
-            <Textarea
-              value={front}
-              onChange={(e) => setFront(e.target.value)}
-              placeholder="Enter the question..."
-              rows={3}
-              autoFocus
-              data-testid="textarea-flashcard-front"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Answer (Back)</label>
-            <Textarea
-              value={back}
-              onChange={(e) => setBack(e.target.value)}
-              placeholder="Enter the answer..."
-              rows={3}
-              data-testid="textarea-flashcard-back"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={!front.trim() || !back.trim() || mutation.isPending}
-              data-testid="button-save-flashcard"
-            >
-              {mutation.isPending ? "Saving..." : flashcard ? "Update" : "Create"}
-            </Button>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="front" data-testid="tab-front">
+                <Type className="h-4 w-4 mr-1.5" />
+                Front
+              </TabsTrigger>
+              <TabsTrigger value="back" data-testid="tab-back">
+                <Type className="h-4 w-4 mr-1.5" />
+                Back
+              </TabsTrigger>
+              <TabsTrigger value="image" data-testid="tab-image">
+                <Image className="h-4 w-4 mr-1.5" />
+                Image
+              </TabsTrigger>
+              <TabsTrigger value="audio" data-testid="tab-audio">
+                <Mic className="h-4 w-4 mr-1.5" />
+                Audio
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="front" className="mt-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Question (Front Side)</label>
+                  <span className="text-xs text-muted-foreground">{front.length} chars</span>
+                </div>
+                <RichTextToolbar textareaRef={frontRef} onFormat={setFront} />
+                <Textarea
+                  ref={frontRef}
+                  value={front}
+                  onChange={(e) => setFront(e.target.value)}
+                  placeholder="Enter the question or term..."
+                  rows={6}
+                  className="min-h-[150px] resize-none font-mono text-sm"
+                  autoFocus
+                  data-testid="textarea-flashcard-front"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use **bold**, *italic*, __underline__, ~~strikethrough~~
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="back" className="mt-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Answer (Back Side)</label>
+                  <span className="text-xs text-muted-foreground">{back.length} chars</span>
+                </div>
+                <RichTextToolbar textareaRef={backRef} onFormat={setBack} />
+                <Textarea
+                  ref={backRef}
+                  value={back}
+                  onChange={(e) => setBack(e.target.value)}
+                  placeholder="Enter the answer or definition..."
+                  rows={6}
+                  className="min-h-[150px] resize-none font-mono text-sm"
+                  data-testid="textarea-flashcard-back"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use **bold**, *italic*, __underline__, ~~strikethrough~~
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="image" className="mt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Image URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      data-testid="input-flashcard-image"
+                    />
+                    {imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setImageUrl("")}
+                        data-testid="button-clear-image"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                {imageUrl && (
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border">
+                    <img 
+                      src={imageUrl} 
+                      alt="Flashcard preview"
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+
+                {!imageUrl && (
+                  <Card className="p-8 text-center border-dashed">
+                    <Image className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Add an image URL to display on this flashcard
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="audio" className="mt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Audio URL</label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={audioUrl}
+                      onChange={(e) => setAudioUrl(e.target.value)}
+                      placeholder="https://example.com/audio.mp3"
+                      data-testid="input-flashcard-audio"
+                    />
+                    {audioUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setAudioUrl("")}
+                        data-testid="button-clear-audio"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {audioUrl && (
+                  <Card className="p-4">
+                    <audio 
+                      controls 
+                      className="w-full"
+                      src={audioUrl}
+                    >
+                      Your browser does not support the audio element.
+                    </audio>
+                  </Card>
+                )}
+
+                {!audioUrl && (
+                  <Card className="p-8 text-center border-dashed">
+                    <Mic className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Add an audio URL for pronunciation or explanation
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {front && (
+                <Badge variant="outline" className="text-xs">
+                  <Type className="h-3 w-3 mr-1" />
+                  Front set
+                </Badge>
+              )}
+              {back && (
+                <Badge variant="outline" className="text-xs">
+                  <Type className="h-3 w-3 mr-1" />
+                  Back set
+                </Badge>
+              )}
+              {imageUrl && (
+                <Badge variant="outline" className="text-xs">
+                  <Image className="h-3 w-3 mr-1" />
+                  Image
+                </Badge>
+              )}
+              {audioUrl && (
+                <Badge variant="outline" className="text-xs">
+                  <Mic className="h-3 w-3 mr-1" />
+                  Audio
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={!front.trim() || !back.trim() || mutation.isPending}
+                data-testid="button-save-flashcard"
+              >
+                {mutation.isPending ? "Saving..." : flashcard ? "Update" : "Create"}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
