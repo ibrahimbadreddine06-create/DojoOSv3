@@ -10,7 +10,8 @@ import { DualSidebarProvider, useDualSidebar } from "@/contexts/dual-sidebar-con
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Menu, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -169,42 +170,51 @@ function MainLayout() {
     ? (trajectorySidebarOpen || !mainSidebarOpen)
     : false;
 
-  return (
-    <div className="flex h-screen w-full">
-      {isMobile ? (
-        <>
-          <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-            <SheetContent side="left" className="p-0 w-80">
-              <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
-                <AppSidebar />
-              </SidebarProvider>
-            </SheetContent>
-          </Sheet>
-          
-          <Sheet open={trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-            <SheetContent side="left" className="p-0 w-80">
-              <LearningTrajectorySidebar isMobileSheet />
-            </SheetContent>
-          </Sheet>
-        </>
-      ) : (
-        <>
-          {desktopShowMainNav && (
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen w-full">
+        <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
+          <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
+            <VisuallyHidden.Root>
+              <SheetTitle>Main Navigation</SheetTitle>
+            </VisuallyHidden.Root>
             <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
               <AppSidebar />
             </SidebarProvider>
-          )}
-          {desktopShowTrajectory && <LearningTrajectorySidebar />}
-        </>
-      )}
-      
-      <div className="flex flex-col flex-1 overflow-hidden">
+          </SheetContent>
+        </Sheet>
+        
+        <Sheet open={trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
+          <SheetContent side="left" className="p-0 w-80" aria-describedby={undefined}>
+            <VisuallyHidden.Root>
+              <SheetTitle>Learning Trajectory</SheetTitle>
+            </VisuallyHidden.Root>
+            <LearningTrajectorySidebar isMobileSheet />
+          </SheetContent>
+        </Sheet>
+        
         <DualSidebarHeader />
         <main className="flex-1 bg-background overflow-y-auto">
           <AuthenticatedRouter />
         </main>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
+      <div className="flex h-screen w-full">
+        {desktopShowMainNav && <AppSidebar />}
+        {desktopShowTrajectory && <LearningTrajectorySidebar />}
+        
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <DualSidebarHeader />
+          <main className="flex-1 bg-background overflow-y-auto">
+            <AuthenticatedRouter />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
 
