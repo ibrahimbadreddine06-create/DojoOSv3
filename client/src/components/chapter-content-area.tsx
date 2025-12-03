@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain, MoreHorizontal, Users, Eye } from "lucide-react";
+import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain, MoreHorizontal, Users, Eye, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LearningSession } from "@/components/learning-session";
 import { NotesList } from "@/components/note-editor";
+import { FlashcardsOverview } from "@/components/flashcards-overview";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
@@ -444,6 +445,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
   const [learningSessionOpen, setLearningSessionOpen] = useState(false);
+  const [flashcardsOverviewOpen, setFlashcardsOverviewOpen] = useState(false);
 
   const hasChildren = childChapterIds.length > 0;
   const childIdsParam = childChapterIds.join(',');
@@ -542,15 +544,24 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
           ) : (
             <div className="flex flex-col items-center gap-4">
               <FlashcardCircleChart flashcards={flashcards} />
-              <Button 
-                className="w-full" 
-                onClick={() => setLearningSessionOpen(true)}
-                disabled={flashcards.length === 0}
-                data-testid="button-start-learning"
-              >
-                <GraduationCap className="h-4 w-4 mr-2" />
-                Start Learning
-              </Button>
+              <div className="flex gap-2 w-full">
+                <Button 
+                  className="flex-1" 
+                  onClick={() => setLearningSessionOpen(true)}
+                  disabled={flashcards.length === 0}
+                  data-testid="button-start-learning"
+                >
+                  <GraduationCap className="h-4 w-4 mr-2" />
+                  Learn
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setFlashcardsOverviewOpen(true)}
+                  data-testid="button-view-all-flashcards"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </Card>
@@ -569,6 +580,22 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
         open={learningSessionOpen}
         onClose={() => setLearningSessionOpen(false)}
       />
+
+      <Dialog open={flashcardsOverviewOpen} onOpenChange={setFlashcardsOverviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Flashcards Overview</DialogTitle>
+            <DialogDescription>View and manage all flashcards for this chapter</DialogDescription>
+          </DialogHeader>
+          <FlashcardsOverview
+            chapterId={chapter.id}
+            topicId={topicId}
+            courseId={courseId}
+            childChapterIds={childChapterIds}
+            onBack={() => setFlashcardsOverviewOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
