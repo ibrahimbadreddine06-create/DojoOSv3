@@ -180,7 +180,7 @@ function MainLayout() {
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
-                <AppSidebar />
+                <AppSidebar isMobileSheet />
               </SheetContent>
             </Sheet>
             

@@ -28,6 +28,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const activeModules = [
   {
@@ -110,8 +111,90 @@ const lockedModules = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  isMobileSheet?: boolean;
+}
+
+export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
   const [location] = useLocation();
+
+  const menuItemClass = (isActive: boolean) => 
+    `flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${isActive ? "bg-accent" : ""}`;
+
+  const sidebarContent = (
+    <>
+      <div className="flex flex-col gap-2 p-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
+          Dojo OS
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <Link 
+            href="/"
+            className={menuItemClass(location === "/")}
+            data-testid="link-home"
+          >
+            <HomeIcon className="w-4 h-4" />
+            <span>Home</span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 p-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
+          Core Modules
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {activeModules.map((item) => (
+            <Link 
+              key={item.title} 
+              href={item.url}
+              className={menuItemClass(location === item.url)}
+              data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.title}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 p-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
+          Coming Soon
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {lockedModules.map((item) => (
+            <div
+              key={item.title}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-not-allowed opacity-50"
+              data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+              aria-disabled="true"
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.title}</span>
+              <Lock className="w-3 h-3 ml-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 p-2 mt-auto">
+        <div className="flex flex-col gap-0.5">
+          <ProfileMenuItemSimple />
+        </div>
+      </div>
+    </>
+  );
+
+  if (isMobileSheet) {
+    return (
+      <ScrollArea className="h-full bg-sidebar text-sidebar-foreground">
+        <div className="flex flex-col h-full">
+          {sidebarContent}
+        </div>
+      </ScrollArea>
+    );
+  }
 
   return (
     <Sidebar data-testid="sidebar-main">
@@ -188,6 +271,31 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
+  );
+}
+
+function ProfileMenuItemSimple() {
+  const { user } = useAuth();
+  const [location] = useLocation();
+  
+  const initials = user 
+    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
+    : '?';
+  
+  const displayName = user?.firstName || user?.email?.split('@')[0] || 'Profile';
+
+  return (
+    <Link 
+      href="/profile"
+      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location === "/profile" ? "bg-accent" : ""}`}
+      data-testid="link-profile"
+    >
+      <Avatar className="h-5 w-5">
+        <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover" />
+        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+      </Avatar>
+      <span>{displayName}</span>
+    </Link>
   );
 }
 
