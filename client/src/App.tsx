@@ -33,6 +33,7 @@ import Work from "@/pages/work";
 import SocialPurpose from "@/pages/social-purpose";
 import UltimateTest from "@/pages/ultimate-test";
 import Profile from "@/pages/profile";
+import LearnPage from "@/pages/learn";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRouter() {
@@ -59,6 +60,7 @@ function AuthenticatedRouter() {
       <Route path="/social-purpose" component={SocialPurpose} />
       <Route path="/ultimate-test" component={UltimateTest} />
       <Route path="/profile" component={Profile} />
+      <Route path="/learn/:chapterId" component={LearnPage} />
       <Route component={NotFound} />
     </Switch>
   );

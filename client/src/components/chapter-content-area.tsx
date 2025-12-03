@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, Upload, BookOpen, Brain, MoreHorizontal, Users, Eye, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { LearningSession } from "@/components/learning-session";
 import { NotesList } from "@/components/note-editor";
 import { FlashcardsOverview } from "@/components/flashcards-overview";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
@@ -442,10 +442,20 @@ function AddFlashcardDialog({
 }
 
 export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds = [] }: ChapterContentAreaProps) {
+  const [, navigate] = useLocation();
   const [addMaterialOpen, setAddMaterialOpen] = useState(false);
   const [addFlashcardOpen, setAddFlashcardOpen] = useState(false);
-  const [learningSessionOpen, setLearningSessionOpen] = useState(false);
   const [flashcardsOverviewOpen, setFlashcardsOverviewOpen] = useState(false);
+  
+  const handleStartLearning = () => {
+    const params = new URLSearchParams();
+    params.set("mode", "all");
+    params.set("shuffle", "true");
+    params.set("title", chapter.title);
+    if (topicId) params.set("topicId", topicId);
+    if (courseId) params.set("courseId", courseId);
+    navigate(`/learn/${chapter.id}?${params.toString()}`);
+  };
 
   const hasChildren = childChapterIds.length > 0;
   const childIdsParam = childChapterIds.join(',');
@@ -547,7 +557,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
               <div className="flex gap-2 w-full">
                 <Button 
                   className="flex-1" 
-                  onClick={() => setLearningSessionOpen(true)}
+                  onClick={handleStartLearning}
                   disabled={flashcards.length === 0}
                   data-testid="button-start-learning"
                 >
@@ -571,15 +581,6 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
           <CompletionReadinessMetrics flashcards={flashcards} chapter={chapter} />
         </Card>
       </div>
-
-      <LearningSession
-        flashcards={flashcards}
-        chapterId={chapter.id}
-        topicId={topicId}
-        courseId={courseId}
-        open={learningSessionOpen}
-        onClose={() => setLearningSessionOpen(false)}
-      />
 
       <Dialog open={flashcardsOverviewOpen} onOpenChange={setFlashcardsOverviewOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
