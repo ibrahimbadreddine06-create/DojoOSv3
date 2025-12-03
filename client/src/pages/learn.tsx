@@ -35,59 +35,38 @@ interface StudyCard extends Flashcard {
   position: number;
 }
 
-function DotProgressBar({ 
+function SegmentedProgressBar({ 
   total, 
+  completed,
   current,
-  queue,
 }: { 
   total: number; 
+  completed: number;
   current: number;
-  queue: StudyCard[];
 }) {
-  const dotsToShow = Math.min(total, 25);
-  const completedCount = total - queue.length;
+  if (total === 0) return null;
   
   return (
-    <div className="flex items-center justify-center gap-1 py-2">
-      {Array.from({ length: dotsToShow }).map((_, i) => {
-        const isCompleted = i < completedCount;
-        const isCurrent = i === completedCount;
-        const card = queue[i - completedCount];
-        
-        let dotColor = "bg-zinc-600";
-        if (isCompleted) {
-          dotColor = "bg-green-500";
-        } else if (isCurrent) {
-          dotColor = "bg-blue-500";
-        } else if (card) {
-          switch (card.mastery) {
-            case 0: dotColor = "bg-zinc-500"; break;
-            case 1: dotColor = "bg-red-500/50"; break;
-            case 2: dotColor = "bg-yellow-500/50"; break;
-            case 3: dotColor = "bg-blue-500/50"; break;
-            case 4: dotColor = "bg-green-500/50"; break;
-          }
-        }
+    <div className="flex items-center gap-0.5 px-4 py-3" data-testid="progress-bar">
+      {Array.from({ length: total }).map((_, i) => {
+        const isCompleted = i < completed;
+        const isCurrent = i === current;
         
         return (
           <div
             key={i}
             className={`
-              rounded-full transition-all
-              ${isCurrent 
-                ? "w-3 h-3 ring-2 ring-blue-400/50" 
-                : "w-2 h-2"
+              h-1.5 flex-1 rounded-sm transition-all
+              ${isCompleted 
+                ? "bg-primary" 
+                : isCurrent 
+                  ? "bg-primary/60" 
+                  : "bg-muted-foreground/20"
               }
-              ${dotColor}
             `}
           />
         );
       })}
-      {total > dotsToShow && (
-        <span className="text-xs text-zinc-500 ml-1">
-          +{total - dotsToShow}
-        </span>
-      )}
     </div>
   );
 }
@@ -104,14 +83,15 @@ function FlashcardView({
   return (
     <div className="flex-1 flex items-center justify-center p-4">
       <div 
-        className="w-full max-w-lg bg-zinc-800 rounded-2xl shadow-2xl cursor-pointer min-h-[300px] relative"
+        className="w-full max-w-lg bg-card border border-border rounded-xl shadow-lg cursor-pointer min-h-[300px] relative"
         onClick={onFlip}
+        data-testid="flashcard-content"
       >
         <div className="absolute top-3 left-3">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-zinc-400 hover:text-zinc-200 text-xs gap-1"
+            className="text-muted-foreground hover:text-foreground text-xs gap-1"
             onClick={(e) => e.stopPropagation()}
           >
             <Plus className="h-3 w-3" />
@@ -124,7 +104,7 @@ function FlashcardView({
             <Button 
               variant="ghost" 
               size="icon"
-              className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-200"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-5 w-5" />
@@ -137,7 +117,7 @@ function FlashcardView({
         </DropdownMenu>
 
         <div className="flex items-center justify-center min-h-[300px] p-8 pt-16">
-          <p className="text-xl md:text-2xl text-white text-center leading-relaxed whitespace-pre-wrap">
+          <p className="text-xl md:text-2xl text-foreground text-center leading-relaxed whitespace-pre-wrap">
             {showBack ? card.back : card.front}
           </p>
         </div>
@@ -159,33 +139,33 @@ function RatingButtons({
       label: "Bad", 
       interval: "in 4 cards",
       icon: Frown,
-      bgColor: "bg-red-600 hover:bg-red-700",
+      bgColor: "bg-red-700 hover:bg-red-800 dark:bg-red-800 dark:hover:bg-red-900",
     },
     { 
       type: "ok" as RatingType, 
       label: "OK", 
       interval: "in 4 days",
       icon: Meh,
-      bgColor: "bg-yellow-600 hover:bg-yellow-700",
+      bgColor: "bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800",
     },
     { 
       type: "good" as RatingType, 
       label: "Good", 
       interval: "in 8 days",
       icon: Smile,
-      bgColor: "bg-green-600 hover:bg-green-700",
+      bgColor: "bg-green-700 hover:bg-green-800 dark:bg-green-800 dark:hover:bg-green-900",
     },
     { 
       type: "perfect" as RatingType, 
       label: "Perfect", 
       interval: "in 18 days",
       icon: Laugh,
-      bgColor: "bg-blue-600 hover:bg-blue-700",
+      bgColor: "bg-blue-700 hover:bg-blue-800 dark:bg-blue-800 dark:hover:bg-blue-900",
     },
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2 p-4 bg-zinc-900">
+    <div className="grid grid-cols-4 gap-2 p-4 border-t border-border bg-background">
       {ratings.map((rating) => {
         const Icon = rating.icon;
         return (
@@ -222,26 +202,26 @@ function SessionComplete({
   onExit: () => void;
 }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-white">
+    <div className="flex-1 flex flex-col items-center justify-center p-8">
       <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-6">
-        <Smile className="w-12 h-12 text-green-400" />
+        <Smile className="w-12 h-12 text-green-500" />
       </div>
       
-      <h2 className="text-3xl font-bold mb-2">Session Complete!</h2>
-      <p className="text-zinc-400 mb-8">Great work on your study session</p>
+      <h2 className="text-3xl font-bold mb-2 text-foreground">Session Complete!</h2>
+      <p className="text-muted-foreground mb-8">Great work on your study session</p>
 
       <div className="grid grid-cols-3 gap-8 mb-10">
         <div className="text-center">
-          <p className="text-4xl font-bold text-blue-400">{stats.reviewed}</p>
-          <p className="text-sm text-zinc-500">Cards Studied</p>
+          <p className="text-4xl font-bold text-primary">{stats.reviewed}</p>
+          <p className="text-sm text-muted-foreground">Cards Studied</p>
         </div>
         <div className="text-center">
-          <p className="text-4xl font-bold text-green-400">{stats.mastered}</p>
-          <p className="text-sm text-zinc-500">Mastered</p>
+          <p className="text-4xl font-bold text-green-500">{stats.mastered}</p>
+          <p className="text-sm text-muted-foreground">Mastered</p>
         </div>
         <div className="text-center">
-          <p className="text-4xl font-bold text-yellow-400">{stats.total - stats.mastered}</p>
-          <p className="text-sm text-zinc-500">Needs Review</p>
+          <p className="text-4xl font-bold text-yellow-500">{stats.total - stats.mastered}</p>
+          <p className="text-sm text-muted-foreground">Needs Review</p>
         </div>
       </div>
 
@@ -250,7 +230,6 @@ function SessionComplete({
           variant="outline" 
           size="lg"
           onClick={onContinue}
-          className="border-zinc-600 text-white hover:bg-zinc-800"
           data-testid="button-continue-learning"
         >
           Continue Learning
@@ -258,7 +237,6 @@ function SessionComplete({
         <Button 
           size="lg"
           onClick={onExit}
-          className="bg-blue-600 hover:bg-blue-700"
           data-testid="button-finish"
         >
           Done
@@ -327,6 +305,7 @@ export default function LearnPage() {
   }, [flashcards, mode, shuffle, initialized]);
 
   const currentCard = studyQueue[0];
+  const currentIndex = initialTotal - studyQueue.length;
 
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<Flashcard> }) => {
@@ -455,10 +434,10 @@ export default function LearnPage() {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-zinc-900 flex items-center justify-center">
+      <div className="fixed inset-0 bg-background flex items-center justify-center" data-testid="learn-page-loading">
         <div className="text-center space-y-4">
-          <Skeleton className="w-16 h-16 rounded-full mx-auto bg-zinc-700" />
-          <Skeleton className="w-32 h-4 mx-auto bg-zinc-700" />
+          <Skeleton className="w-16 h-16 rounded-full mx-auto" />
+          <Skeleton className="w-32 h-4 mx-auto" />
         </div>
       </div>
     );
@@ -466,24 +445,23 @@ export default function LearnPage() {
 
   if (flashcards.length === 0) {
     return (
-      <div className="fixed inset-0 bg-zinc-900 flex flex-col">
-        <header className="flex items-center justify-between p-4 border-b border-zinc-800">
+      <div className="fixed inset-0 bg-background flex flex-col" data-testid="learn-page-empty">
+        <header className="flex items-center justify-between p-4 border-b border-border">
           <Button 
             variant="ghost" 
             size="icon"
             onClick={handleExit}
-            className="text-zinc-400 hover:text-white"
             data-testid="button-close"
           >
             <X className="h-6 w-6" />
           </Button>
-          <h1 className="text-white font-medium truncate max-w-[200px]">{chapterTitle}</h1>
+          <h1 className="font-medium truncate max-w-[200px]">{chapterTitle}</h1>
           <div className="w-10" />
         </header>
         
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-zinc-400 mb-4">No flashcards available</p>
+            <p className="text-muted-foreground mb-4">No flashcards available</p>
             <Button onClick={handleExit} data-testid="button-go-back">
               Go Back
             </Button>
@@ -494,42 +472,39 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-zinc-900 flex flex-col">
-      <header className="flex items-center justify-between p-4 border-b border-zinc-800">
+    <div className="fixed inset-0 bg-background flex flex-col" data-testid="learn-page-container">
+      <header className="flex items-center justify-between p-4 border-b border-border">
         <Button 
           variant="ghost" 
           size="icon"
           onClick={handleClose}
-          className="text-zinc-400 hover:text-white"
           data-testid="button-close"
         >
           <X className="h-6 w-6" />
         </Button>
         
-        <h1 className="text-white font-medium truncate max-w-[200px]">{chapterTitle}</h1>
+        <h1 className="font-medium truncate max-w-[200px]">{chapterTitle}</h1>
         
         <div className="flex items-center gap-1">
           <Button 
             variant="ghost" 
             size="icon"
-            className="text-zinc-400 hover:text-white"
           >
             <HelpCircle className="h-5 w-5" />
           </Button>
           <Button 
             variant="ghost" 
             size="icon"
-            className="text-zinc-400 hover:text-white"
           >
             <Settings className="h-5 w-5" />
           </Button>
         </div>
       </header>
 
-      <DotProgressBar 
+      <SegmentedProgressBar 
         total={initialTotal} 
-        current={completedCards.size}
-        queue={studyQueue}
+        completed={completedCards.size}
+        current={currentIndex}
       />
 
       {sessionComplete ? (
@@ -560,13 +535,14 @@ export default function LearnPage() {
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="text-zinc-500"
+                className="text-muted-foreground"
               >
                 <Keyboard className="h-6 w-6" />
               </Button>
               <Button 
                 size="lg"
-                className="bg-zinc-700 hover:bg-zinc-600 text-white px-12 py-6 rounded-full text-lg"
+                variant="secondary"
+                className="px-12 py-6 rounded-full text-lg"
                 onClick={() => setShowBack(true)}
                 data-testid="button-show-answer"
               >
@@ -585,23 +561,19 @@ export default function LearnPage() {
       ) : null}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
-        <AlertDialogContent className="bg-zinc-800 border-zinc-700">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Exit Study Session?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
+            <AlertDialogTitle>Exit Study Session?</AlertDialogTitle>
+            <AlertDialogDescription>
               You still have {studyQueue.length} cards remaining. Your progress on completed cards has been saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
-              className="bg-zinc-700 text-white border-zinc-600 hover:bg-zinc-600"
-              data-testid="button-continue-session"
-            >
+            <AlertDialogCancel data-testid="button-continue-session">
               Continue Studying
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleExit}
-              className="bg-blue-600 hover:bg-blue-700"
               data-testid="button-exit-session"
             >
               Exit Session
