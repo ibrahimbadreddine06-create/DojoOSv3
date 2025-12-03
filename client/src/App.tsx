@@ -3,10 +3,13 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { LearningTrajectorySidebar } from "@/components/learning-trajectory-sidebar";
+import { DualSidebarProvider, useDualSidebar } from "@/contexts/dual-sidebar-context";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
@@ -79,36 +82,93 @@ function LoadingScreen() {
   );
 }
 
+function DualSidebarHeader() {
+  const { toggleSidebar } = useSidebar();
+  const { 
+    isInSubModule, 
+    isMobile, 
+    activeSidebar,
+    toggleMainSidebar, 
+    toggleTrajectorySidebar,
+    mainSidebarOpen,
+    trajectorySidebarOpen
+  } = useDualSidebar();
+
+  const handleMainNavClick = () => {
+    if (isMobile) {
+      toggleSidebar();
+    } else {
+      toggleMainSidebar();
+    }
+  };
+
+  return (
+    <header className="flex items-center justify-between p-4 border-b bg-background">
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleMainNavClick}
+          data-testid="button-sidebar-toggle"
+          className={!isInSubModule || (activeSidebar === "main" && mainSidebarOpen) ? "bg-accent" : ""}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        
+        {isInSubModule && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTrajectorySidebar}
+            data-testid="button-trajectory-toggle"
+            className={activeSidebar === "trajectory" && trajectorySidebarOpen ? "bg-accent" : ""}
+          >
+            <BookOpen className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">
+          Dojo OS
+        </span>
+      </div>
+    </header>
+  );
+}
+
+function MainLayout() {
+  const { isInSubModule, mainSidebarOpen, isMobile, activeSidebar } = useDualSidebar();
+  
+  const showMainSidebar = !isInSubModule || (mainSidebarOpen && activeSidebar === "main");
+
+  return (
+    <div className="flex h-screen w-full">
+      {showMainSidebar && !isMobile && <AppSidebar />}
+      <LearningTrajectorySidebar />
+      
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <DualSidebarHeader />
+        <main className="flex-1 bg-background overflow-y-auto">
+          <AuthenticatedRouter />
+        </main>
+      </div>
+    </div>
+  );
+}
+
 function AuthenticatedApp() {
-  const [location] = useLocation();
-  
-  // Detect if we're on a sub-page (detail pages like /second-brain/:id, /languages/:id, /studies/:id)
-  const isSubPage = /^\/(second-brain|languages|studies)\/[^/]+$/.test(location);
-  
   const style = {
     "--sidebar-width": "20rem",
     "--sidebar-width-icon": "4rem",
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties} forceOverlay={isSubPage}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between p-4 border-b bg-background">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                Dojo OS
-              </span>
-            </div>
-          </header>
-          <main className="flex-1 bg-background overflow-y-auto">
-            <AuthenticatedRouter />
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <DualSidebarProvider>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <MainLayout />
+      </SidebarProvider>
+    </DualSidebarProvider>
   );
 }
 
