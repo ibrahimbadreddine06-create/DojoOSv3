@@ -139,7 +139,7 @@ function FlashcardPreviewCard({
   return (
     <div
       className={`
-        p-3 rounded-lg cursor-pointer transition-all border
+        p-4 rounded-lg cursor-pointer transition-all border min-h-[100px] overflow-hidden relative
         ${isSelected 
           ? "border-l-4 border-l-primary border-t border-r border-b border-border bg-card" 
           : "border-border hover-elevate bg-card/50"
@@ -149,17 +149,21 @@ function FlashcardPreviewCard({
       data-testid={`flashcard-preview-${card.id}`}
     >
       {isEmpty ? (
-        <div className="h-16 flex items-center justify-center text-muted-foreground text-sm">
+        <div className="h-[68px] flex items-center justify-center text-muted-foreground text-sm">
           Empty flashcard
         </div>
       ) : (
-        <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {frontText || "No question"}
-          </p>
-          <p className="text-sm line-clamp-3">
-            {backText || "No answer"}
-          </p>
+        <div className="h-[68px] overflow-hidden relative">
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+              {frontText || "No question"}
+            </p>
+            <p className="text-sm line-clamp-2 break-words">
+              {backText || "No answer"}
+            </p>
+          </div>
+          {/* Fade effect at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-card to-transparent pointer-events-none" />
         </div>
       )}
     </div>
@@ -248,19 +252,19 @@ function InlineEditor({
         className="hidden"
         onChange={handleFileChange}
       />
-      <div className="px-4 pt-4">
+      <div className="px-6 pt-5">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
       </div>
       <div
         ref={editorRef}
         contentEditable
-        className="min-h-[100px] px-4 py-3 focus:outline-none text-foreground [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2"
+        className="min-h-[140px] px-6 py-4 focus:outline-none text-foreground text-base [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2"
         onInput={handleInput}
         onBlur={handleBlur}
         data-placeholder={placeholder}
         data-testid={`editor-${label.toLowerCase()}`}
       />
-      <div className="px-4 pb-3">
+      <div className="px-6 pb-4">
         <FormatToolbar 
           onCommand={execCommand}
           onFontSize={handleFontSize}
@@ -296,20 +300,20 @@ function CardSidePlaceholder({
 
   return (
     <div 
-      className="rounded-lg border border-dashed border-border p-4 cursor-pointer hover-elevate transition-all"
+      className="rounded-lg border border-dashed border-border p-6 cursor-pointer hover-elevate transition-all min-h-[120px]"
       onClick={onClick}
       data-testid={`placeholder-${label.toLowerCase()}`}
     >
       {hasContent ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
           <div 
-            className="text-foreground prose prose-sm max-w-none"
+            className="text-foreground prose prose-base max-w-none [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
       ) : (
-        <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="h-full flex items-center justify-center gap-2 text-muted-foreground min-h-[72px]">
           <Plus className="h-4 w-4" />
           <span>Add {label.toLowerCase()}</span>
         </div>
@@ -600,9 +604,9 @@ export default function FlashcardNewPage() {
         </header>
 
         {/* Card Editor Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-8 flex items-start justify-center">
           {selectedCard && (
-            <div className="max-w-2xl mx-auto">
+            <div className="w-full max-w-2xl">
               {/* Tags and Menu Bar */}
               <div className="flex items-center justify-between mb-4">
                 <Button 
@@ -633,7 +637,7 @@ export default function FlashcardNewPage() {
               </div>
 
               {/* Flashcard Content */}
-              <div className="bg-card rounded-xl border border-border p-6 space-y-6">
+              <div className="bg-card rounded-xl border border-border p-8 space-y-8">
                 {/* Question Section */}
                 {editingSide === "question" ? (
                   <InlineEditor
