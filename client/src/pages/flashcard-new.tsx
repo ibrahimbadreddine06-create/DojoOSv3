@@ -139,7 +139,7 @@ function FlashcardPreviewCard({
   return (
     <div
       className={`
-        p-4 rounded-lg cursor-pointer transition-all border min-h-[100px] overflow-hidden relative
+        p-3 rounded-lg cursor-pointer transition-all border overflow-hidden
         ${isSelected 
           ? "border-l-4 border-l-primary border-t border-r border-b border-border bg-card" 
           : "border-border hover-elevate bg-card/50"
@@ -149,21 +149,39 @@ function FlashcardPreviewCard({
       data-testid={`flashcard-preview-${card.id}`}
     >
       {isEmpty ? (
-        <div className="h-[68px] flex items-center justify-center text-muted-foreground text-sm">
+        <div className="h-16 flex items-center justify-center text-muted-foreground text-sm">
           Empty flashcard
         </div>
       ) : (
-        <div className="h-[68px] overflow-hidden relative">
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+        <div className="h-20 overflow-hidden relative">
+          <div className="space-y-1">
+            <p 
+              className="text-xs text-muted-foreground overflow-hidden"
+              style={{ 
+                display: '-webkit-box', 
+                WebkitLineClamp: 2, 
+                WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word'
+              }}
+            >
               {frontText || "No question"}
             </p>
-            <p className="text-sm line-clamp-2 break-words">
+            <p 
+              className="text-sm overflow-hidden"
+              style={{ 
+                display: '-webkit-box', 
+                WebkitLineClamp: 2, 
+                WebkitBoxOrient: 'vertical',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word'
+              }}
+            >
               {backText || "No answer"}
             </p>
           </div>
           {/* Fade effect at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-card to-transparent pointer-events-none" />
         </div>
       )}
     </div>
