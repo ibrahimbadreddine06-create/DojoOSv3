@@ -29,41 +29,62 @@ import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { Flashcard, LearnPlanItem } from "@shared/schema";
 
 type RatingType = "bad" | "ok" | "good" | "perfect";
+type CardColor = "gray" | "red" | "yellow" | "green" | "blue";
 
 interface StudyCard extends Flashcard {
-  goodCount: number;
-  position: number;
+  color: CardColor;
+  locked: boolean;
+  previousRating: RatingType | null;
+  originalIndex: number;
 }
 
+const colorClasses: Record<CardColor, string> = {
+  gray: "bg-muted-foreground/30",
+  red: "bg-red-500",
+  yellow: "bg-yellow-500",
+  green: "bg-green-500",
+  blue: "bg-blue-500",
+};
+
 function SegmentedProgressBar({ 
-  total, 
-  completed,
-  current,
+  lockedCards,
+  activeCards,
+  currentCardId,
+  total,
 }: { 
-  total: number; 
-  completed: number;
-  current: number;
+  lockedCards: StudyCard[];
+  activeCards: StudyCard[];
+  currentCardId: string | null;
+  total: number;
 }) {
   if (total === 0) return null;
   
   return (
     <div className="flex items-center gap-0.5 px-4 py-3" data-testid="progress-bar">
-      {Array.from({ length: total }).map((_, i) => {
-        const isCompleted = i < completed;
-        const isCurrent = i === current;
-        
+      {/* Locked cards first (with thick border) */}
+      {lockedCards.map((card) => (
+        <div
+          key={card.id}
+          className={`
+            h-2.5 flex-1 rounded-sm transition-all ring-2 ring-white dark:ring-zinc-900
+            ${colorClasses[card.color]}
+          `}
+          title={`Locked (${card.color})`}
+        />
+      ))}
+      
+      {/* Active cards */}
+      {activeCards.map((card) => {
+        const isCurrent = card.id === currentCardId;
         return (
           <div
-            key={i}
+            key={card.id}
             className={`
               h-1.5 flex-1 rounded-sm transition-all
-              ${isCompleted 
-                ? "bg-primary" 
-                : isCurrent 
-                  ? "bg-primary/60" 
-                  : "bg-muted-foreground/20"
-              }
+              ${colorClasses[card.color]}
+              ${isCurrent ? "ring-1 ring-foreground/50" : ""}
             `}
+            title={card.color === "gray" ? "Not reviewed yet" : card.color}
           />
         );
       })}
@@ -138,7 +159,7 @@ function FlashcardView({
 
           {/* Card content - centered */}
           <div className="flex-1 flex items-center justify-center overflow-hidden">
-            <div className="w-full overflow-y-auto">
+            <div className="w-full overflow-y-auto max-h-[280px] md:max-h-[320px]">
               <p className="text-lg md:text-2xl lg:text-3xl text-foreground text-center leading-relaxed break-words">
                 {displayText}
               </p>
@@ -276,11 +297,10 @@ export default function LearnPage() {
   const chapterId = params.chapterId || "";
   
   const [studyQueue, setStudyQueue] = useState<StudyCard[]>([]);
+  const [lockedCards, setLockedCards] = useState<StudyCard[]>([]);
   const [initialTotal, setInitialTotal] = useState(0);
   const [showBack, setShowBack] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
-  const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
-  const [masteredCount, setMasteredCount] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -318,11 +338,14 @@ export default function LearnPage() {
         
       const studyCards: StudyCard[] = orderedCards.map((card, i) => ({
         ...card,
-        goodCount: (card as any).goodCount || 0,
-        position: i,
+        color: "gray" as CardColor,
+        locked: false,
+        previousRating: null,
+        originalIndex: i,
       }));
       
       setStudyQueue(studyCards);
+      setLockedCards([]);
       setInitialTotal(studyCards.length);
       setInitialized(true);
     }
@@ -371,45 +394,57 @@ export default function LearnPage() {
     if (!currentCard) return;
 
     let newMastery = currentCard.mastery;
-    let newGoodCount = currentCard.goodCount;
     const newQueue = [...studyQueue];
-    let shouldComplete = false;
-    let wasMastered = false;
+    let shouldLock = false;
+    let newColor: CardColor = currentCard.color;
 
     switch (rating) {
       case "bad":
         newMastery = Math.max(1, currentCard.mastery);
-        newGoodCount = 0;
-        const insertPos = Math.min(4, newQueue.length);
+        newColor = "red";
         newQueue.shift();
-        newQueue.splice(insertPos - 1, 0, { ...currentCard, goodCount: 0, mastery: newMastery });
+        const insertPos = Math.min(4, newQueue.length + 1);
+        newQueue.splice(insertPos - 1, 0, { 
+          ...currentCard, 
+          color: newColor,
+          previousRating: "bad",
+          mastery: newMastery 
+        });
         break;
         
       case "ok":
         newMastery = Math.max(2, currentCard.mastery);
-        newGoodCount = 0;
+        newColor = "yellow";
         newQueue.shift();
-        newQueue.push({ ...currentCard, goodCount: 0, mastery: newMastery });
+        newQueue.push({ 
+          ...currentCard, 
+          color: newColor,
+          previousRating: "ok",
+          mastery: newMastery 
+        });
         break;
         
       case "good":
-        newGoodCount = currentCard.goodCount + 1;
-        if (newGoodCount >= 2) {
+        newColor = "green";
+        if (currentCard.previousRating === "good") {
           newMastery = 4;
-          wasMastered = true;
-          shouldComplete = true;
+          shouldLock = true;
         } else {
-          newMastery = 3;
-          const goodInsertPos = Math.min(3, newQueue.length);
+          newMastery = Math.max(3, currentCard.mastery);
           newQueue.shift();
-          newQueue.splice(goodInsertPos - 1, 0, { ...currentCard, goodCount: newGoodCount, mastery: newMastery });
+          newQueue.push({ 
+            ...currentCard, 
+            color: newColor,
+            previousRating: "good",
+            mastery: newMastery 
+          });
         }
         break;
         
       case "perfect":
         newMastery = 4;
-        wasMastered = true;
-        shouldComplete = true;
+        newColor = "blue";
+        shouldLock = true;
         break;
     }
 
@@ -418,16 +453,18 @@ export default function LearnPage() {
       updates: {
         lastReviewed: new Date(),
         mastery: newMastery,
-        goodCount: newGoodCount,
       },
     });
 
-    if (shouldComplete) {
+    if (shouldLock) {
       newQueue.shift();
-      setCompletedCards(prev => new Set(Array.from(prev).concat(currentCard.id)));
-      if (wasMastered) {
-        setMasteredCount(prev => prev + 1);
-      }
+      const lockedCard: StudyCard = { 
+        ...currentCard, 
+        color: newColor,
+        locked: true,
+        mastery: newMastery 
+      };
+      setLockedCards(prev => [...prev, lockedCard]);
     }
 
     setStudyQueue(newQueue);
@@ -526,23 +563,23 @@ export default function LearnPage() {
       </header>
 
       <SegmentedProgressBar 
-        total={initialTotal} 
-        completed={completedCards.size}
-        current={currentIndex}
+        lockedCards={lockedCards}
+        activeCards={studyQueue}
+        currentCardId={currentCard?.id || null}
+        total={initialTotal}
       />
 
       {sessionComplete ? (
         <SessionComplete
           stats={{
             total: initialTotal,
-            mastered: masteredCount,
-            reviewed: completedCards.size,
+            mastered: lockedCards.length,
+            reviewed: lockedCards.length,
           }}
           onContinue={() => {
             setInitialized(false);
             setSessionComplete(false);
-            setCompletedCards(new Set());
-            setMasteredCount(0);
+            setLockedCards([]);
           }}
           onExit={handleExit}
         />
