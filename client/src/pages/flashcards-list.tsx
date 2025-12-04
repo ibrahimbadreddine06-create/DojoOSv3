@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   ArrowLeft, Brain, Plus, Search, Edit, Trash2, MoreHorizontal,
-  Play, ChevronDown, Pencil
+  Play, ChevronDown, Pencil, Frown, Meh, Smile, Laugh, HelpCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +37,12 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Flashcard } from "@shared/schema";
 
-const masteryEmojis: Record<number, { emoji: string; color: string; label: string }> = {
-  0: { emoji: "😶", color: "text-zinc-400", label: "New" },
-  1: { emoji: "😟", color: "text-red-400", label: "Learning" },
-  2: { emoji: "😐", color: "text-yellow-400", label: "Reviewing" },
-  3: { emoji: "🙂", color: "text-blue-400", label: "Almost" },
-  4: { emoji: "😊", color: "text-green-400", label: "Mastered" },
+const masteryIcons: Record<number, { icon: typeof Frown; color: string; label: string }> = {
+  0: { icon: HelpCircle, color: "text-zinc-400", label: "New" },
+  1: { icon: Frown, color: "text-red-500", label: "Bad" },
+  2: { icon: Meh, color: "text-yellow-500", label: "OK" },
+  3: { icon: Smile, color: "text-green-500", label: "Good" },
+  4: { icon: Laugh, color: "text-blue-500", label: "Perfect" },
 };
 
 type SortOption = "newest" | "oldest" | "mastery-asc" | "mastery-desc";
@@ -66,7 +66,8 @@ function FlashcardGridCard({
 
   const frontText = stripHtml(flashcard.front);
   const backText = stripHtml(flashcard.back);
-  const mastery = masteryEmojis[flashcard.mastery] || masteryEmojis[0];
+  const mastery = masteryIcons[flashcard.mastery] || masteryIcons[0];
+  const MasteryIcon = mastery.icon;
 
   return (
     <div 
@@ -75,11 +76,9 @@ function FlashcardGridCard({
       onClick={onEdit}
       data-testid={`flashcard-card-${index}`}
     >
-      {/* Top: Mastery emoji */}
-      <div className="flex items-center justify-between mb-3">
-        <span className={`text-lg ${mastery.color}`} title={mastery.label}>
-          {mastery.emoji}
-        </span>
+      {/* Top: Mastery icon */}
+      <div className="flex items-center justify-between mb-3" title={mastery.label}>
+        <MasteryIcon className={`h-5 w-5 ${mastery.color}`} />
       </div>
 
       {/* Question */}
