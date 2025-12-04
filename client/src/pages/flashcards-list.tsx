@@ -2,12 +2,11 @@ import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
-  X, Brain, Plus, Search, Shuffle, ArrowDownAZ, 
-  GraduationCap, Eye, Edit, Trash2, MoreHorizontal
+  ArrowLeft, Brain, Plus, Search, Edit, Trash2, MoreHorizontal,
+  Tag, Play, ChevronDown, Filter, Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,7 +14,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,13 +45,103 @@ const masteryColors: Record<number, string> = {
   4: "bg-green-500",
 };
 
-const masteryLabels: Record<number, string> = {
-  0: "New",
-  1: "Learning",
-  2: "Reviewing",
-  3: "Almost",
-  4: "Mastered",
-};
+type SortOption = "newest" | "oldest" | "mastery-asc" | "mastery-desc";
+
+function FlashcardGridCard({
+  flashcard,
+  index,
+  onEdit,
+  onDelete,
+}: {
+  flashcard: Flashcard;
+  index: number;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
+  const frontText = stripHtml(flashcard.front);
+  const backText = stripHtml(flashcard.back);
+
+  return (
+    <div 
+      className="bg-card border border-border rounded-xl p-4 flex flex-col cursor-pointer hover-elevate transition-all h-[200px]"
+      onClick={onEdit}
+      data-testid={`flashcard-card-${index}`}
+    >
+      {/* Top: Tags button */}
+      <div className="flex items-center justify-between mb-3">
+        <button 
+          className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          data-testid={`button-add-tags-${index}`}
+        >
+          <span className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
+            <span className="text-white text-[10px]">!</span>
+          </span>
+          <Tag className="h-3.5 w-3.5" />
+          <span>+ Add tags</span>
+        </button>
+      </div>
+
+      {/* Question */}
+      <div className="mb-2 flex-shrink-0">
+        <p 
+          className="font-medium text-sm line-clamp-2 text-foreground"
+          title={frontText}
+        >
+          {frontText || "No question"}
+        </p>
+      </div>
+
+      {/* Answer */}
+      <div className="flex-1 overflow-hidden">
+        <p 
+          className="text-sm text-muted-foreground line-clamp-3"
+          title={backText}
+        >
+          {backText || "No answer"}
+        </p>
+      </div>
+
+      {/* Bottom: Mastery indicator + Menu */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full ${masteryColors[flashcard.mastery]}`} />
+        </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" data-testid={`button-menu-${index}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={onDelete}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
 
 export default function FlashcardsListPage() {
   const params = useParams<{ chapterId: string }>();
@@ -59,9 +156,8 @@ export default function FlashcardsListPage() {
   const chapterTitle = searchParams.get("title") || "Flashcards";
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [previewCard, setPreviewCard] = useState<Flashcard | null>(null);
-  const [showBack, setShowBack] = useState(false);
   
   const { data: flashcards = [], isLoading } = useQuery<Flashcard[]>({
     queryKey: ["/api/flashcards/chapter", chapterId],
@@ -81,21 +177,39 @@ export default function FlashcardsListPage() {
     },
   });
 
-  const filteredFlashcards = useMemo(() => {
-    if (!searchQuery.trim()) return flashcards;
-    const query = searchQuery.toLowerCase();
-    return flashcards.filter(f => 
-      f.front.toLowerCase().includes(query) || 
-      f.back.toLowerCase().includes(query)
-    );
-  }, [flashcards, searchQuery]);
+  const filteredAndSortedFlashcards = useMemo(() => {
+    let result = [...flashcards];
+    
+    // Filter by search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(f => 
+        f.front.toLowerCase().includes(query) || 
+        f.back.toLowerCase().includes(query)
+      );
+    }
+    
+    // Sort
+    switch (sortBy) {
+      case "newest":
+        result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        break;
+      case "oldest":
+        result.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+        break;
+      case "mastery-asc":
+        result.sort((a, b) => a.mastery - b.mastery);
+        break;
+      case "mastery-desc":
+        result.sort((a, b) => b.mastery - a.mastery);
+        break;
+    }
+    
+    return result;
+  }, [flashcards, searchQuery, sortBy]);
 
-  const masteryStats = useMemo(() => {
-    const stats = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
-    flashcards.forEach(f => {
-      stats[f.mastery as keyof typeof stats]++;
-    });
-    return stats;
+  const reviewCount = useMemo(() => {
+    return flashcards.filter(f => f.mastery < 4).length;
   }, [flashcards]);
 
   const handleClose = () => {
@@ -116,9 +230,9 @@ export default function FlashcardsListPage() {
     navigate(`/flashcards/edit/${flashcard.id}?${params.toString()}`);
   };
 
-  const handleStartLearning = (mode: "all" | "new" | "review" = "all") => {
+  const handleStartReview = () => {
     const params = new URLSearchParams();
-    params.set("mode", mode);
+    params.set("mode", "review");
     params.set("shuffle", "true");
     params.set("title", chapterTitle);
     if (topicId) params.set("topicId", topicId);
@@ -126,24 +240,21 @@ export default function FlashcardsListPage() {
     navigate(`/learn/${chapterId}?${params.toString()}`);
   };
 
-  const handlePreview = (card: Flashcard) => {
-    setPreviewCard(card);
-    setShowBack(false);
-  };
-
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col">
         <header className="flex items-center justify-between p-4 border-b">
           <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-10 w-32" />
         </header>
-        <div className="flex-1 p-4 space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+        <div className="p-4 space-y-4">
+          <Skeleton className="h-10 w-64" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3,4,5,6].map(i => (
+              <Skeleton key={i} className="h-[200px] w-full rounded-xl" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -151,65 +262,111 @@ export default function FlashcardsListPage() {
 
   return (
     <div className="fixed inset-0 bg-background flex flex-col" data-testid="flashcards-list-page">
-      <header className="flex items-center justify-between p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={handleClose} data-testid="button-close">
-          <X className="h-6 w-6" />
+      {/* Header */}
+      <header className="flex items-center gap-4 p-4 border-b">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleClose} 
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        <h1 className="font-medium flex items-center gap-2">
-          <Brain className="h-5 w-5 text-primary" />
-          {chapterTitle}
-        </h1>
-        
-        <Button onClick={handleAddNew} data-testid="button-add-flashcard">
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </Button>
-      </header>
-
-      <div className="p-4 border-b space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search flashcards..."
-              className="pl-10"
-              data-testid="input-search"
-            />
-          </div>
+        <div className="flex items-center gap-2 flex-1">
+          <h1 className="font-semibold text-lg">{chapterTitle}</h1>
+          <Badge variant="secondary" className="text-xs">
+            {flashcards.length}
+          </Badge>
         </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            {Object.entries(masteryStats).map(([level, count]) => (
-              <div key={level} className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full ${masteryColors[Number(level)]}`} />
-                <span className="text-xs text-muted-foreground">{count}</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex-1" />
+        
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleAddNew}
+            data-testid="button-editor"
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Editor
+          </Button>
           
           <Button 
-            size="sm" 
-            onClick={() => handleStartLearning("all")}
-            disabled={flashcards.length === 0}
-            data-testid="button-learn-all"
+            size="sm"
+            onClick={handleStartReview}
+            disabled={reviewCount === 0}
+            className="gap-2"
+            data-testid="button-review"
           >
-            <GraduationCap className="h-4 w-4 mr-2" />
-            Learn All
+            <Play className="h-4 w-4" />
+            Review {reviewCount} flashcards
+            <ChevronDown className="h-4 w-4" />
           </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid="button-more-options">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleAddNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add flashcard
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Search and Filter bar */}
+      <div className="p-4 border-b space-y-3">
+        <div className="relative max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search flashcards"
+            className="pl-10 bg-muted/50"
+            data-testid="input-search"
+          />
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <button 
+            className="text-sm text-primary hover:underline"
+            data-testid="button-select"
+          >
+            Select
+          </button>
+          
+          <div className="flex items-center gap-3">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-auto gap-2 border-0 bg-transparent" data-testid="select-sort">
+                <span className="text-sm text-muted-foreground">Sort by</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="mastery-asc">Mastery (low to high)</SelectItem>
+                <SelectItem value="mastery-desc">Mastery (high to low)</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-filter">
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* Grid of flashcards */}
       <div className="flex-1 overflow-y-auto p-4">
-        {filteredFlashcards.length === 0 ? (
-          <div className="text-center py-12">
-            <Brain className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground mb-4">
+        {filteredAndSortedFlashcards.length === 0 ? (
+          <div className="text-center py-16">
+            <Brain className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
+            <p className="text-muted-foreground mb-6">
               {searchQuery ? "No flashcards match your search" : "No flashcards yet"}
             </p>
             {!searchQuery && (
@@ -220,81 +377,21 @@ export default function FlashcardsListPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-3 max-w-2xl mx-auto">
-            {filteredFlashcards.map((flashcard, index) => (
-              <Card 
-                key={flashcard.id} 
-                className="p-4 hover-elevate cursor-pointer"
-                onClick={() => handlePreview(flashcard)}
-                data-testid={`flashcard-item-${index}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${masteryColors[flashcard.mastery]}`} />
-                  
-                  <div className="flex-1 min-w-0">
-                    <p 
-                      className="font-medium line-clamp-2"
-                      dangerouslySetInnerHTML={{ __html: flashcard.front }}
-                    />
-                    <p 
-                      className="text-sm text-muted-foreground line-clamp-1 mt-1"
-                      dangerouslySetInnerHTML={{ __html: flashcard.back }}
-                    />
-                  </div>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(flashcard)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => setDeleteConfirm(flashcard.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAndSortedFlashcards.map((flashcard, index) => (
+              <FlashcardGridCard
+                key={flashcard.id}
+                flashcard={flashcard}
+                index={index}
+                onEdit={() => handleEdit(flashcard)}
+                onDelete={() => setDeleteConfirm(flashcard.id)}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {previewCard && (
-        <div 
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-          onClick={() => setPreviewCard(null)}
-        >
-          <Card 
-            className="w-full max-w-lg p-8 cursor-pointer min-h-[300px] flex flex-col items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowBack(!showBack);
-            }}
-          >
-            <Badge className={`mb-4 ${masteryColors[previewCard.mastery]} text-white`}>
-              {masteryLabels[previewCard.mastery]}
-            </Badge>
-            <p 
-              className="text-xl text-center"
-              dangerouslySetInnerHTML={{ __html: showBack ? previewCard.back : previewCard.front }}
-            />
-            <p className="text-sm text-muted-foreground mt-6">
-              {showBack ? "Click to see question" : "Click to reveal answer"}
-            </p>
-          </Card>
-        </div>
-      )}
-
+      {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
