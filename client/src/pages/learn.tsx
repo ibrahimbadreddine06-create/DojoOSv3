@@ -75,51 +75,112 @@ function FlashcardView({
   card,
   showBack,
   onFlip,
+  queueLength,
 }: {
   card: StudyCard;
   showBack: boolean;
   onFlip: () => void;
+  queueLength: number;
 }) {
+  const stripHtml = (html: string) => {
+    if (!html) return "";
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
+  const displayText = showBack ? stripHtml(card.back) : stripHtml(card.front);
+
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
-      <div 
-        className="w-full max-w-lg bg-card border border-border rounded-xl shadow-lg cursor-pointer min-h-[300px] relative"
-        onClick={onFlip}
-        data-testid="flashcard-content"
-      >
-        <div className="absolute top-3 left-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-muted-foreground hover:text-foreground text-xs gap-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Plus className="h-3 w-3" />
-            Add tags
-          </Button>
-        </div>
+    <div className="flex-1 flex items-center justify-center p-4 md:p-8">
+      {/* Card stack container */}
+      <div className="relative w-full max-w-3xl">
+        {/* Stacked cards behind (show up to 2 cards in queue) */}
+        {queueLength > 2 && (
+          <div 
+            className="absolute inset-0 bg-card/40 border border-border/30 rounded-2xl transform translate-x-3 translate-y-3 md:translate-x-4 md:translate-y-4"
+            style={{ zIndex: 1 }}
+          />
+        )}
+        {queueLength > 1 && (
+          <div 
+            className="absolute inset-0 bg-card/60 border border-border/50 rounded-2xl transform translate-x-1.5 translate-y-1.5 md:translate-x-2 md:translate-y-2"
+            style={{ zIndex: 2 }}
+          />
+        )}
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Main flashcard */}
+        <div 
+          className="relative w-full bg-card border border-border rounded-2xl shadow-xl cursor-pointer min-h-[360px] md:min-h-[420px]"
+          style={{ zIndex: 3 }}
+          onClick={onFlip}
+          data-testid="flashcard-content"
+        >
+          <div className="absolute top-3 left-3 md:top-4 md:left-4">
             <Button 
               variant="ghost" 
-              size="icon"
-              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+              size="sm" 
+              className="text-muted-foreground hover:text-foreground text-xs gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="h-5 w-5" />
+              <Plus className="h-3 w-3" />
+              Add tags
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Edit card</DropdownMenuItem>
-            <DropdownMenuItem>Report issue</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="absolute top-3 right-3 md:top-4 md:right-4 text-muted-foreground hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Edit card</DropdownMenuItem>
+              <DropdownMenuItem>Report issue</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <div className="flex items-center justify-center min-h-[300px] p-8 pt-16">
-          <p className="text-xl md:text-2xl text-foreground text-center leading-relaxed whitespace-pre-wrap">
-            {showBack ? card.back : card.front}
-          </p>
+          {/* Card content with proper overflow handling */}
+          <div className="flex items-center justify-center min-h-[360px] md:min-h-[420px] p-6 md:p-10 pt-16 md:pt-20 pb-16 overflow-hidden">
+            <div className="w-full max-h-[280px] md:max-h-[340px] overflow-y-auto">
+              <p className="text-lg md:text-2xl lg:text-3xl text-foreground text-center leading-relaxed break-words">
+                {displayText}
+              </p>
+            </div>
+          </div>
+
+          {/* Show answer button at bottom */}
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Keyboard className="h-5 w-5" />
+              </Button>
+              {!showBack && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFlip();
+                  }}
+                  data-testid="button-show-answer"
+                >
+                  Show answer
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -528,28 +589,8 @@ export default function LearnPage() {
             card={currentCard}
             showBack={showBack}
             onFlip={() => setShowBack(!showBack)}
+            queueLength={studyQueue.length}
           />
-
-          {!showBack && (
-            <div className="flex flex-col items-center gap-4 p-4">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="text-muted-foreground"
-              >
-                <Keyboard className="h-6 w-6" />
-              </Button>
-              <Button 
-                size="lg"
-                variant="secondary"
-                className="px-12 py-6 rounded-full text-lg"
-                onClick={() => setShowBack(true)}
-                data-testid="button-show-answer"
-              >
-                Show answer
-              </Button>
-            </div>
-          )}
 
           {showBack && (
             <RatingButtons 
