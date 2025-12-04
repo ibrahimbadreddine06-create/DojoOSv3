@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   X, Plus, MoreVertical, Bold, Italic, Underline, Strikethrough,
-  Image, ChevronDown, Tag
+  Image, ChevronDown, Tag, Music, Link, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,12 +13,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -36,11 +45,13 @@ function FormatToolbar({
   onCommand, 
   onFontSize,
   onImageUpload,
+  onAudioUpload,
   fontSize 
 }: { 
   onCommand: (cmd: string) => void;
   onFontSize: (size: string) => void;
   onImageUpload: () => void;
+  onAudioUpload: () => void;
   fontSize: string;
 }) {
   return (
@@ -102,17 +113,30 @@ function FormatToolbar({
         </SelectContent>
       </Select>
       
-      <Button 
-        type="button" 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 ml-auto"
-        onClick={onImageUpload}
-        title="Add image/attachment"
-        data-testid="format-image"
-      >
-        <Image className="h-4 w-4" />
-      </Button>
+      <div className="ml-auto flex items-center gap-1">
+        <Button 
+          type="button" 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8"
+          onClick={onImageUpload}
+          title="Add image"
+          data-testid="format-image"
+        >
+          <Image className="h-4 w-4" />
+        </Button>
+        <Button 
+          type="button" 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8"
+          onClick={onAudioUpload}
+          title="Add audio"
+          data-testid="format-audio"
+        >
+          <Music className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -203,7 +227,10 @@ function InlineEditor({
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const [fontSize, setFontSize] = useState("3");
+  const [showAudioDialog, setShowAudioDialog] = useState(false);
+  const [audioUrl, setAudioUrl] = useState("");
 
   useEffect(() => {
     if (editorRef.current) {
@@ -249,7 +276,6 @@ function InlineEditor({
     reader.onload = () => {
       const base64 = reader.result as string;
       
-      // Insert image at cursor position in the editor
       if (editorRef.current) {
         editorRef.current.focus();
         document.execCommand('insertImage', false, base64);
@@ -261,36 +287,138 @@ function InlineEditor({
     e.target.value = "";
   };
 
+  const handleAudioUpload = () => {
+    setShowAudioDialog(true);
+  };
+
+  const insertAudioElement = (src: string) => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      const audioHtml = `<div class="audio-container" contenteditable="false" style="margin: 12px 0; padding: 12px; background: hsl(var(--muted)); border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+        <audio controls src="${src}" style="width: 100%; max-width: 300px;"></audio>
+      </div>`;
+      document.execCommand('insertHTML', false, audioHtml);
+      onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      insertAudioElement(base64);
+      setShowAudioDialog(false);
+    };
+    reader.readAsDataURL(file);
+    
+    e.target.value = "";
+  };
+
+  const handleAudioUrlSubmit = () => {
+    if (audioUrl.trim()) {
+      insertAudioElement(audioUrl.trim());
+      setAudioUrl("");
+      setShowAudioDialog(false);
+    }
+  };
+
   return (
-    <div className="border border-border rounded-lg bg-card overflow-hidden">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      <div className="px-6 pt-5">
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      </div>
-      <div
-        ref={editorRef}
-        contentEditable
-        className="min-h-[140px] px-6 py-4 focus:outline-none text-foreground text-base [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2"
-        onInput={handleInput}
-        onBlur={handleBlur}
-        data-placeholder={placeholder}
-        data-testid={`editor-${label.toLowerCase()}`}
-      />
-      <div className="px-6 pb-4">
-        <FormatToolbar 
-          onCommand={execCommand}
-          onFontSize={handleFontSize}
-          onImageUpload={handleImageUpload}
-          fontSize={fontSize}
+    <>
+      <div className="border border-border rounded-lg bg-card overflow-hidden">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
         />
+        <input
+          ref={audioInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={handleAudioFileChange}
+        />
+        <div className="px-6 pt-5">
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        </div>
+        <div
+          ref={editorRef}
+          contentEditable
+          className="min-h-[140px] px-6 py-4 focus:outline-none text-foreground text-base [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:my-2 [&_audio]:max-w-full"
+          onInput={handleInput}
+          onBlur={handleBlur}
+          data-placeholder={placeholder}
+          data-testid={`editor-${label.toLowerCase()}`}
+        />
+        <div className="px-6 pb-4">
+          <FormatToolbar 
+            onCommand={execCommand}
+            onFontSize={handleFontSize}
+            onImageUpload={handleImageUpload}
+            onAudioUpload={handleAudioUpload}
+            fontSize={fontSize}
+          />
+        </div>
       </div>
-    </div>
+
+      <Dialog open={showAudioDialog} onOpenChange={setShowAudioDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Audio</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="upload" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="upload" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Upload File
+              </TabsTrigger>
+              <TabsTrigger value="link" className="gap-2">
+                <Link className="h-4 w-4" />
+                Paste Link
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="upload" className="space-y-4 pt-4">
+              <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-8 cursor-pointer hover-elevate transition-all"
+                onClick={() => audioInputRef.current?.click()}
+                data-testid="audio-upload-dropzone"
+              >
+                <Music className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground text-center">
+                  Click to upload an audio file
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  MP3, WAV, OGG supported
+                </p>
+              </div>
+            </TabsContent>
+            <TabsContent value="link" className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="audio-url">Audio URL</Label>
+                <Input
+                  id="audio-url"
+                  placeholder="https://example.com/audio.mp3"
+                  value={audioUrl}
+                  onChange={(e) => setAudioUrl(e.target.value)}
+                  data-testid="input-audio-url"
+                />
+              </div>
+              <Button 
+                onClick={handleAudioUrlSubmit} 
+                className="w-full"
+                disabled={!audioUrl.trim()}
+                data-testid="button-add-audio-url"
+              >
+                Add Audio
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
