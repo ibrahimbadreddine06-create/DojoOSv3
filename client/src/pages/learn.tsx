@@ -555,31 +555,34 @@ export default function LearnPage() {
             queueLength={studyQueue.length}
           />
 
-          {!showBack ? (
-            <div className="flex flex-col items-center gap-4 p-4">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="text-muted-foreground"
-              >
-                <Keyboard className="h-6 w-6" />
-              </Button>
-              <Button 
-                size="lg"
-                variant="secondary"
-                className="px-12 py-6 rounded-full text-lg"
-                onClick={() => setShowBack(true)}
-                data-testid="button-show-answer"
-              >
-                Show answer
-              </Button>
-            </div>
-          ) : (
-            <RatingButtons 
-              onRate={handleRate} 
-              disabled={updateMutation.isPending}
-            />
-          )}
+          {/* Fixed height container to prevent layout shift */}
+          <div className="h-[120px]">
+            {!showBack ? (
+              <div className="flex flex-col items-center justify-center gap-4 p-4 h-full">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-muted-foreground"
+                >
+                  <Keyboard className="h-6 w-6" />
+                </Button>
+                <Button 
+                  size="lg"
+                  variant="secondary"
+                  className="px-12 py-6 rounded-full text-lg"
+                  onClick={() => setShowBack(true)}
+                  data-testid="button-show-answer"
+                >
+                  Show answer
+                </Button>
+              </div>
+            ) : (
+              <RatingButtons 
+                onRate={handleRate} 
+                disabled={updateMutation.isPending}
+              />
+            )}
+          </div>
         </>
       ) : null}
 
