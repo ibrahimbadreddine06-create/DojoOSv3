@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   ArrowLeft, Brain, Plus, Search, Edit, Trash2, MoreHorizontal,
-  Tag, Play, ChevronDown, Filter, Pencil
+  Play, ChevronDown, Pencil
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +37,12 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Flashcard } from "@shared/schema";
 
-const masteryColors: Record<number, string> = {
-  0: "bg-zinc-500",
-  1: "bg-red-500",
-  2: "bg-yellow-500",
-  3: "bg-blue-500",
-  4: "bg-green-500",
+const masteryEmojis: Record<number, { emoji: string; color: string; label: string }> = {
+  0: { emoji: "😶", color: "text-zinc-400", label: "New" },
+  1: { emoji: "😟", color: "text-red-400", label: "Learning" },
+  2: { emoji: "😐", color: "text-yellow-400", label: "Reviewing" },
+  3: { emoji: "🙂", color: "text-blue-400", label: "Almost" },
+  4: { emoji: "😊", color: "text-green-400", label: "Mastered" },
 };
 
 type SortOption = "newest" | "oldest" | "mastery-asc" | "mastery-desc";
@@ -66,57 +66,57 @@ function FlashcardGridCard({
 
   const frontText = stripHtml(flashcard.front);
   const backText = stripHtml(flashcard.back);
+  const mastery = masteryEmojis[flashcard.mastery] || masteryEmojis[0];
 
   return (
     <div 
-      className="bg-card border border-border rounded-xl p-4 flex flex-col cursor-pointer hover-elevate transition-all h-[200px]"
+      className="bg-card border border-border rounded-2xl p-4 flex flex-col cursor-pointer hover-elevate transition-all"
+      style={{ minHeight: "180px" }}
       onClick={onEdit}
       data-testid={`flashcard-card-${index}`}
     >
-      {/* Top: Tags button */}
+      {/* Top: Mastery emoji */}
       <div className="flex items-center justify-between mb-3">
-        <button 
-          className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          data-testid={`button-add-tags-${index}`}
-        >
-          <span className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-            <span className="text-white text-[10px]">!</span>
-          </span>
-          <Tag className="h-3.5 w-3.5" />
-          <span>+ Add tags</span>
-        </button>
+        <span className={`text-lg ${mastery.color}`} title={mastery.label}>
+          {mastery.emoji}
+        </span>
       </div>
 
       {/* Question */}
       <div className="mb-2 flex-shrink-0">
         <p 
-          className="font-medium text-sm line-clamp-2 text-foreground"
-          title={frontText}
+          className="font-semibold text-sm overflow-hidden"
+          style={{ 
+            display: '-webkit-box', 
+            WebkitLineClamp: 2, 
+            WebkitBoxOrient: 'vertical',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}
         >
           {frontText || "No question"}
         </p>
       </div>
 
       {/* Answer */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <p 
-          className="text-sm text-muted-foreground line-clamp-3"
-          title={backText}
+          className="text-sm text-muted-foreground overflow-hidden"
+          style={{ 
+            display: '-webkit-box', 
+            WebkitLineClamp: 3, 
+            WebkitBoxOrient: 'vertical',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}
         >
           {backText || "No answer"}
         </p>
+        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-card to-transparent pointer-events-none" />
       </div>
 
-      {/* Bottom: Mastery indicator + Menu */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-        <div className="flex items-center gap-2">
-          <div className={`w-2.5 h-2.5 rounded-full ${masteryColors[flashcard.mastery]}`} />
-        </div>
-        
+      {/* Bottom: Menu */}
+      <div className="flex items-center justify-end mt-3 pt-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-7 w-7" data-testid={`button-menu-${index}`}>
@@ -180,7 +180,6 @@ export default function FlashcardsListPage() {
   const filteredAndSortedFlashcards = useMemo(() => {
     let result = [...flashcards];
     
-    // Filter by search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(f => 
@@ -189,7 +188,6 @@ export default function FlashcardsListPage() {
       );
     }
     
-    // Sort
     switch (sortBy) {
       case "newest":
         result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -243,16 +241,15 @@ export default function FlashcardsListPage() {
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col">
-        <header className="flex items-center justify-between p-4 border-b">
-          <Skeleton className="h-10 w-10" />
+        <header className="flex items-center justify-between px-6 py-4 border-b">
+          <Skeleton className="h-9 w-9" />
           <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-9 w-32" />
         </header>
-        <div className="p-4 space-y-4">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1,2,3,4,5,6].map(i => (
-              <Skeleton key={i} className="h-[200px] w-full rounded-xl" />
+              <Skeleton key={i} className="h-[180px] w-full rounded-2xl" />
             ))}
           </div>
         </div>
@@ -263,7 +260,7 @@ export default function FlashcardsListPage() {
   return (
     <div className="fixed inset-0 bg-background flex flex-col" data-testid="flashcards-list-page">
       {/* Header */}
-      <header className="flex items-center gap-4 p-4 border-b">
+      <header className="flex items-center gap-4 px-6 py-4 border-b">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -273,21 +270,22 @@ export default function FlashcardsListPage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-3 flex-1">
           <h1 className="font-semibold text-lg">{chapterTitle}</h1>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs px-3">
             {flashcards.length}
           </Badge>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleAddNew}
+            className="gap-2"
             data-testid="button-editor"
           >
-            <Pencil className="h-4 w-4 mr-2" />
+            <Pencil className="h-4 w-4" />
             Editor
           </Button>
           
@@ -319,9 +317,9 @@ export default function FlashcardsListPage() {
         </div>
       </header>
 
-      {/* Search and Filter bar */}
-      <div className="p-4 border-b space-y-3">
-        <div className="relative max-w-xs">
+      {/* Search and Sort bar */}
+      <div className="px-6 py-4 border-b flex items-center justify-between gap-4">
+        <div className="relative w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -332,37 +330,22 @@ export default function FlashcardsListPage() {
           />
         </div>
         
-        <div className="flex items-center justify-between">
-          <button 
-            className="text-sm text-primary hover:underline"
-            data-testid="button-select"
-          >
-            Select
-          </button>
-          
-          <div className="flex items-center gap-3">
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-auto gap-2 border-0 bg-transparent" data-testid="select-sort">
-                <span className="text-sm text-muted-foreground">Sort by</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="mastery-asc">Mastery (low to high)</SelectItem>
-                <SelectItem value="mastery-desc">Mastery (high to low)</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-filter">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-auto gap-2 border-0 bg-transparent" data-testid="select-sort">
+            <span className="text-sm text-muted-foreground">Sort by</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest first</SelectItem>
+            <SelectItem value="oldest">Oldest first</SelectItem>
+            <SelectItem value="mastery-asc">Mastery (low to high)</SelectItem>
+            <SelectItem value="mastery-desc">Mastery (high to low)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Grid of flashcards */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-6">
         {filteredAndSortedFlashcards.length === 0 ? (
           <div className="text-center py-16">
             <Brain className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
@@ -377,7 +360,7 @@ export default function FlashcardsListPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredAndSortedFlashcards.map((flashcard, index) => (
               <FlashcardGridCard
                 key={flashcard.id}
