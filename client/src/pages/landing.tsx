@@ -246,11 +246,11 @@ const Page3 = () => (
         <Button
           size="lg"
           variant="outline"
-          onClick={() => (window.location.href = "/")}
-          data-testid="button-enter"
+          onClick={() => (window.location.href = "/api/login")}
+          data-testid="button-signin"
           className="px-8 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
         >
-          Enter
+          Sign In
         </Button>
       </motion.div>
     </div>

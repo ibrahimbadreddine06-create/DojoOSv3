@@ -7,11 +7,13 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LearningTrajectorySidebar } from "@/components/learning-trajectory-sidebar";
 import { DualSidebarProvider, useDualSidebar } from "@/contexts/dual-sidebar-context";
-import { Menu, BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Loader2, Menu, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
+import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Planner from "@/pages/planner";
 import Goals from "@/pages/goals";
@@ -257,8 +259,37 @@ function AuthenticatedApp() {
   );
 }
 
+function UnauthenticatedRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={Landing} />
+      <Route component={Landing} />
+    </Switch>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
-  // No authentication - direct access to dashboard
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <UnauthenticatedRouter />;
+  }
+
   return <AuthenticatedApp />;
 }
 
