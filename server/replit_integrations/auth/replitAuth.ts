@@ -6,7 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import { authStorage } from "./storage";
 
 const getOidcConfig = memoize(
   async () => {
@@ -35,7 +35,6 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -51,10 +50,8 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
-  await storage.upsertUser({
+async function upsertUser(claims: any) {
+  await authStorage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
@@ -81,8 +78,10 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
+  // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
+  // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
@@ -93,7 +92,7 @@ export async function setupAuth(app: Express) {
           scope: "openid email profile offline_access",
           callbackURL: `https://${domain}/api/callback`,
         },
-        verify,
+        verify
       );
       passport.use(strategy);
       registeredStrategies.add(strategyName);
@@ -104,8 +103,6 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    console.log("[Auth] Login initiated for hostname:", req.hostname);
-    console.log("[Auth] Callback URL will be:", `https://${req.hostname}/api/callback`);
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -114,27 +111,10 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    console.log("[Auth] Callback received for hostname:", req.hostname);
-    console.log("[Auth] Query params:", req.query);
     ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any, info: any) => {
-      console.log("[Auth] Authenticate result - err:", err, "user:", !!user, "info:", info);
-      if (err) {
-        console.error("[Auth] Authentication error:", err);
-        return res.redirect("/api/login");
-      }
-      if (!user) {
-        console.log("[Auth] No user returned, redirecting to login");
-        return res.redirect("/api/login");
-      }
-      req.logIn(user, (loginErr) => {
-        if (loginErr) {
-          console.error("[Auth] Login error:", loginErr);
-          return res.redirect("/api/login");
-        }
-        console.log("[Auth] Login successful, redirecting to /");
-        return res.redirect("/");
-      });
+    passport.authenticate(`replitauth:${req.hostname}`, {
+      successReturnToOrRedirect: "/",
+      failureRedirect: "/api/login",
     })(req, res, next);
   });
 
