@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Calendar, Brain, TrendingUp, Target } from "lucide-react";
-import { SiGoogle, SiApple } from "react-icons/si";
 
 // Zen Circle animation
 const ZenCircle = ({ delay, size }: { delay: number; size: string }) => (
@@ -245,24 +244,13 @@ const Page3 = () => (
         transition={{ duration: 0.6, delay: 0.4 }}
       >
         <Button
-          size="icon"
+          size="lg"
           variant="outline"
-          onClick={() => (window.location.href = "/api/login?provider=google")}
-          data-testid="button-signin-google"
-          className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
-          title="Sign in with Google"
+          onClick={() => (window.location.href = "/api/login")}
+          data-testid="button-signin"
+          className="px-8 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700"
         >
-          <SiGoogle className="w-5 h-5" />
-        </Button>
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={() => (window.location.href = "/api/login?provider=apple")}
-          data-testid="button-signin-apple"
-          className="text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900"
-          title="Sign in with Apple"
-        >
-          <SiApple className="w-5 h-5" />
+          Sign In
         </Button>
       </motion.div>
     </div>
