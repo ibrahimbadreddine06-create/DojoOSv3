@@ -20,9 +20,10 @@ import {
 } from "@/components/ui/popover";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 100;
 const SNAP_MINUTES = 30;
+const VISIBLE_HOURS_RANGE = 3; // Show 3 hours before and after current hour
 
 function getDateLabel(date: Date): string {
   if (isToday(date)) return "Today";
@@ -302,6 +303,7 @@ export default function Planner() {
   const [dragInfo, setDragInfo] = useState<{ id: string; containerId: string; offset: number; containerY: number } | null>(null);
   const [dragCursorY, setDragCursorY] = useState(0);
   const [draggedSubBlockId, setDraggedSubBlockId] = useState<string | null>(null);
+  const [isPlannerExpanded, setIsPlannerExpanded] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -335,6 +337,18 @@ export default function Planner() {
   const { data: presets, isLoading: presetsLoading } = useQuery<DayPreset[]>({
     queryKey: ["/api/day-presets"],
   });
+
+  // Calculate visible hours based on current time and expanded state
+  const { visibleHours, hourOffset } = useMemo(() => {
+    if (isPlannerExpanded) {
+      return { visibleHours: ALL_HOURS, hourOffset: 0 };
+    }
+    const currentHour = new Date().getHours();
+    const startHour = Math.max(0, currentHour - VISIBLE_HOURS_RANGE);
+    const endHour = Math.min(23, currentHour + VISIBLE_HOURS_RANGE);
+    const hours = ALL_HOURS.filter(h => h >= startHour && h <= endHour);
+    return { visibleHours: hours, hourOffset: startHour };
+  }, [isPlannerExpanded]);
 
   const chartData = useMemo(() => {
     if (!allMetrics || allMetrics.length === 0) return [];
@@ -737,7 +751,8 @@ export default function Planner() {
     const rect = gridRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
     const hourIndex = Math.floor(y / HOUR_HEIGHT);
-    const hour = Math.min(Math.max(hourIndex, 0), 23);
+    // Add hourOffset to get the actual hour when planner is collapsed
+    const hour = Math.min(Math.max(hourIndex + hourOffset, 0), 23);
     const startHour = hour.toString().padStart(2, "0");
     const endHour = Math.min(hour + 1, 24).toString().padStart(2, "0");
     setClickedTime({ start: `${startHour}:00`, end: `${endHour}:00` });
@@ -975,13 +990,35 @@ export default function Planner() {
               </div>
             </CardHeader>
             <div className="h-px bg-border" />
+            
+            {/* Expand/Collapse toggle */}
+            <div 
+              className="flex items-center justify-center py-2 cursor-pointer hover-elevate border-b border-border/30"
+              onClick={() => setIsPlannerExpanded(!isPlannerExpanded)}
+              data-testid="planner-expand-toggle"
+            >
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {isPlannerExpanded ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    <span>Show less</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    <span>Show full day ({ALL_HOURS.length - visibleHours.length} more hours)</span>
+                  </>
+                )}
+              </div>
+            </div>
+            
             <div className="flex pl-3 pr-3 pt-4">
-              <div className="w-14 flex-shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}>
-                {HOURS.map((hour) => (
+              <div className="w-14 flex-shrink-0 relative" style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}>
+                {visibleHours.map((hour, index) => (
                   <div
                     key={`hour-${hour}`}
                     className="absolute left-0 right-0 border-t border-border/50"
-                    style={{ top: hour * HOUR_HEIGHT }}
+                    style={{ top: index * HOUR_HEIGHT }}
                   >
                     <span className="absolute -top-3 left-1 text-xs text-muted-foreground font-mono bg-card px-1">
                       {hour.toString().padStart(2, "0")}:00
@@ -996,13 +1033,13 @@ export default function Planner() {
                 onClick={handleGridClick}
                 data-testid="planner-grid"
                 data-block-container
-                style={{ height: HOURS.length * HOUR_HEIGHT + 20 }}
+                style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}
               >
-                {HOURS.map((hour) => (
+                {visibleHours.map((hour, index) => (
                   <div 
                     key={`grid-${hour}`}
                     className="absolute left-0 right-0 border-t border-border/50"
-                    style={{ top: hour * HOUR_HEIGHT }}
+                    style={{ top: index * HOUR_HEIGHT }}
                   />
                 ))}
 
@@ -1013,9 +1050,20 @@ export default function Planner() {
                 ) : blocks && blocks.length > 0 ? (
                   <>
                     {/* Render parent blocks only (no parentId) */}
-                    {blocks.filter(b => !b.parentId).map((originalBlock) => {
+                    {blocks.filter(b => !b.parentId).filter(b => {
+                      // When collapsed, only show blocks that are at least partially in visible range
+                      if (isPlannerExpanded) return true;
+                      const startMinutes = timeToMinutes(b.startTime);
+                      const endMinutes = timeToMinutes(b.endTime);
+                      const visibleStartMinutes = hourOffset * 60;
+                      const visibleEndMinutes = (hourOffset + visibleHours.length) * 60;
+                      // Block is visible if it overlaps with visible range
+                      return startMinutes < visibleEndMinutes && endMinutes > visibleStartMinutes;
+                    }).map((originalBlock) => {
                       const block = getDisplayBlock(originalBlock);
-                      const { top, height } = getBlockStyle(block);
+                      const { top: rawTop, height } = getBlockStyle(block);
+                      // Adjust top position based on hour offset
+                      const top = rawTop - (hourOffset * HOUR_HEIGHT);
                       const isDragging = dragState?.blockId === block.id;
                       const subBlocks = blocks.filter(b => b.parentId === block.id);
                       const colorVar = getModuleColorVar(block.linkedModule);
