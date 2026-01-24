@@ -1151,7 +1151,11 @@ export default function Planner() {
                               {/* Unified Tasks and Sub-blocks - freely ordered together */}
                               {(taskCount > 0 || subBlocks.length > 0) && (
                                 <div 
-                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit"
+                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit rounded border p-2"
+                                  style={{
+                                    borderColor: `hsl(var(${colorVar}) / 0.25)`,
+                                    backgroundColor: `hsl(var(${colorVar}) / 0.08)`,
+                                  }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {mergeContentByOrder(block.tasks, subBlocks).map((item, idx, allItems) => {
@@ -1231,8 +1235,10 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative flex flex-col overflow-hidden group transition-all duration-200 pl-3 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        className={`relative flex flex-col overflow-hidden group transition-all duration-200 rounded border ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{
+                                          borderColor: `hsl(var(${colorVar}) / 0.2)`,
+                                          backgroundColor: `hsl(var(${colorVar}) / 0.05)`,
                                           ...(expandedContent === subBlock.id && {
                                             position: 'fixed',
                                             inset: '0',
