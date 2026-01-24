@@ -1053,11 +1053,11 @@ export default function Planner() {
                           }}
                           data-testid={`block-${block.id}`}
                         >
-                          {/* Header - ONLY circular progress, title, time, drag - 60% opacity */}
+                          {/* Header - ONLY circular progress, title, time, drag */}
                           <div 
                             className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
                             style={{ 
-                              backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
+                              backgroundColor: `hsl(var(${colorVar}) / 0.65)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -1075,7 +1075,7 @@ export default function Planner() {
                               data-testid={`checkbox-block-${block.id}`}
                             />
                             <span className={`text-sm font-medium truncate flex-1 ${
-                              block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
+                              block.completed ? "line-through text-muted-foreground/60" : ""
                             }`}>
                               {block.title}
                             </span>
@@ -1290,7 +1290,7 @@ export default function Planner() {
                                               }
                                             }}
                                           />
-                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"}`}>
+                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
                                             {subBlock.title}
                                           </span>
                                           {subContentOverflows && (
