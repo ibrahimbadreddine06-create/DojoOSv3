@@ -9,8 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Calendar, Target, Brain, BookOpen, GraduationCap, 
   ArrowRight, CheckCircle2, Clock, Sparkles, Settings2,
-  GripVertical, X, ChevronUp, ChevronDown
+  GripVertical, X, ChevronUp, ChevronDown, ImageIcon, Upload
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -30,8 +31,8 @@ interface DashboardConfig {
 }
 
 const defaultConfig: DashboardConfig = {
-  order: ["planner", "goals", "second_brain", "languages", "studies"],
-  hidden: [],
+  order: ["planner", "goals", "second_brain", "languages", "studies", "clock", "image"],
+  hidden: ["clock", "image"],
   sizes: {},
 };
 
@@ -39,7 +40,23 @@ function loadDashboardConfig(): DashboardConfig {
   try {
     const saved = localStorage.getItem("dashboardConfig");
     if (saved) {
-      return JSON.parse(saved);
+      const config = JSON.parse(saved) as DashboardConfig;
+      // Validate config has required fields
+      if (!Array.isArray(config.order)) {
+        return defaultConfig;
+      }
+      // Migrate: add new widgets if they don't exist in order
+      const allWidgets = ["planner", "goals", "second_brain", "languages", "studies", "clock", "image"];
+      const missingWidgets = allWidgets.filter(w => !config.order.includes(w));
+      if (missingWidgets.length > 0) {
+        config.order = [...config.order, ...missingWidgets];
+        // New widgets start hidden
+        config.hidden = [...(config.hidden || []), ...missingWidgets];
+      }
+      // Ensure hidden and sizes are valid
+      config.hidden = Array.isArray(config.hidden) ? config.hidden : [];
+      config.sizes = config.sizes && typeof config.sizes === 'object' ? config.sizes : {};
+      return config;
     }
   } catch {}
   return defaultConfig;
@@ -271,6 +288,110 @@ function StudiesBox() {
   );
 }
 
+function ClockBox() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hours = time.getHours().toString().padStart(2, '0');
+  const minutes = time.getMinutes().toString().padStart(2, '0');
+  const seconds = time.getSeconds().toString().padStart(2, '0');
+
+  return (
+    <Card className="h-full" data-testid="bento-clock">
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
+        <Clock className="w-5 h-5 text-chart-3" />
+        <CardTitle className="text-base font-medium">Clock</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center py-2">
+          <span className="text-4xl font-mono font-bold tracking-wider">
+            {hours}:{minutes}
+            <span className="text-2xl text-muted-foreground">:{seconds}</span>
+          </span>
+        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          {format(time, "EEEE, MMMM d")}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ImageBox() {
+  const [imageData, setImageData] = useState<string | null>(() => {
+    return localStorage.getItem("dashboardImage");
+  });
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setImageData(base64);
+      localStorage.setItem("dashboardImage", base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageData(null);
+    localStorage.removeItem("dashboardImage");
+  };
+
+  return (
+    <Card className="h-full" data-testid="bento-image">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-chart-4" />
+          <CardTitle className="text-base font-medium">Image</CardTitle>
+        </div>
+        {imageData && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRemoveImage}
+            data-testid="button-remove-image"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {imageData ? (
+          <div className="relative aspect-video rounded-md overflow-hidden">
+            <img
+              src={imageData}
+              alt="Dashboard image"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <label 
+            className="flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-lg cursor-pointer hover-elevate transition-colors"
+            data-testid="button-upload-image"
+          >
+            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+            <span className="text-sm text-muted-foreground">Click to upload</span>
+            <Input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+              data-testid="input-image-upload"
+            />
+          </label>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface ModuleComponentEntry {
   component: () => JSX.Element;
   label: string;
@@ -283,6 +404,8 @@ const moduleComponents: Record<string, ModuleComponentEntry> = {
   second_brain: { component: SecondBrainBox, label: "Second Brain", icon: Brain },
   languages: { component: LanguagesBox, label: "Languages", icon: BookOpen },
   studies: { component: StudiesBox, label: "Studies", icon: GraduationCap },
+  clock: { component: ClockBox, label: "Clock", icon: Clock },
+  image: { component: ImageBox, label: "Image", icon: ImageIcon },
 };
 
 function CustomizeDialog({
