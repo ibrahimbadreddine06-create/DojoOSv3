@@ -1086,6 +1086,25 @@ export default function Planner() {
 
         <div className={`grid gap-4 auto-rows-max lg:auto-rows-auto ${isPresetMode ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-4'}`}>
           <Card className={`order-1 lg:order-none ${isPresetMode ? '' : 'lg:col-span-3'}`}>
+            {isPresetMode && (
+            <CardHeader className="py-3 px-4 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">Preset Schedule</CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setPresetBlockDialogTime({ start: "09:00", end: "10:00" });
+                    setPresetBlockDialogOpen(true);
+                  }}
+                  data-testid="button-add-preset-block"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Block
+                </Button>
+              </div>
+            </CardHeader>
+            )}
             {!isPresetMode && (
             <CardHeader className="py-3 px-4 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
