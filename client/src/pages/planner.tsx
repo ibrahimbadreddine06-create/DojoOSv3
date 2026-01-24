@@ -1151,11 +1151,7 @@ export default function Planner() {
                               {/* Unified Tasks and Sub-blocks - freely ordered together */}
                               {(taskCount > 0 || subBlocks.length > 0) && (
                                 <div 
-                                  className="flex flex-col gap-1 overflow-y-auto flex-1 relative min-h-fit rounded border p-2"
-                                  style={{
-                                    borderColor: `hsl(var(${colorVar}) / 0.25)`,
-                                    backgroundColor: `hsl(var(${colorVar}) / 0.08)`,
-                                  }}
+                                  className="flex flex-col gap-1.5 overflow-y-auto flex-1 relative min-h-fit p-1"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {mergeContentByOrder(block.tasks, subBlocks).map((item, idx, allItems) => {
@@ -1164,7 +1160,10 @@ export default function Planner() {
                                       return (
                                         <div 
                                           key={task.id}
-                                          className={`flex items-center gap-1.5 px-2 py-0.5 group transition-all duration-150 hover-elevate`}
+                                          className={`flex items-center gap-1.5 px-2 py-1 rounded border group transition-all duration-150 hover-elevate`}
+                                          style={{
+                                            borderColor: `hsl(var(${colorVar}) / 0.5)`,
+                                          }}
                                         >
                                           <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <GripVertical className="w-3 h-3 text-muted-foreground/40" />
@@ -1235,10 +1234,9 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative flex flex-col overflow-hidden group transition-all duration-200 rounded border ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        className={`relative flex flex-col group transition-all duration-200 rounded border ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{
-                                          borderColor: `hsl(var(${colorVar}) / 0.2)`,
-                                          backgroundColor: `hsl(var(${colorVar}) / 0.05)`,
+                                          borderColor: `hsl(var(${colorVar}) / 0.5)`,
                                           ...(expandedContent === subBlock.id && {
                                             position: 'fixed',
                                             inset: '0',
@@ -1390,8 +1388,9 @@ export default function Planner() {
                                                   <div 
                                                     key={task.id}
                                                     data-drag-item
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group rounded border ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
                                                     style={{
+                                                      borderColor: `hsl(var(${colorVar}) / 0.4)`,
                                                       transform,
                                                       zIndex: draggedTaskId === task.id ? 50 : 'auto',
                                                       position: draggedTaskId === task.id ? 'relative' : 'static'
