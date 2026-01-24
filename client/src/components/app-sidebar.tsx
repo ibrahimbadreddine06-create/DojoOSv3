@@ -15,8 +15,7 @@ import {
   Trophy,
   Lock
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -275,14 +274,7 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
 }
 
 function ProfileMenuItemSimple() {
-  const { user } = useAuth();
   const [location] = useLocation();
-  
-  const initials = user 
-    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
-    : '?';
-  
-  const displayName = user?.firstName || user?.email?.split('@')[0] || 'Profile';
 
   return (
     <Link 
@@ -291,32 +283,23 @@ function ProfileMenuItemSimple() {
       data-testid="link-profile"
     >
       <Avatar className="h-5 w-5">
-        <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover" />
-        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+        <AvatarFallback className="text-xs">U</AvatarFallback>
       </Avatar>
-      <span>{displayName}</span>
+      <span>Settings</span>
     </Link>
   );
 }
 
 function ProfileMenuItem() {
-  const { user } = useAuth();
   const [location] = useLocation();
-  
-  const initials = user 
-    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'
-    : '?';
-  
-  const displayName = user?.firstName || user?.email?.split('@')[0] || 'Profile';
 
   return (
     <SidebarMenuButton asChild isActive={location === "/profile"} data-testid="link-profile">
       <Link href="/profile">
         <Avatar className="h-5 w-5">
-          <AvatarImage src={user?.profileImageUrl || undefined} className="object-cover" />
-          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          <AvatarFallback className="text-xs">U</AvatarFallback>
         </Avatar>
-        <span>{displayName}</span>
+        <span>Settings</span>
       </Link>
     </SidebarMenuButton>
   );
