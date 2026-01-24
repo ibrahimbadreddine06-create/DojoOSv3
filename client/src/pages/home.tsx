@@ -51,6 +51,15 @@ const defaultConfig: DashboardConfig = {
   nextWidgetId: 1,
 };
 
+function isValidWidgetId(id: string): boolean {
+  // Core modules are valid
+  if (CORE_MODULES.includes(id)) return true;
+  // Dynamic widgets must have pattern type_number (clock_1, image_2, etc.)
+  if (id.startsWith("clock_") || id.startsWith("image_")) return true;
+  // Anything else (like bare "clock" or "image") is invalid
+  return false;
+}
+
 function loadDashboardConfig(): DashboardConfig {
   try {
     const saved = localStorage.getItem("dashboardConfigV2");
@@ -59,6 +68,8 @@ function loadDashboardConfig(): DashboardConfig {
       if (!Array.isArray(config.order)) {
         return defaultConfig;
       }
+      // Remove any invalid widget IDs (like bare "clock" or "image")
+      config.order = config.order.filter(id => isValidWidgetId(id));
       // Ensure core modules exist in order
       const missingCore = CORE_MODULES.filter(m => !config.order.includes(m));
       if (missingCore.length > 0) {
