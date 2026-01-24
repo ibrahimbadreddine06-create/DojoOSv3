@@ -9,9 +9,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Calendar, Target, Brain, BookOpen, GraduationCap, 
   ArrowRight, CheckCircle2, Clock, Sparkles, Settings2,
-  GripVertical, X, ChevronUp, ChevronDown, ImageIcon, Upload
+  GripVertical, X, ChevronUp, ChevronDown, ImageIcon, Upload, Plus, Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -22,40 +29,42 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { Goal, KnowledgeTopic, Course, TimeBlock, PageSetting } from "@shared/schema";
 
-type BentoSize = "1x1" | "2x1";
+type BentoSize = "1x1" | "1x2" | "1x3" | "2x1" | "2x2" | "2x3" | "3x1" | "3x2" | "3x3";
+
+const ALL_SIZES: BentoSize[] = ["1x1", "1x2", "1x3", "2x1", "2x2", "2x3", "3x1", "3x2", "3x3"];
 
 interface DashboardConfig {
   order: string[];
-  hidden: string[];
   sizes: Record<string, BentoSize>;
+  imageData: Record<string, string>;
+  nextWidgetId: number;
 }
 
+const CORE_MODULES = ["planner", "goals", "second_brain", "languages", "studies"];
+
 const defaultConfig: DashboardConfig = {
-  order: ["planner", "goals", "second_brain", "languages", "studies", "clock", "image"],
-  hidden: ["clock", "image"],
+  order: ["planner", "goals", "second_brain", "languages", "studies"],
   sizes: {},
+  imageData: {},
+  nextWidgetId: 1,
 };
 
 function loadDashboardConfig(): DashboardConfig {
   try {
-    const saved = localStorage.getItem("dashboardConfig");
+    const saved = localStorage.getItem("dashboardConfigV2");
     if (saved) {
       const config = JSON.parse(saved) as DashboardConfig;
-      // Validate config has required fields
       if (!Array.isArray(config.order)) {
         return defaultConfig;
       }
-      // Migrate: add new widgets if they don't exist in order
-      const allWidgets = ["planner", "goals", "second_brain", "languages", "studies", "clock", "image"];
-      const missingWidgets = allWidgets.filter(w => !config.order.includes(w));
-      if (missingWidgets.length > 0) {
-        config.order = [...config.order, ...missingWidgets];
-        // New widgets start hidden
-        config.hidden = [...(config.hidden || []), ...missingWidgets];
+      // Ensure core modules exist
+      const missingCore = CORE_MODULES.filter(m => !config.order.includes(m));
+      if (missingCore.length > 0) {
+        config.order = [...missingCore, ...config.order];
       }
-      // Ensure hidden and sizes are valid
-      config.hidden = Array.isArray(config.hidden) ? config.hidden : [];
       config.sizes = config.sizes && typeof config.sizes === 'object' ? config.sizes : {};
+      config.imageData = config.imageData && typeof config.imageData === 'object' ? config.imageData : {};
+      config.nextWidgetId = typeof config.nextWidgetId === 'number' ? config.nextWidgetId : 1;
       return config;
     }
   } catch {}
@@ -63,8 +72,29 @@ function loadDashboardConfig(): DashboardConfig {
 }
 
 function saveDashboardConfig(config: DashboardConfig) {
-  localStorage.setItem("dashboardConfig", JSON.stringify(config));
+  localStorage.setItem("dashboardConfigV2", JSON.stringify(config));
 }
+
+function getWidgetType(id: string): string {
+  if (id.startsWith("clock_")) return "clock";
+  if (id.startsWith("image_")) return "image";
+  return id;
+}
+
+function getWidgetLabel(id: string): string {
+  const type = getWidgetType(id);
+  if (type === "clock") return "Clock";
+  if (type === "image") return "Image";
+  return moduleLabels[id] || id;
+}
+
+const moduleLabels: Record<string, string> = {
+  planner: "Today's Plan",
+  goals: "Goals",
+  second_brain: "Second Brain",
+  languages: "Languages",
+  studies: "Studies",
+};
 
 function PlannerBox() {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -288,7 +318,7 @@ function StudiesBox() {
   );
 }
 
-function ClockBox() {
+function ClockBox({ id }: { id: string }) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -298,22 +328,14 @@ function ClockBox() {
 
   const hours = time.getHours().toString().padStart(2, '0');
   const minutes = time.getMinutes().toString().padStart(2, '0');
-  const seconds = time.getSeconds().toString().padStart(2, '0');
 
   return (
-    <Card className="h-full" data-testid="bento-clock">
-      <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-        <Clock className="w-5 h-5 text-chart-3" />
-        <CardTitle className="text-base font-medium">Clock</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center justify-center py-2">
-          <span className="text-4xl font-mono font-bold tracking-wider">
-            {hours}:{minutes}
-            <span className="text-2xl text-muted-foreground">:{seconds}</span>
-          </span>
-        </div>
-        <p className="text-center text-sm text-muted-foreground">
+    <Card className="h-full flex items-center justify-center" data-testid={`bento-${id}`}>
+      <CardContent className="p-4 flex flex-col items-center justify-center">
+        <span className="text-5xl font-mono font-bold tracking-wider">
+          {hours}:{minutes}
+        </span>
+        <p className="text-center text-sm text-muted-foreground mt-2">
           {format(time, "EEEE, MMMM d")}
         </p>
       </CardContent>
@@ -321,11 +343,15 @@ function ClockBox() {
   );
 }
 
-function ImageBox() {
-  const [imageData, setImageData] = useState<string | null>(() => {
-    return localStorage.getItem("dashboardImage");
-  });
-
+function ImageBox({ 
+  id, 
+  imageData, 
+  onImageChange 
+}: { 
+  id: string; 
+  imageData: string | null; 
+  onImageChange: (id: string, data: string | null) => void;
+}) {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -333,80 +359,55 @@ function ImageBox() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const base64 = event.target?.result as string;
-      setImageData(base64);
-      localStorage.setItem("dashboardImage", base64);
+      onImageChange(id, base64);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveImage = () => {
-    setImageData(null);
-    localStorage.removeItem("dashboardImage");
-  };
-
   return (
-    <Card className="h-full" data-testid="bento-image">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          <ImageIcon className="w-5 h-5 text-chart-4" />
-          <CardTitle className="text-base font-medium">Image</CardTitle>
+    <Card className="h-full overflow-hidden" data-testid={`bento-${id}`}>
+      {imageData ? (
+        <div className="relative w-full h-full min-h-[120px]">
+          <img
+            src={imageData}
+            alt="Dashboard image"
+            className="w-full h-full object-cover"
+          />
         </div>
-        {imageData && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRemoveImage}
-            data-testid="button-remove-image"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent>
-        {imageData ? (
-          <div className="relative aspect-video rounded-md overflow-hidden">
-            <img
-              src={imageData}
-              alt="Dashboard image"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <label 
-            className="flex flex-col items-center justify-center py-6 border-2 border-dashed rounded-lg cursor-pointer hover-elevate transition-colors"
-            data-testid="button-upload-image"
-          >
-            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-            <span className="text-sm text-muted-foreground">Click to upload</span>
-            <Input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-              data-testid="input-image-upload"
-            />
-          </label>
-        )}
-      </CardContent>
+      ) : (
+        <label 
+          className="flex flex-col items-center justify-center h-full min-h-[120px] cursor-pointer hover-elevate transition-colors"
+          data-testid={`button-upload-${id}`}
+        >
+          <Upload className="w-10 h-10 text-muted-foreground mb-2" />
+          <span className="text-sm text-muted-foreground">Click to upload</span>
+          <Input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+            data-testid={`input-upload-${id}`}
+          />
+        </label>
+      )}
     </Card>
   );
 }
 
-interface ModuleComponentEntry {
-  component: () => JSX.Element;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const moduleComponents: Record<string, ModuleComponentEntry> = {
-  planner: { component: PlannerBox, label: "Today's Plan", icon: Calendar },
-  goals: { component: GoalsBox, label: "Goals", icon: Target },
-  second_brain: { component: SecondBrainBox, label: "Second Brain", icon: Brain },
-  languages: { component: LanguagesBox, label: "Languages", icon: BookOpen },
-  studies: { component: StudiesBox, label: "Studies", icon: GraduationCap },
-  clock: { component: ClockBox, label: "Clock", icon: Clock },
-  image: { component: ImageBox, label: "Image", icon: ImageIcon },
+const coreModuleComponents: Record<string, { component: () => JSX.Element; icon: React.ComponentType<{ className?: string }> }> = {
+  planner: { component: PlannerBox, icon: Calendar },
+  goals: { component: GoalsBox, icon: Target },
+  second_brain: { component: SecondBrainBox, icon: Brain },
+  languages: { component: LanguagesBox, icon: BookOpen },
+  studies: { component: StudiesBox, icon: GraduationCap },
 };
+
+function getWidgetIcon(id: string): React.ComponentType<{ className?: string }> {
+  const type = getWidgetType(id);
+  if (type === "clock") return Clock;
+  if (type === "image") return ImageIcon;
+  return coreModuleComponents[id]?.icon || Sparkles;
+}
 
 function CustomizeDialog({
   open,
@@ -440,63 +441,104 @@ function CustomizeDialog({
     }
   };
 
-  const toggleVisibility = (id: string) => {
-    const hidden = safeConfig.hidden.includes(id)
-      ? safeConfig.hidden.filter(h => h !== id)
-      : [...safeConfig.hidden, id];
-    onConfigChange({ ...safeConfig, hidden });
-  };
-
-  const toggleSize = (id: string) => {
-    const currentSize = safeSizes[id] || "1x1";
-    const newSize: BentoSize = currentSize === "1x1" ? "2x1" : "1x1";
+  const changeSize = (id: string, newSize: BentoSize) => {
     onConfigChange({ 
       ...safeConfig, 
       sizes: { ...safeSizes, [id]: newSize }
     });
   };
 
+  const addWidget = (type: "clock" | "image") => {
+    const newId = `${type}_${safeConfig.nextWidgetId}`;
+    onConfigChange({
+      ...safeConfig,
+      order: [...safeConfig.order, newId],
+      nextWidgetId: safeConfig.nextWidgetId + 1,
+    });
+  };
+
+  const removeWidget = (id: string) => {
+    const newOrder = safeConfig.order.filter(i => i !== id);
+    const newSizes = { ...safeSizes };
+    delete newSizes[id];
+    const newImageData = { ...safeConfig.imageData };
+    delete newImageData[id];
+    onConfigChange({
+      ...safeConfig,
+      order: newOrder,
+      sizes: newSizes,
+      imageData: newImageData,
+    });
+  };
+
+  const isDynamicWidget = (id: string) => {
+    return id.startsWith("clock_") || id.startsWith("image_");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" data-testid="customize-dashboard-dialog">
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="customize-dashboard-dialog">
         <DialogHeader>
           <DialogTitle>Customize Dashboard</DialogTitle>
           <DialogDescription>
-            Choose which modules to show, their order, and size
+            Arrange widgets, change sizes, and add new ones
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 py-4">
+
+        <div className="flex gap-2 py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addWidget("clock")}
+            data-testid="button-add-clock"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Clock
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => addWidget("image")}
+            data-testid="button-add-image"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Image
+          </Button>
+        </div>
+
+        <div className="space-y-2 py-2">
           {safeConfig.order.map((id, index) => {
-            const mod = moduleComponents[id];
-            if (!mod) return null;
-            const Icon = mod.icon;
-            const isHidden = safeConfig.hidden.includes(id);
+            const Icon = getWidgetIcon(id);
+            const label = getWidgetLabel(id);
             const size = safeSizes[id] || "1x1";
+            const canDelete = isDynamicWidget(id);
             
             return (
               <div
                 key={id}
-                className={`flex items-center gap-3 p-3 rounded-lg border ${isHidden ? "opacity-50" : ""}`}
+                className="flex items-center gap-2 p-2 rounded-lg border"
                 data-testid={`customize-item-${id}`}
               >
-                <GripVertical className="w-4 h-4 text-muted-foreground" />
-                <Icon className="w-4 h-4" />
-                <span className="flex-1 text-sm font-medium">{mod.label}</span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={size === "2x1" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => toggleSize(id)}
-                    disabled={isHidden}
-                    data-testid={`button-size-${id}`}
+                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1 text-sm font-medium truncate">{label}</span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Select
+                    value={size}
+                    onValueChange={(v) => changeSize(id, v as BentoSize)}
                   >
-                    {size}
-                  </Button>
+                    <SelectTrigger className="w-16 h-7 text-xs" data-testid={`select-size-${id}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_SIZES.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
                     onClick={() => moveUp(id)}
                     disabled={index === 0}
                     data-testid={`button-move-up-${id}`}
@@ -506,24 +548,28 @@ function CustomizeDialog({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
                     onClick={() => moveDown(id)}
                     disabled={index === safeConfig.order.length - 1}
                     data-testid={`button-move-down-${id}`}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
-                  <Switch
-                    checked={!isHidden}
-                    onCheckedChange={() => toggleVisibility(id)}
-                    data-testid={`switch-visibility-${id}`}
-                  />
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeWidget(id)}
+                      data-testid={`button-delete-${id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-2">
           <Button onClick={() => onOpenChange(false)} data-testid="button-done-customize">
             Done
           </Button>
@@ -531,6 +577,24 @@ function CustomizeDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getSizeClass(size: BentoSize): string {
+  const [cols, rows] = size.split("x").map(Number);
+  let className = "";
+  if (cols === 2) className += "sm:col-span-2 ";
+  if (cols === 3) className += "sm:col-span-2 lg:col-span-3 ";
+  if (rows === 2) className += "row-span-2 ";
+  if (rows === 3) className += "row-span-3 ";
+  return className.trim();
+}
+
+function getRowHeight(size: BentoSize): string {
+  const [, rows] = size.split("x").map(Number);
+  if (rows === 1) return "min-h-[140px]";
+  if (rows === 2) return "min-h-[296px]";
+  if (rows === 3) return "min-h-[452px]";
+  return "min-h-[140px]";
 }
 
 export default function Home() {
@@ -549,11 +613,49 @@ export default function Home() {
     ? Object.fromEntries(pageSettings.map(s => [s.module, s.active]))
     : {};
 
-  const visibleModules = config.order.filter(id => {
-    if (config.hidden.includes(id)) return false;
-    if (pageSettings && activeModuleIds[id] === false) return false;
+  const visibleWidgets = config.order.filter(id => {
+    const type = getWidgetType(id);
+    if (CORE_MODULES.includes(type) && pageSettings && activeModuleIds[type] === false) {
+      return false;
+    }
     return true;
   });
+
+  const handleImageChange = (id: string, data: string | null) => {
+    const newImageData = { ...config.imageData };
+    if (data) {
+      newImageData[id] = data;
+    } else {
+      delete newImageData[id];
+    }
+    setConfig({ ...config, imageData: newImageData });
+  };
+
+  const renderWidget = (id: string) => {
+    const type = getWidgetType(id);
+    
+    if (type === "clock") {
+      return <ClockBox id={id} />;
+    }
+    
+    if (type === "image") {
+      return (
+        <ImageBox 
+          id={id} 
+          imageData={config.imageData[id] || null}
+          onImageChange={handleImageChange}
+        />
+      );
+    }
+    
+    const coreModule = coreModuleComponents[id];
+    if (coreModule) {
+      const Component = coreModule.component;
+      return <Component />;
+    }
+    
+    return null;
+  };
 
   return (
     <div className="container mx-auto p-6 md:p-8 max-w-7xl">
@@ -584,24 +686,22 @@ export default function Home() {
               <Skeleton key={i} className="h-36" />
             ))}
           </div>
-        ) : visibleModules.length === 0 ? (
+        ) : visibleWidgets.length === 0 ? (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">No modules visible</p>
+            <p className="text-muted-foreground mb-4">No widgets on dashboard</p>
             <Button variant="outline" onClick={() => setCustomizeOpen(true)}>
               Customize Dashboard
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {visibleModules.map(id => {
-              const mod = moduleComponents[id];
-              if (!mod) return null;
-              const Component = mod.component;
-              const size = (config?.sizes?.[id]) || "1x1";
-              const sizeClass = size === "2x1" ? "sm:col-span-2" : "";
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 auto-rows-min">
+            {visibleWidgets.map(id => {
+              const size = config.sizes[id] || "1x1";
+              const sizeClass = getSizeClass(size);
+              const heightClass = getRowHeight(size);
               return (
-                <div key={id} className={sizeClass} data-testid={`bento-wrapper-${id}`}>
-                  <Component />
+                <div key={id} className={`${sizeClass} ${heightClass}`} data-testid={`bento-wrapper-${id}`}>
+                  {renderWidget(id)}
                 </div>
               );
             })}
