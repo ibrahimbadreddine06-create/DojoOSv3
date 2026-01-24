@@ -7,6 +7,11 @@ import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, Che
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { AddTaskDialog } from "@/components/dialogs/add-task-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { X, Save } from "lucide-react";
 import { CircularProgress } from "@/components/circular-progress";
@@ -317,6 +322,8 @@ export default function Planner() {
     tasks: { text: string; importance: number }[];
   }>>([]);
   const [selectedPresetBlockId, setSelectedPresetBlockId] = useState<string | null>(null);
+  const [presetBlockDialogOpen, setPresetBlockDialogOpen] = useState(false);
+  const [presetBlockDialogTime, setPresetBlockDialogTime] = useState<{ start: string; end: string } | null>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -353,8 +360,9 @@ export default function Planner() {
   });
 
   // Calculate visible hours based on current time and expanded state
+  // In preset mode, always show all hours
   const { visibleHours, hourOffset } = useMemo(() => {
-    if (isPlannerExpanded) {
+    if (isPresetMode || isPlannerExpanded) {
       return { visibleHours: ALL_HOURS, hourOffset: 0 };
     }
     const currentHour = new Date().getHours();
@@ -362,7 +370,7 @@ export default function Planner() {
     const endHour = Math.min(23, currentHour + VISIBLE_HOURS_RANGE);
     const hours = ALL_HOURS.filter(h => h >= startHour && h <= endHour);
     return { visibleHours: hours, hourOffset: startHour };
-  }, [isPlannerExpanded]);
+  }, [isPlannerExpanded, isPresetMode]);
 
   const chartData = useMemo(() => {
     if (!allMetrics || allMetrics.length === 0) return [];
@@ -463,15 +471,23 @@ export default function Planner() {
     const startTime = `${hour.toString().padStart(2, "0")}:00`;
     const endTime = `${Math.min(hour + 1, 24).toString().padStart(2, "0")}:00`;
     
+    // Open dialog instead of adding directly
+    setPresetBlockDialogTime({ start: startTime, end: endTime });
+    setPresetBlockDialogOpen(true);
+  };
+  
+  const handleAddPresetBlock = (title: string, startTime: string, endTime: string) => {
     const newBlock = {
       id: crypto.randomUUID(),
       startTime,
       endTime,
-      title: "New Block",
+      title,
       tasks: [],
     };
     setPresetBlocks([...presetBlocks, newBlock]);
     setSelectedPresetBlockId(newBlock.id);
+    setPresetBlockDialogOpen(false);
+    setPresetBlockDialogTime(null);
   };
 
   const updatePresetBlock = (id: string, updates: Partial<typeof presetBlocks[0]>) => {
@@ -1114,7 +1130,8 @@ export default function Planner() {
             )}
             <div className="h-px bg-border" />
             
-            {/* Expand/Collapse toggle */}
+            {/* Expand/Collapse toggle - hidden in preset mode */}
+            {!isPresetMode && (
             <div 
               className="flex items-center justify-center py-2 cursor-pointer hover-elevate border-b border-border/30"
               onClick={() => setIsPlannerExpanded(!isPlannerExpanded)}
@@ -1134,6 +1151,7 @@ export default function Planner() {
                 )}
               </div>
             </div>
+            )}
             
             <div className="flex pl-3 pr-3 pt-4">
               <div className="w-14 flex-shrink-0 relative" style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}>
@@ -1855,7 +1873,116 @@ export default function Planner() {
           onSubmit={handleAddTaskDialog}
           isLoading={addTaskMutation.isPending}
         />
+        
+        {/* Preset Block Dialog */}
+        <Dialog open={presetBlockDialogOpen} onOpenChange={setPresetBlockDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Preset Block</DialogTitle>
+            </DialogHeader>
+            <PresetBlockForm 
+              defaultStartTime={presetBlockDialogTime?.start || "09:00"}
+              defaultEndTime={presetBlockDialogTime?.end || "10:00"}
+              onSubmit={handleAddPresetBlock}
+              onCancel={() => {
+                setPresetBlockDialogOpen(false);
+                setPresetBlockDialogTime(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
+  );
+}
+
+// Preset Block Form Component
+const presetBlockFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  startTime: z.string(),
+  endTime: z.string(),
+});
+
+type PresetBlockFormData = z.infer<typeof presetBlockFormSchema>;
+
+function PresetBlockForm({
+  defaultStartTime,
+  defaultEndTime,
+  onSubmit,
+  onCancel,
+}: {
+  defaultStartTime: string;
+  defaultEndTime: string;
+  onSubmit: (title: string, startTime: string, endTime: string) => void;
+  onCancel: () => void;
+}) {
+  const form = useForm<PresetBlockFormData>({
+    resolver: zodResolver(presetBlockFormSchema),
+    defaultValues: {
+      title: "",
+      startTime: defaultStartTime,
+      endTime: defaultEndTime,
+    },
+  });
+
+  const handleSubmit = (data: PresetBlockFormData) => {
+    onSubmit(data.title, data.startTime, data.endTime);
+    form.reset();
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <FormControl>
+                <Input placeholder="Block title..." {...field} data-testid="input-preset-block-dialog-title" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="startTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Start Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} data-testid="input-preset-block-dialog-start" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="endTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>End Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} data-testid="input-preset-block-dialog-end" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-preset-block-dialog-cancel">
+            Cancel
+          </Button>
+          <Button type="submit" data-testid="button-preset-block-dialog-add">
+            Add Block
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
