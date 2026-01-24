@@ -1045,7 +1045,7 @@ export default function Planner() {
                             left: '8px', 
                             right: '8px',
                             borderColor: `hsl(var(${colorVar}) / 0.5)`,
-                            backgroundColor: `hsl(var(${colorVar}) / 0.04)`,
+                            backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
                             ...(isDragging && { 
                               boxShadow: `0 25px 50px -12px hsl(var(${colorVar}) / 0.4), 0 0 0 1px hsl(var(${colorVar}) / 0.2)`,
@@ -1057,7 +1057,7 @@ export default function Planner() {
                           <div 
                             className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
                             style={{ 
-                              backgroundColor: `hsl(var(${colorVar}) / 0.65)`,
+                              backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -1260,7 +1260,7 @@ export default function Planner() {
                                         <div 
                                           className="flex items-center gap-1.5 px-2 py-1 shrink-0 cursor-grab group rounded-t"
                                           style={{ 
-                                            backgroundColor: `hsl(var(${colorVar}) / 0.35)`,
+                                            backgroundColor: `hsl(var(${colorVar}))`,
                                             ...(expandedContent === subBlock.id && {
                                               position: 'sticky',
                                               top: 0,
