@@ -1258,13 +1258,13 @@ export default function Planner() {
                                       >
                                         {/* Sub-block header with drag handle */}
                                         <div 
-                                          className="flex items-center gap-1 px-1.5 py-0.5 shrink-0 cursor-grab group"
+                                          className="flex items-center gap-1.5 px-2 py-1 shrink-0 cursor-grab group rounded-t"
                                           style={{ 
+                                            backgroundColor: `hsl(var(${colorVar}) / 0.35)`,
                                             ...(expandedContent === subBlock.id && {
                                               position: 'sticky',
                                               top: 0,
                                               zIndex: 41,
-                                              backgroundColor: `hsl(var(${colorVar}) / 0.3)`,
                                             })
                                           }}
                                           draggable
@@ -1290,7 +1290,7 @@ export default function Planner() {
                                               }
                                             }}
                                           />
-                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
+                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"}`}>
                                             {subBlock.title}
                                           </span>
                                           {subContentOverflows && (
