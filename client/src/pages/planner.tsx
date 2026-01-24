@@ -7,11 +7,6 @@ import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, Che
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { AddTaskDialog } from "@/components/dialogs/add-task-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { X, Save } from "lucide-react";
 import { CircularProgress } from "@/components/circular-progress";
@@ -319,6 +314,9 @@ export default function Planner() {
     startTime: string;
     endTime: string;
     title: string;
+    importance?: number;
+    linkedModule?: string;
+    linkedItemId?: string;
     tasks: { text: string; importance: number }[];
   }>>([]);
   const [selectedPresetBlockId, setSelectedPresetBlockId] = useState<string | null>(null);
@@ -476,12 +474,22 @@ export default function Planner() {
     setPresetBlockDialogOpen(true);
   };
   
-  const handleAddPresetBlock = (title: string, startTime: string, endTime: string) => {
+  const handleAddPresetBlock = (block: {
+    title: string;
+    startTime: string;
+    endTime: string;
+    importance: number;
+    linkedModule?: string;
+    linkedItemId?: string;
+  }) => {
     const newBlock = {
       id: crypto.randomUUID(),
-      startTime,
-      endTime,
-      title,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      title: block.title,
+      importance: block.importance,
+      linkedModule: block.linkedModule,
+      linkedItemId: block.linkedItemId,
       tasks: [],
     };
     setPresetBlocks([...presetBlocks, newBlock]);
@@ -1874,115 +1882,19 @@ export default function Planner() {
           isLoading={addTaskMutation.isPending}
         />
         
-        {/* Preset Block Dialog */}
-        <Dialog open={presetBlockDialogOpen} onOpenChange={setPresetBlockDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Preset Block</DialogTitle>
-            </DialogHeader>
-            <PresetBlockForm 
-              defaultStartTime={presetBlockDialogTime?.start || "09:00"}
-              defaultEndTime={presetBlockDialogTime?.end || "10:00"}
-              onSubmit={handleAddPresetBlock}
-              onCancel={() => {
-                setPresetBlockDialogOpen(false);
-                setPresetBlockDialogTime(null);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        {/* Preset Block Dialog - uses the same dialog as normal mode */}
+        <AddTimeBlockDialog
+          date={dateStr}
+          open={presetBlockDialogOpen}
+          onOpenChange={(open) => {
+            setPresetBlockDialogOpen(open);
+            if (!open) setPresetBlockDialogTime(null);
+          }}
+          defaultStartTime={presetBlockDialogTime?.start}
+          defaultEndTime={presetBlockDialogTime?.end}
+          onPresetSubmit={handleAddPresetBlock}
+        />
       </div>
     </div>
-  );
-}
-
-// Preset Block Form Component
-const presetBlockFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  startTime: z.string(),
-  endTime: z.string(),
-});
-
-type PresetBlockFormData = z.infer<typeof presetBlockFormSchema>;
-
-function PresetBlockForm({
-  defaultStartTime,
-  defaultEndTime,
-  onSubmit,
-  onCancel,
-}: {
-  defaultStartTime: string;
-  defaultEndTime: string;
-  onSubmit: (title: string, startTime: string, endTime: string) => void;
-  onCancel: () => void;
-}) {
-  const form = useForm<PresetBlockFormData>({
-    resolver: zodResolver(presetBlockFormSchema),
-    defaultValues: {
-      title: "",
-      startTime: defaultStartTime,
-      endTime: defaultEndTime,
-    },
-  });
-
-  const handleSubmit = (data: PresetBlockFormData) => {
-    onSubmit(data.title, data.startTime, data.endTime);
-    form.reset();
-  };
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="Block title..." {...field} data-testid="input-preset-block-dialog-title" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start Time</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} data-testid="input-preset-block-dialog-start" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>End Time</FormLabel>
-                <FormControl>
-                  <Input type="time" {...field} data-testid="input-preset-block-dialog-end" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-preset-block-dialog-cancel">
-            Cancel
-          </Button>
-          <Button type="submit" data-testid="button-preset-block-dialog-add">
-            Add Block
-          </Button>
-        </div>
-      </form>
-    </Form>
   );
 }

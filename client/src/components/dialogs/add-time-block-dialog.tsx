@@ -47,6 +47,15 @@ interface AddTimeBlockDialogProps {
   defaultStartTime?: string;
   defaultEndTime?: string;
   parentId?: string;
+  /** For preset mode - if provided, calls this instead of API */
+  onPresetSubmit?: (block: {
+    title: string;
+    startTime: string;
+    endTime: string;
+    importance: number;
+    linkedModule?: string;
+    linkedItemId?: string;
+  }) => void;
 }
 
 export function AddTimeBlockDialog({ 
@@ -55,8 +64,10 @@ export function AddTimeBlockDialog({
   onOpenChange: controlledOnOpenChange,
   defaultStartTime = "09:00",
   defaultEndTime = "10:00",
-  parentId
+  parentId,
+  onPresetSubmit
 }: AddTimeBlockDialogProps) {
+  const isPresetMode = !!onPresetSubmit;
   const [internalOpen, setInternalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,7 +152,22 @@ export function AddTimeBlockDialog({
           <DialogTitle className="text-lg">{parentId ? "Add Sub-Block" : "Add Time Block"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => {
+              if (isPresetMode && onPresetSubmit) {
+                onPresetSubmit({
+                  title: data.title,
+                  startTime: data.startTime,
+                  endTime: data.endTime,
+                  importance: data.importance,
+                  linkedModule: data.linkedModule,
+                  linkedItemId: data.linkedItemId,
+                });
+                setOpen(false);
+                form.reset();
+              } else {
+                createMutation.mutate(data);
+              }
+            })} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -330,8 +356,8 @@ export function AddTimeBlockDialog({
               <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="h-8 text-sm" data-testid="button-cancel">
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending} className="h-8 text-sm" data-testid="button-submit">
-                {createMutation.isPending ? "Creating..." : parentId ? "Add Sub-Block" : "Create Block"}
+              <Button type="submit" disabled={!isPresetMode && createMutation.isPending} className="h-8 text-sm" data-testid="button-submit">
+                {!isPresetMode && createMutation.isPending ? "Creating..." : parentId ? "Add Sub-Block" : isPresetMode ? "Add Block" : "Create Block"}
               </Button>
             </div>
           </form>
