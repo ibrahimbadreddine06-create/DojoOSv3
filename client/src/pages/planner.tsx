@@ -7,7 +7,8 @@ import { ChevronLeft, ChevronRight, Plus, Clock, GripVertical, Trash2, Play, Che
 import { format, addDays, subDays, isToday, isYesterday, isTomorrow, parseISO } from "date-fns";
 import { AddTimeBlockDialog } from "@/components/dialogs/add-time-block-dialog";
 import { AddTaskDialog } from "@/components/dialogs/add-task-dialog";
-import { CreatePresetDialog } from "@/components/dialogs/create-preset-dialog";
+import { Input } from "@/components/ui/input";
+import { X, Save } from "lucide-react";
 import { CircularProgress } from "@/components/circular-progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -304,6 +305,19 @@ export default function Planner() {
   const [dragCursorY, setDragCursorY] = useState(0);
   const [draggedSubBlockId, setDraggedSubBlockId] = useState<string | null>(null);
   const [isPlannerExpanded, setIsPlannerExpanded] = useState(false);
+  
+  // Preset creation mode state
+  const [isPresetMode, setIsPresetMode] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [presetBlocks, setPresetBlocks] = useState<Array<{
+    id: string;
+    startTime: string;
+    endTime: string;
+    title: string;
+    tasks: { text: string; importance: number }[];
+  }>>([]);
+  const [selectedPresetBlockId, setSelectedPresetBlockId] = useState<string | null>(null);
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -409,6 +423,85 @@ export default function Planner() {
       toast({ title: "Failed to delete preset", variant: "destructive" });
     },
   });
+
+  const createPresetMutation = useMutation({
+    mutationFn: async (data: { name: string; blocks: any[] }) => {
+      return await apiRequest("POST", "/api/day-presets", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/day-presets"] });
+      toast({ title: "Preset created successfully" });
+      exitPresetMode();
+    },
+    onError: () => {
+      toast({ title: "Failed to create preset", variant: "destructive" });
+    },
+  });
+
+  const enterPresetMode = () => {
+    setIsPresetMode(true);
+    setPresetName("");
+    setPresetBlocks([]);
+    setSelectedPresetBlockId(null);
+  };
+
+  const exitPresetMode = () => {
+    setIsPresetMode(false);
+    setPresetName("");
+    setPresetBlocks([]);
+    setSelectedPresetBlockId(null);
+  };
+
+  const handlePresetGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!gridRef.current) return;
+    if ((e.target as HTMLElement).closest('[data-preset-block-id]')) return;
+    
+    const rect = gridRef.current.getBoundingClientRect();
+    const y = e.clientY - rect.top + gridRef.current.scrollTop;
+    const hourIndex = Math.floor(y / HOUR_HEIGHT);
+    const hour = Math.min(Math.max(hourIndex + hourOffset, 0), 23);
+    const startTime = `${hour.toString().padStart(2, "0")}:00`;
+    const endTime = `${Math.min(hour + 1, 24).toString().padStart(2, "0")}:00`;
+    
+    const newBlock = {
+      id: crypto.randomUUID(),
+      startTime,
+      endTime,
+      title: "New Block",
+      tasks: [],
+    };
+    setPresetBlocks([...presetBlocks, newBlock]);
+    setSelectedPresetBlockId(newBlock.id);
+  };
+
+  const updatePresetBlock = (id: string, updates: Partial<typeof presetBlocks[0]>) => {
+    setPresetBlocks(presetBlocks.map(b => b.id === id ? { ...b, ...updates } : b));
+  };
+
+  const deletePresetBlock = (id: string) => {
+    setPresetBlocks(presetBlocks.filter(b => b.id !== id));
+    if (selectedPresetBlockId === id) setSelectedPresetBlockId(null);
+  };
+
+  const savePreset = () => {
+    if (!presetName.trim()) {
+      toast({ title: "Please enter a preset name", variant: "destructive" });
+      return;
+    }
+    if (presetBlocks.length === 0) {
+      toast({ title: "Please add at least one block", variant: "destructive" });
+      return;
+    }
+
+    const blocks = presetBlocks.map(b => ({
+      startTime: b.startTime,
+      endTime: b.endTime,
+      title: b.title,
+      tasks: b.tasks,
+    }));
+
+    createPresetMutation.mutate({ name: presetName, blocks });
+  };
 
   const toggleBlockMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
@@ -860,8 +953,35 @@ export default function Planner() {
       onPointerCancel={dragState ? handleDragEnd : undefined}
     >
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">Daily Planner</h1>
+        {isPresetMode ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <Input
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="Type in the name of this preset..."
+                className="text-xl font-bold border-0 border-b rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary"
+                data-testid="input-preset-name"
+                autoFocus
+              />
+              <p className="text-sm text-muted-foreground mt-1">Click on the grid to add time blocks to your preset</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={exitPresetMode} data-testid="button-cancel-preset">
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={savePreset} disabled={createPresetMutation.isPending} data-testid="button-save-preset">
+                <Save className="w-4 h-4 mr-2" />
+                {createPresetMutation.isPending ? "Saving..." : "Save Preset"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <h1 className="text-2xl font-bold">Daily Planner</h1>
+        )}
 
+        {!isPresetMode && (
         <Card className="flex-shrink-0">
           <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between gap-4">
@@ -938,9 +1058,11 @@ export default function Planner() {
             )}
           </CardContent>
         </Card>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 auto-rows-max lg:auto-rows-auto">
-          <Card className="lg:col-span-3 order-1 lg:order-none">
+        <div className={`grid gap-4 auto-rows-max lg:auto-rows-auto ${isPresetMode ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-4'}`}>
+          <Card className={`order-1 lg:order-none ${isPresetMode ? '' : 'lg:col-span-3'}`}>
+            {!isPresetMode && (
             <CardHeader className="py-3 px-4 border-b">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3">
@@ -989,6 +1111,7 @@ export default function Planner() {
                 </div>
               </div>
             </CardHeader>
+            )}
             <div className="h-px bg-border" />
             
             {/* Expand/Collapse toggle */}
@@ -1030,7 +1153,7 @@ export default function Planner() {
               <div 
                 ref={gridRef}
                 className={`relative flex-1 ${dragState ? 'cursor-grabbing select-none' : ''}`}
-                onClick={handleGridClick}
+                onClick={isPresetMode ? handlePresetGridClick : handleGridClick}
                 data-testid="planner-grid"
                 data-block-container
                 style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}
@@ -1043,11 +1166,75 @@ export default function Planner() {
                   />
                 ))}
 
-                {isLoading ? (
+                {/* Preset blocks when in preset mode */}
+                {isPresetMode && presetBlocks.map((block) => {
+                  const startMinutes = timeToMinutes(block.startTime);
+                  const endMinutes = timeToMinutes(block.endTime);
+                  const duration = endMinutes - startMinutes;
+                  const top = ((startMinutes / 60) - hourOffset) * HOUR_HEIGHT;
+                  const height = Math.max((duration / 60) * HOUR_HEIGHT, 30);
+                  const isSelected = selectedPresetBlockId === block.id;
+                  
+                  return (
+                    <div
+                      key={block.id}
+                      data-preset-block-id={block.id}
+                      className={`absolute rounded-lg border flex flex-col overflow-hidden transition-all cursor-pointer hover-elevate ${
+                        isSelected ? 'ring-2 ring-primary shadow-lg z-10' : 'shadow-sm'
+                      }`}
+                      style={{ 
+                        top: top + 2, 
+                        height: height - 4,
+                        left: '8px', 
+                        right: '8px',
+                        borderColor: 'hsl(var(--primary) / 0.5)',
+                        backgroundColor: 'hsl(var(--primary) / 0.15)',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPresetBlockId(block.id);
+                      }}
+                      data-testid={`preset-block-${block.id}`}
+                    >
+                      <div 
+                        className="flex items-center gap-2 px-3 py-2 shrink-0"
+                        style={{ 
+                          backgroundColor: 'hsl(var(--primary) / 0.55)',
+                          minHeight: 32,
+                        }}
+                      >
+                        <Input
+                          value={block.title}
+                          onChange={(e) => updatePresetBlock(block.id, { title: e.target.value })}
+                          className="h-6 px-1 text-sm font-medium bg-transparent border-0 focus-visible:ring-1"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`input-preset-block-title-${block.id}`}
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deletePresetBlock(block.id);
+                          }}
+                          data-testid={`button-delete-preset-block-${block.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="px-3 py-1 text-xs text-muted-foreground font-mono">
+                        {block.startTime} - {block.endTime}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {!isPresetMode && isLoading ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="animate-pulse text-muted-foreground">Loading...</div>
                   </div>
-                ) : blocks && blocks.length > 0 ? (
+                ) : !isPresetMode && blocks && blocks.length > 0 ? (
                   <>
                     {/* Render parent blocks only (no parentId) */}
                     {blocks.filter(b => !b.parentId).filter(b => {
@@ -1599,11 +1786,14 @@ export default function Planner() {
             </div>
           </Card>
 
+          {!isPresetMode && (
           <Card className="order-2 lg:order-none self-start">
             <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
               <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-sm font-medium">Presets</CardTitle>
-                <CreatePresetDialog />
+                <Button variant="ghost" size="icon" onClick={enterPresetMode} data-testid="button-create-preset">
+                  <Plus className="w-4 h-4" />
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-3 min-h-0">
@@ -1625,22 +1815,20 @@ export default function Planner() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
                             onClick={() => applyPresetMutation.mutate(preset)}
                             disabled={applyPresetMutation.isPending}
                             data-testid={`button-apply-preset-${preset.id}`}
                           >
-                            <Play className="w-3 h-3" />
+                            <Play className="w-4 h-4" />
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-6 w-6"
                             onClick={() => deletePresetMutation.mutate(preset.id)}
                             disabled={deletePresetMutation.isPending}
                             data-testid={`button-delete-preset-${preset.id}`}
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
@@ -1658,6 +1846,7 @@ export default function Planner() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
 
         <AddTaskDialog
