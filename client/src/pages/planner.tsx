@@ -1125,12 +1125,11 @@ export default function Planner() {
                           {/* Dividing line */}
                           <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}) / 0.4)` }} />
 
-                          {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - 30% opacity */}
+                          {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - transparent */}
                           {!isCollapsed ? (
                             <div 
-                              className={`flex-1 flex flex-col gap-2 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
+                              className={`flex-1 flex flex-col gap-1.5 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
                               style={{ 
-                                backgroundColor: `hsl(var(${colorVar}) / 0.25)`,
                                 ...(expandedContent === block.id && {
                                   position: 'fixed',
                                   inset: '0',
@@ -1144,6 +1143,7 @@ export default function Planner() {
                                   transform: 'translate(-50%, -50%)',
                                   width: '90%',
                                   maxWidth: '600px',
+                                  backgroundColor: `hsl(var(${colorVar}) / 0.95)`,
                                 })
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -1160,9 +1160,9 @@ export default function Planner() {
                                       return (
                                         <div 
                                           key={task.id}
-                                          className={`flex items-center gap-1 px-2 py-1 rounded group transition-all duration-150 hover-elevate`}
+                                          className={`flex items-center gap-1.5 px-2 py-1 group transition-all duration-150 hover-elevate border-l-2`}
                                           style={{ 
-                                            backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                            borderLeftColor: `hsl(var(${colorVar}) / 0.5)`,
                                           }}
                                         >
                                           <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1234,9 +1234,9 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative rounded border flex flex-col overflow-hidden bg-background/50 group transition-all duration-200 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        className={`relative border-l-2 flex flex-col overflow-hidden group transition-all duration-200 ml-2 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
                                         style={{ 
-                                          borderColor: `hsl(var(${colorVar}) / 0.3)`,
+                                          borderLeftColor: `hsl(var(${colorVar}) / 0.6)`,
                                           ...(expandedContent === subBlock.id && {
                                             position: 'fixed',
                                             inset: '0',
@@ -1250,6 +1250,7 @@ export default function Planner() {
                                             transform: 'translate(-50%, -50%)',
                                             width: '90%',
                                             maxWidth: '600px',
+                                            backgroundColor: `hsl(var(${colorVar}) / 0.95)`,
                                           })
                                         }}
                                         data-testid={`sub-block-nested-${subBlock.id}`}
@@ -1259,11 +1260,11 @@ export default function Planner() {
                                         <div 
                                           className="flex items-center gap-1 px-1.5 py-0.5 shrink-0 cursor-grab group"
                                           style={{ 
-                                            backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                                             ...(expandedContent === subBlock.id && {
                                               position: 'sticky',
                                               top: 0,
                                               zIndex: 41,
+                                              backgroundColor: `hsl(var(${colorVar}) / 0.3)`,
                                             })
                                           }}
                                           draggable
@@ -1339,9 +1340,8 @@ export default function Planner() {
                                         {/* Sub-block content */}
                                         {!subIsCollapsed && (
                                           <div 
-                                            className="flex flex-col gap-1 px-1.5 py-1 overflow-y-auto"
+                                            className="flex flex-col gap-0.5 px-1.5 py-1 overflow-y-auto"
                                             style={{ 
-                                              backgroundColor: `hsl(var(${colorVar}) / 0.1)`,
                                               ...(expandedContent === subBlock.id && {
                                                 flex: 1,
                                               })
@@ -1388,9 +1388,9 @@ export default function Planner() {
                                                   <div 
                                                     key={task.id}
                                                     data-drag-item
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer hover-elevate transition-all duration-150 group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group border-l ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
                                                     style={{ 
-                                                      backgroundColor: `hsl(var(${colorVar}) / 0.2)`,
+                                                      borderLeftColor: `hsl(var(${colorVar}) / 0.4)`,
                                                       transform,
                                                       zIndex: draggedTaskId === task.id ? 50 : 'auto',
                                                       position: draggedTaskId === task.id ? 'relative' : 'static'
