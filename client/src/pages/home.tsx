@@ -379,18 +379,16 @@ function ImageBox({
   };
 
   return (
-    <Card className="h-full overflow-hidden" data-testid={`bento-${id}`}>
+    <Card className="h-full w-full overflow-hidden relative" data-testid={`bento-${id}`}>
       {imageData ? (
-        <div className="relative w-full h-full min-h-[120px]">
-          <img
-            src={imageData}
-            alt="Dashboard image"
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <img
+          src={imageData}
+          alt="Dashboard image"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
       ) : (
         <label 
-          className="flex flex-col items-center justify-center h-full min-h-[120px] cursor-pointer hover-elevate transition-colors"
+          className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover-elevate transition-colors"
           data-testid={`button-upload-${id}`}
         >
           <Upload className="w-10 h-10 text-muted-foreground mb-2" />
@@ -630,11 +628,9 @@ function getSizeClass(size: BentoSize): string {
 }
 
 function getRowHeight(size: BentoSize): string {
-  const [, rows] = size.split("x").map(Number);
-  if (rows === 1) return "min-h-[140px]";
-  if (rows === 2) return "min-h-[296px]";
-  if (rows === 3) return "min-h-[452px]";
-  return "min-h-[140px]";
+  // Heights are now handled by gridAutoRows + row-span
+  // Just return empty string since the grid handles it
+  return "";
 }
 
 export default function Home() {
@@ -739,13 +735,13 @@ export default function Home() {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 auto-rows-min">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" style={{ gridAutoRows: '140px' }}>
             {visibleWidgets.map(id => {
               const size = config.sizes[id] || "1x1";
               const sizeClass = getSizeClass(size);
               const heightClass = getRowHeight(size);
               return (
-                <div key={id} className={`${sizeClass} ${heightClass}`} data-testid={`bento-wrapper-${id}`}>
+                <div key={id} className={`${sizeClass} ${heightClass} overflow-hidden`} data-testid={`bento-wrapper-${id}`}>
                   {renderWidget(id)}
                 </div>
               );
