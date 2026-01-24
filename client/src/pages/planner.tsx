@@ -345,6 +345,36 @@ export default function Planner() {
     });
   }, [rawBlocks]);
 
+  // Convert preset blocks to TimeBlock format for unified rendering
+  const displayBlocks = useMemo((): TimeBlock[] | undefined => {
+    if (isPresetMode) {
+      // Convert preset blocks to TimeBlock format
+      return presetBlocks.map(pb => ({
+        id: pb.id,
+        date: dateStr,
+        startTime: pb.startTime,
+        endTime: pb.endTime,
+        title: pb.title,
+        completed: false,
+        importance: pb.importance || 3,
+        linkedModule: pb.linkedModule || null,
+        linkedItemId: pb.linkedItemId || null,
+        linkedSubItemId: null,
+        parentId: null,
+        order: 0,
+        createdAt: null,
+        tasks: pb.tasks.map((t, idx) => ({
+          id: `task-${idx}`,
+          text: t.text,
+          completed: false,
+          importance: t.importance,
+          order: idx,
+        })),
+      })) as TimeBlock[];
+    }
+    return blocks;
+  }, [isPresetMode, presetBlocks, blocks, dateStr]);
+
   const { data: dailyMetrics } = useQuery<{ plannerCompletion?: string }>({
     queryKey: ["/api/daily-metrics", dateStr],
   });
@@ -1211,78 +1241,15 @@ export default function Planner() {
                   />
                 ))}
 
-                {/* Preset blocks when in preset mode */}
-                {isPresetMode && presetBlocks.map((block) => {
-                  const startMinutes = timeToMinutes(block.startTime);
-                  const endMinutes = timeToMinutes(block.endTime);
-                  const duration = endMinutes - startMinutes;
-                  const top = ((startMinutes / 60) - hourOffset) * HOUR_HEIGHT;
-                  const height = Math.max((duration / 60) * HOUR_HEIGHT, 30);
-                  const isSelected = selectedPresetBlockId === block.id;
-                  
-                  return (
-                    <div
-                      key={block.id}
-                      data-preset-block-id={block.id}
-                      className={`absolute rounded-lg border flex flex-col overflow-hidden transition-all cursor-pointer hover-elevate ${
-                        isSelected ? 'ring-2 ring-primary shadow-lg z-10' : 'shadow-sm'
-                      }`}
-                      style={{ 
-                        top: top + 2, 
-                        height: height - 4,
-                        left: '8px', 
-                        right: '8px',
-                        borderColor: 'hsl(var(--primary) / 0.5)',
-                        backgroundColor: 'hsl(var(--primary) / 0.15)',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPresetBlockId(block.id);
-                      }}
-                      data-testid={`preset-block-${block.id}`}
-                    >
-                      <div 
-                        className="flex items-center gap-2 px-3 py-2 shrink-0"
-                        style={{ 
-                          backgroundColor: 'hsl(var(--primary) / 0.55)',
-                          minHeight: 32,
-                        }}
-                      >
-                        <Input
-                          value={block.title}
-                          onChange={(e) => updatePresetBlock(block.id, { title: e.target.value })}
-                          className="h-6 px-1 text-sm font-medium bg-transparent border-0 focus-visible:ring-1"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`input-preset-block-title-${block.id}`}
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deletePresetBlock(block.id);
-                          }}
-                          data-testid={`button-delete-preset-block-${block.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <div className="px-3 py-1 text-xs text-muted-foreground font-mono">
-                        {block.startTime} - {block.endTime}
-                      </div>
-                    </div>
-                  );
-                })}
-
+                {/* Loading state - only show when not in preset mode and loading */}
                 {!isPresetMode && isLoading ? (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="animate-pulse text-muted-foreground">Loading...</div>
                   </div>
-                ) : !isPresetMode && blocks && blocks.length > 0 ? (
+                ) : displayBlocks && displayBlocks.length > 0 ? (
                   <>
                     {/* Render parent blocks only (no parentId) */}
-                    {blocks.filter(b => !b.parentId).filter(b => {
+                    {displayBlocks.filter(b => !b.parentId).filter(b => {
                       // When collapsed, only show blocks that are at least partially in visible range
                       if (isPlannerExpanded) return true;
                       const startMinutes = timeToMinutes(b.startTime);
@@ -1297,7 +1264,7 @@ export default function Planner() {
                       // Adjust top position based on hour offset
                       const top = rawTop - (hourOffset * HOUR_HEIGHT);
                       const isDragging = dragState?.blockId === block.id;
-                      const subBlocks = blocks.filter(b => b.parentId === block.id);
+                      const subBlocks = displayBlocks.filter(b => b.parentId === block.id);
                       const colorVar = getModuleColorVar(block.linkedModule);
                       const taskCount = block.tasks?.length || 0;
                       const completedTasks = block.tasks?.filter(t => t.completed).length || 0;
@@ -1348,7 +1315,7 @@ export default function Planner() {
                               colorVar={colorVar}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (!dragState) {
+                                if (!dragState && !isPresetMode) {
                                   toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
                                 }
                               }}
@@ -1362,6 +1329,7 @@ export default function Planner() {
                             <span className="text-xs text-muted-foreground/70 font-mono shrink-0">
                               {block.startTime}–{block.endTime}
                             </span>
+                            {!isPresetMode && (
                             <div 
                               className="cursor-grab active:cursor-grabbing shrink-0"
                               style={{ touchAction: 'none' }}
@@ -1370,6 +1338,7 @@ export default function Planner() {
                             >
                               <GripVertical className="w-4 h-4 text-muted-foreground/60" />
                             </div>
+                            )}
                             {contentOverflows && (
                               <Button
                                 size="icon"
@@ -1394,7 +1363,11 @@ export default function Planner() {
                               className="h-4 w-4 text-destructive hover:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteBlockMutation.mutate(block.id);
+                                if (isPresetMode) {
+                                  deletePresetBlock(block.id);
+                                } else {
+                                  deleteBlockMutation.mutate(block.id);
+                                }
                               }}
                               data-testid={`button-delete-block-${block.id}`}
                             >
@@ -1565,7 +1538,7 @@ export default function Planner() {
                                             colorVar={colorVar}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              if (!dragState) {
+                                              if (!dragState && !isPresetMode) {
                                                 toggleBlockMutation.mutate({ id: subBlock.id, completed: !subBlock.completed });
                                               }
                                             }}
@@ -1805,7 +1778,8 @@ export default function Planner() {
                             <div className="flex items-center gap-1 px-2 py-1 h-0 overflow-hidden" />
                           )}
 
-                          {/* Resize handle */}
+                          {/* Resize handle - only in normal mode */}
+                          {!isPresetMode && (
                           <div 
                             className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize"
                             style={{ 
@@ -1815,6 +1789,7 @@ export default function Planner() {
                             onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
                             data-testid={`block-resize-handle-${block.id}`}
                           />
+                          )}
                         </div>
                       );
                     })}
