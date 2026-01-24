@@ -1057,7 +1057,7 @@ export default function Planner() {
                           <div 
                             className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
                             style={{ 
-                              backgroundColor: `hsl(var(${colorVar}))`,
+                              backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                               minHeight: HEADER_HEIGHT,
                             }}
                           >
@@ -1260,7 +1260,7 @@ export default function Planner() {
                                         <div 
                                           className="flex items-center gap-1.5 px-2 py-1 shrink-0 cursor-grab group rounded-t"
                                           style={{ 
-                                            backgroundColor: `hsl(var(${colorVar}))`,
+                                            backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                                             ...(expandedContent === subBlock.id && {
                                               position: 'sticky',
                                               top: 0,
