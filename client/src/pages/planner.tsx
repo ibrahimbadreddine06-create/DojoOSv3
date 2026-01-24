@@ -1160,10 +1160,7 @@ export default function Planner() {
                                       return (
                                         <div 
                                           key={task.id}
-                                          className={`flex items-center gap-1.5 px-2 py-1 group transition-all duration-150 hover-elevate border-l-2`}
-                                          style={{ 
-                                            borderLeftColor: `hsl(var(${colorVar}) / 0.5)`,
-                                          }}
+                                          className={`flex items-center gap-1.5 px-2 py-0.5 group transition-all duration-150 hover-elevate`}
                                         >
                                           <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <GripVertical className="w-3 h-3 text-muted-foreground/40" />
@@ -1234,9 +1231,8 @@ export default function Planner() {
                                     return (
                                       <div
                                         key={subBlock.id}
-                                        className={`relative border-l-2 flex flex-col overflow-hidden group transition-all duration-200 ml-2 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
-                                        style={{ 
-                                          borderLeftColor: `hsl(var(${colorVar}) / 0.6)`,
+                                        className={`relative flex flex-col overflow-hidden group transition-all duration-200 pl-3 ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                        style={{
                                           ...(expandedContent === subBlock.id && {
                                             position: 'fixed',
                                             inset: '0',
@@ -1388,9 +1384,8 @@ export default function Planner() {
                                                   <div 
                                                     key={task.id}
                                                     data-drag-item
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group border-l ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
-                                                    style={{ 
-                                                      borderLeftColor: `hsl(var(${colorVar}) / 0.4)`,
+                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                    style={{
                                                       transform,
                                                       zIndex: draggedTaskId === task.id ? 50 : 'auto',
                                                       position: draggedTaskId === task.id ? 'relative' : 'static'
