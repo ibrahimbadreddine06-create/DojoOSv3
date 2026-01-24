@@ -36,6 +36,7 @@ const ALL_SIZES: BentoSize[] = ["1x1", "1x2", "1x3", "2x1", "2x2", "2x3", "3x1",
 interface DashboardConfig {
   order: string[];
   sizes: Record<string, BentoSize>;
+  hidden: string[];
   imageData: Record<string, string>;
   nextWidgetId: number;
 }
@@ -45,6 +46,7 @@ const CORE_MODULES = ["planner", "goals", "second_brain", "languages", "studies"
 const defaultConfig: DashboardConfig = {
   order: ["planner", "goals", "second_brain", "languages", "studies"],
   sizes: {},
+  hidden: [],
   imageData: {},
   nextWidgetId: 1,
 };
@@ -57,12 +59,13 @@ function loadDashboardConfig(): DashboardConfig {
       if (!Array.isArray(config.order)) {
         return defaultConfig;
       }
-      // Ensure core modules exist
+      // Ensure core modules exist in order
       const missingCore = CORE_MODULES.filter(m => !config.order.includes(m));
       if (missingCore.length > 0) {
         config.order = [...missingCore, ...config.order];
       }
       config.sizes = config.sizes && typeof config.sizes === 'object' ? config.sizes : {};
+      config.hidden = Array.isArray(config.hidden) ? config.hidden : [];
       config.imageData = config.imageData && typeof config.imageData === 'object' ? config.imageData : {};
       config.nextWidgetId = typeof config.nextWidgetId === 'number' ? config.nextWidgetId : 1;
       return config;
@@ -420,8 +423,13 @@ function CustomizeDialog({
   config: DashboardConfig;
   onConfigChange: (config: DashboardConfig) => void;
 }) {
-  const safeConfig = config || defaultConfig;
-  const safeSizes = safeConfig.sizes || {};
+  const safeConfig = {
+    ...defaultConfig,
+    ...config,
+    hidden: config?.hidden || [],
+    sizes: config?.sizes || {},
+  };
+  const safeSizes = safeConfig.sizes;
 
   const moveUp = (id: string) => {
     const idx = safeConfig.order.indexOf(id);
@@ -475,6 +483,18 @@ function CustomizeDialog({
     return id.startsWith("clock_") || id.startsWith("image_");
   };
 
+  const isCoreModule = (id: string) => {
+    return CORE_MODULES.includes(id);
+  };
+
+  const toggleHidden = (id: string) => {
+    const isHidden = safeConfig.hidden.includes(id);
+    const newHidden = isHidden
+      ? safeConfig.hidden.filter(h => h !== id)
+      : [...safeConfig.hidden, id];
+    onConfigChange({ ...safeConfig, hidden: newHidden });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" data-testid="customize-dashboard-dialog">
@@ -512,14 +532,23 @@ function CustomizeDialog({
             const label = getWidgetLabel(id);
             const size = safeSizes[id] || "1x1";
             const canDelete = isDynamicWidget(id);
+            const canToggle = isCoreModule(id);
+            const isHidden = safeConfig.hidden.includes(id);
             
             return (
               <div
                 key={id}
-                className="flex items-center gap-2 p-2 rounded-lg border"
+                className={`flex items-center gap-2 p-2 rounded-lg border ${isHidden ? 'opacity-50' : ''}`}
                 data-testid={`customize-item-${id}`}
               >
                 <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                {canToggle && (
+                  <Switch
+                    checked={!isHidden}
+                    onCheckedChange={() => toggleHidden(id)}
+                    data-testid={`switch-toggle-${id}`}
+                  />
+                )}
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="flex-1 text-sm font-medium truncate">{label}</span>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -614,6 +643,11 @@ export default function Home() {
     : {};
 
   const visibleWidgets = config.order.filter(id => {
+    // Filter out hidden widgets
+    if (config.hidden.includes(id)) {
+      return false;
+    }
+    // Filter out core modules that are disabled in page settings
     const type = getWidgetType(id);
     if (CORE_MODULES.includes(type) && pageSettings && activeModuleIds[type] === false) {
       return false;
