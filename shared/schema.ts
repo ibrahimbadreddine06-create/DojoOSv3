@@ -17,8 +17,8 @@ export const moduleEnum = pgEnum("module", [
 ]);
 export const visibilityEnum = pgEnum("visibility", ["public", "followers", "private"]);
 
-// ===== AUTHENTICATION (Replit Auth) =====
-// Session storage table - mandatory for Replit Auth
+// ===== AUTHENTICATION =====
+// Session storage table - mandatory for Authentication
 export const sessions = pgTable(
   "sessions",
   {
@@ -29,7 +29,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - mandatory for Replit Auth
+// User storage table - mandatory for Authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
