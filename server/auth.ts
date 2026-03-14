@@ -205,13 +205,29 @@ export function setupAuth(app: Express) {
         });
     });
 
+    // Google OAuth Routes with Guards
+    const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
     app.get(
         "/api/auth/google",
+        (req, res, next) => {
+            if (!googleEnabled) {
+                return res.status(501).json({ 
+                    error: "Google OAuth not configured", 
+                    message: "Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel environment variables." 
+                });
+            }
+            next();
+        },
         passport.authenticate("google", { scope: ["profile", "email"] })
     );
 
     app.get(
         "/api/auth/google/callback",
+        (req, res, next) => {
+            if (!googleEnabled) return res.status(501).send("OAuth not configured");
+            next();
+        },
         passport.authenticate("google", { failureRedirect: "/auth" }),
         (req, res) => {
             res.redirect("/");
