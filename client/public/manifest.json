@@ -1,6 +1,6 @@
 {
     "name": "DojoOS",
-    "short_name": "Dojo",
+    "short_name": "Dojo OS",
     "description": "Your personal operating system for discipline.",
     "start_url": "/",
     "display": "standalone",
