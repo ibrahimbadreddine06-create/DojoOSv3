@@ -280,6 +280,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    this.ensureDb();
     const [user] = await db
       .insert(users)
       .values(userData)
@@ -295,32 +296,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(users).where(eq(users.id, id));
   }
 
   // Social & Privacy
   async followUser(followerId: string, followingId: string): Promise<Follow> {
+    this.ensureDb();
     const [follow] = await db.insert(follows).values({ followerId, followingId }).returning();
     return follow;
   }
 
   async unfollowUser(followerId: string, followingId: string): Promise<void> {
+    this.ensureDb();
     await db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
   }
 
   async getFollowers(userId: string): Promise<Follow[]> {
+    this.ensureDb();
     return await db.select().from(follows).where(eq(follows.followingId, userId));
   }
 
   async getFollowing(userId: string): Promise<Follow[]> {
+    this.ensureDb();
     return await db.select().from(follows).where(eq(follows.followerId, userId));
   }
 
   async getPrivacySettings(userId: string): Promise<PrivacySetting[]> {
+    this.ensureDb();
     return await db.select().from(privacySettings).where(eq(privacySettings.userId, userId));
   }
 
   async upsertPrivacySetting(setting: InsertPrivacySetting): Promise<PrivacySetting> {
+    this.ensureDb();
     const [existing] = await db.select().from(privacySettings)
       .where(and(eq(privacySettings.userId, setting.userId), eq(privacySettings.module, setting.module)));
 
@@ -497,6 +505,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async calculateWeightedCompletion(topicId: string): Promise<number> {
+    this.ensureDb();
     const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.topicId, topicId));
     if (items.length === 0) return 0;
 
@@ -515,6 +524,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async calculateDisciplineWeightedCompletion(disciplineId: string): Promise<number> {
+    this.ensureDb();
     const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.disciplineId, disciplineId));
     if (items.length === 0) return 0;
 
@@ -533,6 +543,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async calculateCourseWeightedCompletion(courseId: string): Promise<number> {
+    this.ensureDb();
     const items = await db.select().from(learnPlanItems).where(eq(learnPlanItems.courseId, courseId));
     if (items.length === 0) return 0;
 
@@ -551,36 +562,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]> {
+    this.ensureDb();
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.topicId, topicId)).orderBy(asc(learnPlanItems.order));
   }
 
   async getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]> {
+    this.ensureDb();
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.courseId, courseId)).orderBy(asc(learnPlanItems.order));
   }
 
   async createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem> {
+    this.ensureDb();
     const [item] = await db.insert(learnPlanItems).values(data).returning();
     return item;
   }
 
   async updateLearnPlanItem(id: string, data: Partial<InsertLearnPlanItem>): Promise<LearnPlanItem> {
+    this.ensureDb();
     const [item] = await db.update(learnPlanItems).set(data).where(eq(learnPlanItems.id, id)).returning();
     return item;
   }
 
   async deleteLearnPlanItem(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(learnPlanItems).where(eq(learnPlanItems.id, id));
   }
 
   async getMaterials(topicId: string): Promise<Material[]> {
+    this.ensureDb();
     return await db.select().from(materials).where(eq(materials.topicId, topicId));
   }
 
   async getMaterialsByCourse(courseId: string): Promise<Material[]> {
+    this.ensureDb();
     return await db.select().from(materials).where(eq(materials.courseId, courseId));
   }
 
   async getMaterialsByChapter(chapterId: string): Promise<Material[]> {
+    this.ensureDb();
     return await db.select().from(materials).where(eq(materials.chapterId, chapterId));
   }
 
@@ -595,42 +614,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMaterial(data: InsertMaterial): Promise<Material> {
+    this.ensureDb();
     const [material] = await db.insert(materials).values(data).returning();
     return material;
   }
 
   async updateMaterial(id: string, data: Partial<InsertMaterial>): Promise<Material> {
+    this.ensureDb();
     const [material] = await db.update(materials).set(data).where(eq(materials.id, id)).returning();
     return material;
   }
 
   async deleteMaterial(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(materials).where(eq(materials.id, id));
   }
 
   async getFlashcardsByTheme(topicId: string): Promise<Flashcard[]> {
+    this.ensureDb();
     return await db.select().from(flashcards).where(eq(flashcards.topicId, topicId));
   }
 
   async getFlashcardsByCourse(courseId: string): Promise<Flashcard[]> {
+    this.ensureDb();
     return await db.select().from(flashcards).where(eq(flashcards.courseId, courseId));
   }
 
   async getFlashcardsByChapter(chapterId: string): Promise<Flashcard[]> {
+    this.ensureDb();
     return await db.select().from(flashcards).where(eq(flashcards.chapterId, chapterId));
   }
 
   // Workout Presets
   async getWorkoutPresets(): Promise<WorkoutPreset[]> {
+    this.ensureDb();
     return await db.select().from(workoutPresets).orderBy(desc(workoutPresets.createdAt));
   }
 
   async createWorkoutPreset(data: InsertWorkoutPreset): Promise<WorkoutPreset> {
+    this.ensureDb();
     const [preset] = await db.insert(workoutPresets).values(data).returning();
     return preset;
   }
 
   async deleteWorkoutPreset(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(workoutPresets).where(eq(workoutPresets.id, id));
   }
 
@@ -645,33 +673,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFlashcard(data: InsertFlashcard): Promise<Flashcard> {
+    this.ensureDb();
     const [flashcard] = await db.insert(flashcards).values(data).returning();
     return flashcard;
   }
 
   async updateFlashcard(id: string, data: Partial<InsertFlashcard>): Promise<Flashcard> {
+    this.ensureDb();
     const [flashcard] = await db.update(flashcards).set(data).where(eq(flashcards.id, id)).returning();
     return flashcard;
   }
 
   async deleteFlashcard(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(flashcards).where(eq(flashcards.id, id));
   }
 
   async getLearnPlanItemsByDiscipline(disciplineId: string): Promise<LearnPlanItem[]> {
+    this.ensureDb();
     return await db.select().from(learnPlanItems).where(eq(learnPlanItems.disciplineId, disciplineId)).orderBy(asc(learnPlanItems.order));
   }
 
   async getMaterialsByDiscipline(disciplineId: string): Promise<Material[]> {
+    this.ensureDb();
     return await db.select().from(materials).where(eq(materials.disciplineId, disciplineId));
   }
 
   async getFlashcardsByDiscipline(disciplineId: string): Promise<Flashcard[]> {
+    this.ensureDb();
     return await db.select().from(flashcards).where(eq(flashcards.disciplineId, disciplineId));
   }
 
   // Chapter Notes
   async getNotesByChapter(chapterId: string): Promise<ChapterNote[]> {
+    this.ensureDb();
     return await db.select().from(chapterNotes).where(eq(chapterNotes.chapterId, chapterId)).orderBy(desc(chapterNotes.updatedAt));
   }
 
@@ -728,11 +763,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWorkout(data: InsertWorkout): Promise<Workout> {
+    this.ensureDb();
     const [workout] = await db.insert(workouts).values(data).returning();
     return workout;
   }
 
   async updateWorkout(id: string, data: Partial<InsertWorkout>): Promise<Workout> {
+    this.ensureDb();
     const [workout] = await db.update(workouts).set(data).where(eq(workouts.id, id)).returning();
     return workout;
   }
@@ -742,6 +779,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExerciseLibraryItem(data: InsertExerciseLibraryItem): Promise<ExerciseLibraryItem> {
+    this.ensureDb();
     const [item] = await db.insert(exerciseLibrary).values(data).returning();
     return item;
   }
@@ -763,25 +801,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWorkoutExercise(data: InsertWorkoutExercise): Promise<WorkoutExercise> {
+    this.ensureDb();
     const [we] = await db.insert(workoutExercises).values(data).returning();
     return we;
   }
 
   async createWorkoutSet(data: InsertWorkoutSet): Promise<WorkoutSet> {
+    this.ensureDb();
     const [set] = await db.insert(workoutSets).values(data).returning();
     return set;
   }
 
   async updateWorkoutSet(id: string, data: Partial<InsertWorkoutSet>): Promise<WorkoutSet> {
+    this.ensureDb();
     const [set] = await db.update(workoutSets).set(data).where(eq(workoutSets.id, id)).returning();
     return set;
   }
 
   async getMuscleStats(): Promise<MuscleStat[]> {
+    this.ensureDb();
     return await db.select().from(muscleStats);
   }
 
   async upsertMuscleStat(muscleId: string, recoveryScore: number): Promise<MuscleStat> {
+    this.ensureDb();
     const [existing] = await db.select().from(muscleStats).where(eq(muscleStats.muscleId, muscleId));
     if (existing) {
       const [updated] = await db.update(muscleStats).set({ recoveryScore, updatedAt: new Date() }).where(eq(muscleStats.muscleId, muscleId)).returning();
@@ -793,28 +836,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIntakeLogs(date: string): Promise<IntakeLog[]> {
+    this.ensureDb();
     return await db.select().from(intakeLogs).where(eq(intakeLogs.date, new Date(date)));
   }
 
   async createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog> {
+    this.ensureDb();
     const [log] = await db.insert(intakeLogs).values(data).returning();
     return log;
   }
 
   async getSleepLogs(date: string): Promise<SleepLog[]> {
+    this.ensureDb();
     return await db.select().from(sleepLogs).where(eq(sleepLogs.date, date));
   }
 
   async createSleepLog(data: InsertSleepLog): Promise<SleepLog> {
+    this.ensureDb();
     const [log] = await db.insert(sleepLogs).values(data).returning();
     return log;
   }
 
   async getHygieneRoutines(date: string): Promise<HygieneRoutine[]> {
+    this.ensureDb();
     return await db.select().from(hygieneRoutines).where(eq(hygieneRoutines.date, date));
   }
 
   async createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine> {
+    this.ensureDb();
     const [routine] = await db.insert(hygieneRoutines).values(data).returning();
     return routine;
   }
@@ -826,6 +875,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSalahLog(data: InsertSalahLog): Promise<SalahLog> {
+    this.ensureDb();
     const [log] = await db.insert(salahLogs).values(data).returning();
     return log;
   }
@@ -836,6 +886,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuranLog(data: InsertQuranLog): Promise<QuranLog> {
+    this.ensureDb();
     const [log] = await db.insert(quranLogs).values(data).returning();
     return log;
   }
@@ -846,6 +897,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDhikrLog(data: InsertDhikrLog): Promise<DhikrLog> {
+    this.ensureDb();
     const [log] = await db.insert(dhikrLogs).values(data).returning();
     return log;
   }
@@ -856,6 +908,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDuaLog(data: InsertDuaLog): Promise<DuaLog> {
+    this.ensureDb();
     const [log] = await db.insert(duaLogs).values(data).returning();
     return log;
   }
@@ -867,6 +920,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(data: InsertTransaction): Promise<Transaction> {
+    this.ensureDb();
     const [transaction] = await db.insert(transactions).values(data).returning();
     return transaction;
   }
@@ -878,15 +932,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMasterpiece(data: InsertMasterpiece): Promise<Masterpiece> {
+    this.ensureDb();
     const [masterpiece] = await db.insert(masterpieces).values(data).returning();
     return masterpiece;
   }
 
   async getMasterpieceSections(masterpieceId: string): Promise<MasterpieceSection[]> {
+    this.ensureDb();
     return await db.select().from(masterpieceSections).where(eq(masterpieceSections.masterpieceId, masterpieceId)).orderBy(asc(masterpieceSections.order));
   }
 
   async createMasterpieceSection(data: InsertMasterpieceSection): Promise<MasterpieceSection> {
+    this.ensureDb();
     const [section] = await db.insert(masterpieceSections).values(data).returning();
     return section;
   }
@@ -898,24 +955,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPossession(data: InsertPossession): Promise<Possession> {
+    this.ensureDb();
     const [possession] = await db.insert(possessions).values(data).returning();
     return possession;
   }
 
   async updatePossession(id: string, data: Partial<InsertPossession>): Promise<Possession> {
+    this.ensureDb();
     const [possession] = await db.update(possessions).set(data).where(eq(possessions.id, id)).returning();
     return possession;
   }
 
   async deletePossession(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(possessions).where(eq(possessions.id, id));
   }
 
   async getOutfits(): Promise<Outfit[]> {
+    this.ensureDb();
     return await db.select().from(outfits).orderBy(desc(outfits.date));
   }
 
   async createOutfit(data: InsertOutfit): Promise<Outfit> {
+    this.ensureDb();
     const [outfit] = await db.insert(outfits).values(data).returning();
     return outfit;
   }
@@ -927,44 +989,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCourse(id: string): Promise<Course | undefined> {
+    this.ensureDb();
     const [course] = await db.select().from(courses).where(eq(courses.id, id));
     return course;
   }
 
   async createCourse(data: InsertCourse): Promise<Course> {
+    this.ensureDb();
     const [course] = await db.insert(courses).values(data).returning();
     return course;
   }
 
   async updateCourse(id: string, data: Partial<InsertCourse>): Promise<Course> {
+    this.ensureDb();
     const [course] = await db.update(courses).set(data).where(eq(courses.id, id)).returning();
     return course;
   }
 
   async deleteCourse(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(courseMetrics).where(eq(courseMetrics.courseId, id));
     await db.delete(courses).where(eq(courses.id, id));
   }
 
   async getLessons(courseId: string): Promise<Lesson[]> {
+    this.ensureDb();
     return await db.select().from(lessons).where(eq(lessons.courseId, courseId)).orderBy(asc(lessons.order));
   }
 
   async createLesson(data: InsertLesson): Promise<Lesson> {
+    this.ensureDb();
     const [lesson] = await db.insert(lessons).values(data).returning();
     return lesson;
   }
 
   async updateLesson(id: string, data: Partial<InsertLesson>): Promise<Lesson> {
+    this.ensureDb();
     const [lesson] = await db.update(lessons).set(data).where(eq(lessons.id, id)).returning();
     return lesson;
   }
 
   async getCourseExercises(lessonId: string): Promise<CourseExercise[]> {
+    this.ensureDb();
     return await db.select().from(courseExercises).where(eq(courseExercises.lessonId, lessonId));
   }
 
   async createCourseExercise(data: InsertCourseExercise): Promise<CourseExercise> {
+    this.ensureDb();
     const [exercise] = await db.insert(courseExercises).values(data).returning();
     return exercise;
   }
@@ -976,11 +1047,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBusiness(data: InsertBusiness): Promise<Business> {
+    this.ensureDb();
     const [business] = await db.insert(businesses).values(data).returning();
     return business;
   }
 
   async getWorkProjects(type: string, relatedId?: string): Promise<WorkProject[]> {
+    this.ensureDb();
     if (relatedId) {
       return await db.select().from(workProjects).where(and(eq(workProjects.type, type), eq(workProjects.relatedId, relatedId)));
     }
@@ -988,34 +1061,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWorkProject(data: InsertWorkProject): Promise<WorkProject> {
+    this.ensureDb();
     const [project] = await db.insert(workProjects).values(data).returning();
     return project;
   }
 
   async getTasks(projectId: string): Promise<Task[]> {
+    this.ensureDb();
     return await db.select().from(tasks).where(eq(tasks.projectId, projectId));
   }
 
   async createTask(data: InsertTask): Promise<Task> {
+    this.ensureDb();
     const [task] = await db.insert(tasks).values(data).returning();
     return task;
   }
 
   // Social Purpose
   async getSocialActivities(): Promise<SocialActivity[]> {
+    this.ensureDb();
     return await db.select().from(socialActivities).orderBy(desc(socialActivities.date));
   }
 
   async createSocialActivity(data: InsertSocialActivity): Promise<SocialActivity> {
+    this.ensureDb();
     const [activity] = await db.insert(socialActivities).values(data).returning();
     return activity;
   }
 
   async getPeople(): Promise<Person[]> {
+    this.ensureDb();
     return await db.select().from(people).orderBy(asc(people.name));
   }
 
   async createPerson(data: InsertPerson): Promise<Person> {
+    this.ensureDb();
     const [person] = await db.insert(people).values(data).returning();
     return person;
   }
@@ -1027,6 +1107,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePageSetting(module: string, active: boolean): Promise<PageSetting> {
+    this.ensureDb();
     const [existing] = await db.select().from(pageSettings).where(eq(pageSettings.module, module));
     if (existing) {
       const [updated] = await db.update(pageSettings).set({ active }).where(eq(pageSettings.module, module)).returning();
@@ -1038,20 +1119,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDailyMetric(date: string): Promise<DailyMetric | undefined> {
+    this.ensureDb();
     const [metric] = await db.select().from(dailyMetrics).where(eq(dailyMetrics.date, date));
     return metric;
   }
 
   async createDailyMetric(data: InsertDailyMetric): Promise<DailyMetric> {
+    this.ensureDb();
     const [metric] = await db.insert(dailyMetrics).values(data).returning();
     return metric;
   }
 
   async getAllDailyMetrics(): Promise<DailyMetric[]> {
+    this.ensureDb();
     return await db.select().from(dailyMetrics).orderBy(asc(dailyMetrics.date));
   }
 
   async upsertDailyMetric(date: string, plannerCompletion: number): Promise<DailyMetric> {
+    this.ensureDb();
     const existing = await this.getDailyMetric(date);
     if (existing) {
       const [updated] = await db.update(dailyMetrics)
@@ -1065,12 +1150,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getKnowledgeMetrics(topicId: string): Promise<KnowledgeMetric[]> {
+    this.ensureDb();
     return await db.select().from(knowledgeMetrics)
       .where(eq(knowledgeMetrics.topicId, topicId))
       .orderBy(asc(knowledgeMetrics.date));
   }
 
   async upsertKnowledgeMetric(topicId: string, date: string, completion: number, readiness: number): Promise<KnowledgeMetric> {
+    this.ensureDb();
     const weightedCompletion = await this.calculateWeightedCompletion(topicId);
     const [existing] = await db.select().from(knowledgeMetrics)
       .where(and(eq(knowledgeMetrics.topicId, topicId), eq(knowledgeMetrics.date, date)));
@@ -1090,6 +1177,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllKnowledgeMetricsByType(type: string): Promise<{ topicId: string; themeName: string; date: string; completion: string; importance: number }[]> {
+    this.ensureDb();
     const themes = await storage.getKnowledgeTopics("second_brain");
     const topicIds = themes.map((t: any) => t.id);
 
@@ -1119,12 +1207,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCourseMetrics(courseId: string): Promise<CourseMetric[]> {
+    this.ensureDb();
     return await db.select().from(courseMetrics)
       .where(eq(courseMetrics.courseId, courseId))
       .orderBy(asc(courseMetrics.date));
   }
 
   async getAllCourseMetrics(): Promise<{ courseId: string; courseName: string; date: string; completion: string; importance: number }[]> {
+    this.ensureDb();
     const allCourses = await db.select().from(courses).where(eq(courses.archived, false));
 
     if (allCourses.length === 0) return [];
@@ -1153,6 +1243,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertCourseMetric(courseId: string, date: string, completion: number): Promise<CourseMetric> {
+    this.ensureDb();
     const weightedCompletion = await this.calculateCourseWeightedCompletion(courseId);
     const [existing] = await db.select().from(courseMetrics)
       .where(and(eq(courseMetrics.courseId, courseId), eq(courseMetrics.date, date)));
@@ -1172,44 +1263,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog> {
+    this.ensureDb();
     const [log] = await db.update(intakeLogs).set(data).where(eq(intakeLogs.id, id)).returning();
     return log;
   }
 
   async deleteIntakeLog(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(intakeLogs).where(eq(intakeLogs.id, id));
   }
 
   // Disciplines
   async getDisciplines(): Promise<Discipline[]> {
+    this.ensureDb();
     return await db.select().from(disciplines).orderBy(asc(disciplines.level));
   }
 
   async getDiscipline(id: string): Promise<Discipline | undefined> {
+    this.ensureDb();
     const [discipline] = await db.select().from(disciplines).where(eq(disciplines.id, id));
     return discipline;
   }
 
   async createDiscipline(data: InsertDiscipline): Promise<Discipline> {
+    this.ensureDb();
     const [discipline] = await db.insert(disciplines).values(data).returning();
     return discipline;
   }
 
   async updateDiscipline(id: string, data: Partial<InsertDiscipline>): Promise<Discipline> {
+    this.ensureDb();
     const [discipline] = await db.update(disciplines).set(data).where(eq(disciplines.id, id)).returning();
     return discipline;
   }
 
   async deleteDiscipline(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(disciplineLogs).where(eq(disciplineLogs.disciplineId, id));
     await db.delete(disciplines).where(eq(disciplines.id, id));
   }
 
   async getDisciplineLogs(disciplineId: string): Promise<DisciplineLog[]> {
+    this.ensureDb();
     return await db.select().from(disciplineLogs).where(eq(disciplineLogs.disciplineId, disciplineId)).orderBy(desc(disciplineLogs.date));
   }
 
   async createDisciplineLog(data: InsertDisciplineLog): Promise<DisciplineLog> {
+    this.ensureDb();
     const [log] = await db.insert(disciplineLogs).values(data).returning();
     return log;
   }
