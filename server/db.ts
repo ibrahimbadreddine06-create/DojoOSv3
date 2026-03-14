@@ -15,4 +15,5 @@ if (!process.env.DATABASE_URL) {
 export const pool = process.env.DATABASE_URL 
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : null;
-export const db = pool ? drizzle({ client: pool, schema }) : null as any;
+
+export const db: any = pool ? drizzle({ client: pool, schema }) : null;

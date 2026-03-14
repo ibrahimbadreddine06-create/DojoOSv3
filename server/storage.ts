@@ -224,23 +224,33 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private ensureDb() {
+    if (!db) {
+      throw new Error("Database connection not established. Please check your DATABASE_URL environment variable.");
+    }
+  }
+
   // User operations
   async getUser(id: string): Promise<User | undefined> {
+    this.ensureDb();
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    this.ensureDb();
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
+    this.ensureDb();
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
   async searchUsers(query: string): Promise<User[]> {
+    this.ensureDb();
     if (!query) {
       return await db.select().from(users).limit(20);
     }
@@ -264,6 +274,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
+    this.ensureDb();
     const [user] = await db.insert(users).values(userData).returning();
     return user;
   }

@@ -48,8 +48,7 @@ export function setupAuth(app: Express) {
             createTableIfMissing: true,
         });
     } else {
-        // Fallback to memory store if no database connection (e.g. dev mode without DB)
-        console.warn("Using MemoryStore for sessions b/c DATABASE_URL is not set. Sessions will not persist restarts.");
+        console.warn("!!! DATABASE_URL missing. Authentication will fail or sessions will be temporary.");
     }
 
     app.use(session(sessionSettings));
