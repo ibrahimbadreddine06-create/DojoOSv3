@@ -1,4 +1,4 @@
-# DojoOS - Core Architecture Context
+﻿# DojoOS - Core Architecture Context
 
 This document contains the critical files needed to understand the application architecture, routing, and database schema. Use this to safely integrate the AI chat feature without breaking the existing Vite/React/TanStack Query setup.
 
@@ -93,9 +93,9 @@ package.json
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@replit/vite-plugin-cartographer": "^0.4.1",
-    "@replit/vite-plugin-dev-banner": "^0.1.1",
-    "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
+    "@DojoOS/vite-plugin-cartographer": "^0.4.1",
+    "@DojoOS/vite-plugin-dev-banner": "^0.1.1",
+    "@DojoOS/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
     "@types/connect-pg-simple": "^7.0.3",
@@ -148,8 +148,8 @@ export const moduleEnum = pgEnum("module", [
 ]);
 export const visibilityEnum = pgEnum("visibility", ["public", "followers", "private"]);
 
-// ===== AUTHENTICATION (Replit Auth) =====
-// Session storage table - mandatory for Replit Auth
+// ===== AUTHENTICATION (Authentication) =====
+// Session storage table - mandatory for Authentication
 export const sessions = pgTable(
   "sessions",
   {
@@ -160,7 +160,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - mandatory for Replit Auth
+// User storage table - mandatory for Authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -306,7 +306,7 @@ export const learnPlanItems = pgTable("learn_plan_items", {
   topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
   disciplineId: varchar("discipline_id"), // For Disciplines
-  parentId: varchar("parent_id"), // For nested chapters (infinite depth: 1.1 → 1.1.1 → 1.1.1.1)
+  parentId: varchar("parent_id"), // For nested chapters (infinite depth: 1.1 â†’ 1.1.1 â†’ 1.1.1.1)
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
   importance: integer("importance").notNull().default(3), // 1-5 scale
@@ -1052,7 +1052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Parent block not found" });
       }
       if (parent.parentId) {
-        return res.status(400).json({ message: "Maximum nesting depth is 2 levels (block → sub-block)" });
+        return res.status(400).json({ message: "Maximum nesting depth is 2 levels (block â†’ sub-block)" });
       }
     }
 
@@ -2168,7 +2168,7 @@ import { db } from "./db";
 import { eq, and, desc, asc, sql, ilike, or } from "drizzle-orm"; // Added sql import
 
 export interface IStorage {
-  // User operations (mandatory for Replit Auth)
+  // User operations (mandatory for Authentication)
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -2352,7 +2352,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations (mandatory for Replit Auth)
+  // User operations (mandatory for Authentication)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
