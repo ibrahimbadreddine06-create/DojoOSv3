@@ -15,7 +15,7 @@ import {
   insertDisciplineSchema, insertDisciplineLogSchema
 } from "@shared/schema";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export function registerRoutes(app: Express): Server {
   // ===== TIME BLOCKS & PRESETS =====
   // Note: /linked route must come BEFORE /:date to avoid matching "linked" as a date
   app.get("/api/time-blocks/linked", async (req, res) => {

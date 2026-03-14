@@ -2,9 +2,12 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { EXERCISES_DATA } from "./seeds/exercises";
 
 const app = express();
-export default app;
+export default app; // Export immediately for Vercel
 
 declare module 'http' {
   interface IncomingMessage {
@@ -37,11 +40,7 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
+      if (logLine.length > 80) logLine = logLine.slice(0, 79) + "…";
       log(logLine);
     }
   });
@@ -49,78 +48,68 @@ app.use((req, res, next) => {
   next();
 });
 
-import { storage } from "./storage";
-import { setupAuth } from "./auth";
-import { EXERCISES_DATA } from "./seeds/exercises";
-
-(async () => {
-  // SEEDING: Check if exercises exist, if not, populate them (Fix for MemStorage persistence)
+// 1. Setup Auth
+if (process.env.DISABLE_AUTH !== "true") {
   try {
-    const existing = await storage.getExerciseLibrary();
-    if (existing.length === 0) {
-      console.log("Seeding verified exercises into active storage...");
-      for (const ex of EXERCISES_DATA) {
-        await storage.createExerciseLibraryItem(ex);
-      }
-      console.log(`Seeded ${EXERCISES_DATA.length} exercises successfully.`);
-    }
+    setupAuth(app);
+  } catch(e) {
+    console.error("Auth Setup Error (missing env vars?):", e);
+  }
+}
 
-    // Seed sample discipline
-    const existingDisciplines = await storage.getDisciplines();
-    if (existingDisciplines.length === 0) {
-      console.log("Seeding sample discipline...");
+// 2. Setup Routes Synchronously
+const server = registerRoutes(app);
+
+// 3. Error Handling Middleware
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ message });
+});
+
+// 4. Background Database Seeding (Fire and Forget)
+async function seedDatabase() {
+  try {
+    const existing = await storage.getExerciseLibrary().catch(err => {
+      console.error("DB Query Failed (Missing DATABASE_URL on Vercel?):", err);
+      return [];
+    });
+    
+    if (existing && existing.length === 0) {
+      console.log("Seeding exercises...");
+      for (const ex of EXERCISES_DATA) {
+        await storage.createExerciseLibraryItem(ex).catch(e => console.error(e));
+      }
+    }
+    
+    const existingDisciplines = await storage.getDisciplines().catch(e => []);
+    if (existingDisciplines && existingDisciplines.length === 0) {
       await storage.createDiscipline({
         name: "Mastery Quest",
         description: "Your journey starts here. Learn to use DojoOS to master any skill.",
-        level: 1,
-        currentXp: 0,
-        maxXp: 100,
-        color: "text-primary",
-        icon: "Zap"
-      });
-      console.log("Sample discipline seeded.");
+        level: 1, currentXp: 0, maxXp: 100, color: "text-primary", icon: "Zap"
+      }).catch(e => console.error(e));
     }
   } catch (err) {
-    console.error("Seeding failed:", err);
+    console.error("Critical Seeding Error:", err);
   }
+}
 
-  // Auth Setup - REVERSIBLE: Set DISABLE_AUTH=true env var to disable
-  if (process.env.DISABLE_AUTH !== "true") {
-    setupAuth(app);
-  }
+// Run the seeder in the background without blocking the Node Vercel export
+seedDatabase();
 
-  const server = await registerRoutes(app);
+// 5. Local Dev Only: Vite & Express Listener
+if (process.env.VERCEL !== '1') {
+  (async () => {
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  
-  // Only listen if not running in a Vercel Serverless function environment
-  if (process.env.VERCEL !== '1') {
-    server.listen({
-      port,
-      host: "0.0.0.0",
-    }, () => {
+    const port = parseInt(process.env.PORT || '5000', 10);
+    server.listen({ port, host: "0.0.0.0" }, () => {
       log(`serving on port ${port}`);
     });
-  }
-})();
+  })();
+}
