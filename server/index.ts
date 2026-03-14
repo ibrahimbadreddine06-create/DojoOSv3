@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+export default app;
 
 declare module 'http' {
   interface IncomingMessage {
@@ -112,10 +113,14 @@ import { EXERCISES_DATA } from "./seeds/exercises";
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  
+  // Only listen if not running in a Vercel Serverless function environment
+  if (process.env.VERCEL !== '1') {
+    server.listen({
+      port,
+      host: "0.0.0.0",
+    }, () => {
+      log(`serving on port ${port}`);
+    });
+  }
 })();
