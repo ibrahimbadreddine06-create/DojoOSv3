@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ export default function Goals() {
                     </Button>
                   )}
                   <CardTitle className="text-base">{goal.title}</CardTitle>
-                  <Badge variant={priorityColors[goal.priority as keyof typeof priorityColors]} data-testid={`badge-priority-${goal.id}`}>
+                  <Badge variant={priorityColors[goal.priority as keyof typeof priorityColors] as any} data-testid={`badge-priority-${goal.id}`}>
                     {goal.priority}
                   </Badge>
                 </div>
@@ -258,3 +258,4 @@ export default function Goals() {
     </div>
   );
 }
+

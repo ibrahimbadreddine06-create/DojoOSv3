@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { 
   ChevronUp, ChevronDown, MoreHorizontal, Trash2, Edit, 
@@ -713,3 +713,4 @@ export function FlashcardsOverview({
     </div>
   );
 }
+

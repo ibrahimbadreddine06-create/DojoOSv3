@@ -1,9 +1,11 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus, Moon } from "lucide-react";
+import { Moon } from "lucide-react";
 import { format } from "date-fns";
+import { AddSleepLogDialog } from "@/components/dialogs/add-sleep-log-dialog";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { TodaySessions } from "../today-sessions";
 
 export function SleepTab() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -11,6 +13,17 @@ export function SleepTab() {
   const { data: sleepLogs, isLoading } = useQuery<any[]>({
     queryKey: ["/api/sleep-logs", format(selectedDate, "yyyy-MM-dd")],
   });
+
+  // Mock history data for chart
+  const sleepHistory = [
+    { day: "Mon", actual: 7.2, planned: 8 },
+    { day: "Tue", actual: 6.5, planned: 8 },
+    { day: "Wed", actual: 8.0, planned: 7.5 },
+    { day: "Thu", actual: 7.5, planned: 8 },
+    { day: "Fri", actual: 6.8, planned: 7 },
+    { day: "Sat", actual: 9.0, planned: 9 },
+    { day: "Sun", actual: 7.5, planned: 8 },
+  ];
 
   return (
     <div className="space-y-6">
@@ -21,10 +34,39 @@ export function SleepTab() {
             Track planned vs actual sleep hours
           </p>
         </div>
-        <Button size="sm" data-testid="button-add-sleep">
-          <Plus className="w-4 h-4 mr-2" />
-          Log Sleep
-        </Button>
+        <AddSleepLogDialog />
+      </div>
+
+      {/* Trends Chart & Today's Sessions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sleep Trends (Last 7 Days)</CardTitle>
+              <CardDescription>Actual vs Planned Sleep</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sleepHistory}>
+                    <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}h`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "8px" }}
+                      itemStyle={{ color: "hsl(var(--foreground))" }}
+                    />
+                    <ReferenceLine y={8} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+                    <Bar dataKey="actual" name="Actual Sleep" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="planned" name="Planned Goal" fill="hsl(var(--muted))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-1">
+          <TodaySessions module="body" itemId="body_sleep" />
+        </div>
       </div>
 
       {isLoading ? (
@@ -85,11 +127,10 @@ export function SleepTab() {
           <p className="text-sm text-muted-foreground mb-4">
             Start tracking your sleep patterns
           </p>
-          <Button data-testid="button-create-sleep">
-            Log Sleep
-          </Button>
+          <AddSleepLogDialog />
         </div>
       )}
     </div>
   );
 }
+

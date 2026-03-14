@@ -1,4 +1,4 @@
-# Dojo OS Design Guidelines
+# DojoOS Design Guidelines
 
 ## Design Approach
 

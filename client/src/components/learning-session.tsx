@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { X, RotateCcw, BookOpen, Lock, Brain, Sparkles, ChevronLeft, Trophy, CheckCircle2, Shuffle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ function SegmentedMasteryBar({ flashcards }: { flashcards: Flashcard[] }) {
   const segments = useMemo(() => {
     const total = flashcards.length;
     if (total === 0) return [];
-    
+
     const counts = {
       new: flashcards.filter(f => f.mastery === 0).length,
       bad: flashcards.filter(f => f.mastery === 1).length,
@@ -96,30 +96,30 @@ function SegmentedMasteryBar({ flashcards }: { flashcards: Flashcard[] }) {
   );
 }
 
-function DotProgressBar({ 
-  total, 
-  current, 
+function DotProgressBar({
+  total,
+  current,
   completed,
   queue,
-}: { 
-  total: number; 
-  current: number; 
+}: {
+  total: number;
+  current: number;
   completed: Set<string>;
   queue?: StudyCard[];
 }) {
   const dotsToShow = Math.min(total, 20);
   const startIndex = Math.max(0, Math.min(current - 5, total - dotsToShow));
-  
+
   return (
     <div className="flex items-center justify-center gap-1.5 py-3">
       {Array.from({ length: dotsToShow }).map((_, i) => {
         const index = startIndex + i;
         const isCompleted = index < current;
         const isCurrent = index === current;
-        
+
         const card = queue?.[index - completed.size];
         let dotColor = "bg-muted-foreground/30";
-        
+
         if (isCompleted) {
           dotColor = "bg-green-500";
         } else if (card) {
@@ -131,14 +131,14 @@ function DotProgressBar({
             case 4: dotColor = "bg-green-400"; break;
           }
         }
-        
+
         return (
           <div
             key={index}
             className={`
               rounded-full transition-all duration-200
-              ${isCurrent 
-                ? `w-3 h-3 ${dotColor} ring-2 ring-primary/30` 
+              ${isCurrent
+                ? `w-3 h-3 ${dotColor} ring-2 ring-primary/30`
                 : `w-2 h-2 ${dotColor}`
               }
             `}
@@ -164,7 +164,7 @@ function FlashcardDisplay({
   onFlip: () => void;
 }) {
   return (
-    <div 
+    <div
       className="relative w-full perspective-1000"
       style={{ minHeight: "280px" }}
     >
@@ -175,7 +175,7 @@ function FlashcardDisplay({
         `}
         onClick={onFlip}
       >
-        <Card 
+        <Card
           className="absolute inset-0 p-6 backface-hidden flex flex-col items-center justify-center text-center"
           data-testid="flashcard-front"
         >
@@ -191,8 +191,8 @@ function FlashcardDisplay({
             Tap to reveal answer
           </p>
         </Card>
-        
-        <Card 
+
+        <Card
           className="absolute inset-0 p-6 backface-hidden rotate-y-180 flex flex-col items-center justify-center text-center"
           data-testid="flashcard-back"
         >
@@ -261,7 +261,7 @@ function SessionCompleteScreen({
           <Trophy className="w-10 h-10 text-green-500" />
         </div>
       </div>
-      
+
       <div>
         <h3 className="text-2xl font-bold mb-2">Session Complete!</h3>
         <p className="text-muted-foreground">Great work on your study session</p>
@@ -321,7 +321,7 @@ export function LearningSession({
 
   const initializeQueue = useCallback((selectedMode: SessionMode, shouldShuffle: boolean = true) => {
     let cards: Flashcard[] = [];
-    
+
     switch (selectedMode) {
       case "new":
         cards = flashcards.filter(f => f.mastery === 0).slice(0, learnCount);
@@ -333,17 +333,17 @@ export function LearningSession({
         cards = [...flashcards];
         break;
     }
-    
-    const orderedCards = shouldShuffle 
+
+    const orderedCards = shouldShuffle
       ? cards.sort(() => Math.random() - 0.5)
       : cards.sort((a, b) => (a.order || 0) - (b.order || 0));
-      
+
     const studyCards: StudyCard[] = orderedCards.map((card, i) => ({
       ...card,
       goodCount: (card as any).goodCount || 0,
       position: i,
     }));
-    
+
     setStudyQueue(studyCards);
     setCurrentIndex(0);
     setShowBack(false);
@@ -361,7 +361,7 @@ export function LearningSession({
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flashcards/chapter", chapterId] });
-      
+
       const entityId = topicId || courseId;
       if (entityId) {
         if (topicId) {
@@ -370,19 +370,19 @@ export function LearningSession({
         if (courseId) {
           await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/course", courseId] });
         }
-        
+
         const chaptersKey = topicId ? ["/api/learn-plan-items", topicId] : ["/api/learn-plan-items/course", courseId];
         const flashcardsKey = topicId ? ["/api/flashcards/theme", topicId] : ["/api/flashcards/course", courseId];
-        
+
         const chapters = queryClient.getQueryData<LearnPlanItem[]>(chaptersKey);
         const allFlashcards = queryClient.getQueryData<Flashcard[]>(flashcardsKey) || [];
-        
+
         if (chapters && chapters.length > 0) {
           const total = chapters.length;
           const completed = chapters.filter(c => c.completed).length;
           const completion = Math.round((completed / total) * 100);
           const readiness = calculateReadinessWithDecay(allFlashcards);
-          
+
           const today = format(new Date(), "yyyy-MM-dd");
           await apiRequest("PUT", `/api/knowledge-metrics/${entityId}/${today}`, { completion, readiness });
           queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", entityId] });
@@ -408,14 +408,14 @@ export function LearningSession({
         newQueue.splice(currentIndex, 1);
         newQueue.splice(insertPos - 1, 0, { ...currentCard, goodCount: 0, mastery: newMastery });
         break;
-        
+
       case "ok":
         newMastery = Math.max(2, currentCard.mastery);
         newGoodCount = 0;
         newQueue.splice(currentIndex, 1);
         newQueue.push({ ...currentCard, goodCount: 0, mastery: newMastery });
         break;
-        
+
       case "good":
         newGoodCount = currentCard.goodCount + 1;
         if (newGoodCount >= 2) {
@@ -429,7 +429,7 @@ export function LearningSession({
           newQueue.splice(goodInsertPos - 1, 0, { ...currentCard, goodCount: newGoodCount, mastery: newMastery });
         }
         break;
-        
+
       case "perfect":
         newMastery = 4;
         wasMastered = true;
@@ -448,7 +448,7 @@ export function LearningSession({
 
     if (shouldComplete) {
       newQueue.splice(currentIndex, 1);
-      setCompletedCards(prev => new Set([...prev, currentCard.id]));
+      setCompletedCards(prev => new Set([...Array.from(prev), currentCard.id]));
       if (wasMastered) {
         setMasteredCount(prev => prev + 1);
       }
@@ -499,7 +499,7 @@ export function LearningSession({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-        <DialogContent 
+        <DialogContent
           className={`
             ${mode === "select" ? "max-w-lg" : "max-w-2xl"}
             transition-all duration-300
@@ -509,9 +509,9 @@ export function LearningSession({
           <DialogHeader>
             <div className="flex items-center gap-2">
               {mode !== "select" && !sessionComplete && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowExitConfirm(true)}
                   className="h-8 w-8"
                   data-testid="button-back-to-select"
@@ -538,7 +538,7 @@ export function LearningSession({
           {mode === "select" ? (
             <div className="space-y-4 py-4">
               <SegmentedMasteryBar flashcards={flashcards} />
-              
+
               <div className="flex items-center justify-between px-2 py-2 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2">
                   {shuffleMode ? (
@@ -558,7 +558,7 @@ export function LearningSession({
                 />
               </div>
 
-              <Card 
+              <Card
                 className={`p-4 cursor-pointer transition-all ${newCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
                 onClick={() => newCardsCount > 0 && initializeQueue("new", shuffleMode)}
                 data-testid="button-mode-new"
@@ -593,7 +593,7 @@ export function LearningSession({
                 </div>
               </Card>
 
-              <Card 
+              <Card
                 className={`p-4 cursor-pointer transition-all ${learnedCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
                 onClick={() => learnedCardsCount > 0 && initializeQueue("review", shuffleMode)}
                 data-testid="button-mode-review"
@@ -611,7 +611,7 @@ export function LearningSession({
                 </div>
               </Card>
 
-              <Card 
+              <Card
                 className={`p-4 cursor-pointer transition-all ${allCardsCount === 0 ? "opacity-50 cursor-not-allowed" : "hover-elevate"}`}
                 onClick={() => allCardsCount > 0 && initializeQueue("all", shuffleMode)}
                 data-testid="button-mode-all"
@@ -666,8 +666,8 @@ export function LearningSession({
             </div>
           ) : currentCard ? (
             <div className="space-y-2 py-2">
-              <DotProgressBar 
-                total={studyQueue.length + completedCards.size} 
+              <DotProgressBar
+                total={studyQueue.length + completedCards.size}
                 current={completedCards.size}
                 completed={completedCards}
                 queue={studyQueue}
@@ -680,15 +680,15 @@ export function LearningSession({
               />
 
               {showBack ? (
-                <RatingButtons 
-                  onRate={handleRate} 
+                <RatingButtons
+                  onRate={handleRate}
                   disabled={updateMutation.isPending}
                 />
               ) : (
                 <div className="flex justify-center mt-4">
-                  <Button 
+                  <Button
                     size="lg"
-                    onClick={() => setShowBack(true)} 
+                    onClick={() => setShowBack(true)}
                     data-testid="button-show-answer"
                   >
                     Show Answer
@@ -719,3 +719,4 @@ export function LearningSession({
     </>
   );
 }
+

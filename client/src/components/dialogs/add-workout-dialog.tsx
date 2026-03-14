@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +24,7 @@ export function AddWorkoutDialog() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: new Date().toISOString().split("T")[0],
+      date: new Date(),
       title: "",
       completed: false,
     },
@@ -63,7 +63,7 @@ export function AddWorkoutDialog() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="title"
               render={({ field }) => (
                 <FormItem>
@@ -77,13 +77,13 @@ export function AddWorkoutDialog() {
             />
 
             <FormField
-              control={form.control}
+              control={form.control as any}
               name="date"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Date</FormLabel>
                   <FormControl>
-                    <Input {...field} type="date" data-testid="input-date" />
+                    <Input {...field} value={field.value instanceof Date ? field.value.toISOString().slice(0, 10) : (field.value?.toString().slice(0, 10) ?? "")} type="date" data-testid="input-date" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -104,3 +104,4 @@ export function AddWorkoutDialog() {
     </Dialog>
   );
 }
+

@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
-import { TrendingUp, BookOpen, Brain, GraduationCap } from "lucide-react";
+import { TrendingUp, BookOpen, Brain, GraduationCap, Languages } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChapterContentArea } from "@/components/chapter-content-area";
@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Ce
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { KnowledgeTopic, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
+import { TodaySessions } from "@/components/today-sessions";
 
 interface ChapterWithChildren extends LearnPlanItem {
   children: ChapterWithChildren[];
@@ -60,16 +61,18 @@ function findChapterInTree(tree: ChapterWithChildren[], id: string): ChapterWith
   return undefined;
 }
 
-function OverviewDashboard({ 
-  theme, 
-  chapters, 
-  flashcards, 
-  knowledgeMetrics 
-}: { 
+function OverviewDashboard({
+  theme,
+  chapters,
+  flashcards,
+  knowledgeMetrics,
+  isLanguage
+}: {
   theme: KnowledgeTopic;
   chapters: LearnPlanItem[];
   flashcards: Flashcard[];
   knowledgeMetrics: KnowledgeMetric[];
+  isLanguage?: boolean;
 }) {
   const completionPercent = useMemo(() => {
     if (chapters.length === 0) return 0;
@@ -118,84 +121,70 @@ function OverviewDashboard({
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen className="h-4 w-4 text-primary" />
-            <p className="text-xs text-muted-foreground">Completion</p>
-          </div>
-          <p className="text-3xl font-bold">{completionPercent}%</p>
-          <p className="text-xs text-muted-foreground mt-2">{completedChapters} of {totalChapters} chapters</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="h-4 w-4 text-chart-2" />
-            <p className="text-xs text-muted-foreground">Readiness</p>
-          </div>
-          <p className="text-3xl font-bold">{readinessPercent}%</p>
-          <p className="text-xs text-muted-foreground mt-2">Ready to review</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <GraduationCap className="h-4 w-4 text-chart-3" />
-            <p className="text-xs text-muted-foreground">Flashcards</p>
-          </div>
-          <p className="text-3xl font-bold text-primary">{flashcards.length}</p>
-          <p className="text-xs text-muted-foreground mt-2">Created</p>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 flex flex-col">
+          <Card className="p-6 flex-1 flex flex-col">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-4 w-4" />
+              <h3 className="font-semibold">Progress Trend</h3>
+            </div>
+            <ChartContainer
+              config={{
+                completion: { label: "Completion", color: "hsl(var(--primary))" },
+                readiness: { label: "Readiness", color: "hsl(var(--primary) / 0.7)" }
+              }}
+              className="flex-1 w-full min-h-[250px]"
+            >
+              <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
+                <Line type="monotone" dataKey="readiness" stroke="hsl(var(--primary) / 0.7)" strokeWidth={2} dot={{ fill: "hsl(var(--primary) / 0.7)", r: 3 }} name="Readiness" />
+                <Legend />
+              </LineChart>
+            </ChartContainer>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1 flex flex-col gap-3">
+          <Card className="p-4 flex-1 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              <p className="text-xs text-muted-foreground">Completion</p>
+            </div>
+            <p className="text-3xl font-bold">{completionPercent}%</p>
+            <p className="text-xs text-muted-foreground mt-2">{completedChapters} of {totalChapters} chapters</p>
+          </Card>
+          <Card className="p-4 flex-1 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-2">
+              {isLanguage ? (
+                <Languages className="h-4 w-4 text-primary/80" />
+              ) : (
+                <Brain className="h-4 w-4 text-primary/80" />
+              )}
+              <p className="text-xs text-muted-foreground">Readiness</p>
+            </div>
+            <p className="text-3xl font-bold">{readinessPercent}%</p>
+            <p className="text-xs text-muted-foreground mt-2">Ready to review</p>
+          </Card>
+          <Card className="p-4 flex-1 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-2">
+              <GraduationCap className="h-4 w-4 text-primary/60" />
+              <p className="text-xs text-muted-foreground">Flashcards</p>
+            </div>
+            <p className="text-3xl font-bold text-primary">{flashcards.length}</p>
+            <p className="text-xs text-muted-foreground mt-2">Created</p>
+          </Card>
+        </div>
       </div>
 
-      <Card className="p-6">
-        <h3 className="font-semibold mb-4">Flashcard Categories</h3>
-        {flashcards.length === 0 ? (
-          <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-            No flashcards yet. Select a chapter from the sidebar to add flashcards.
-          </div>
-        ) : (
-          <div className="w-full h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={flashcardCategories} cx="35%" cy="50%" innerRadius={25} outerRadius={45} paddingAngle={1} dataKey="value">
-                  <Cell fill="hsl(var(--primary))" />
-                  <Cell fill="hsl(var(--chart-2))" />
-                  <Cell fill="hsl(var(--chart-3))" />
-                </Pie>
-                <ChartTooltip formatter={(value) => `${value} cards`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
+      <div className="mt-2">
+        <TodaySessions module={isLanguage ? "languages" : "second_brain"} itemId={theme.id} />
+      </div>
 
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-4 w-4" />
-          <h3 className="font-semibold">Progress Trend</h3>
-        </div>
-        {chartData.length <= 1 ? (
-          <div className="h-40 flex items-center justify-center text-sm text-muted-foreground">
-            Progress will be tracked as you study.
-          </div>
-        ) : (
-          <ChartContainer 
-            config={{ 
-              completion: { label: "Completion", color: "hsl(var(--primary))" }, 
-              readiness: { label: "Readiness", color: "hsl(var(--chart-2))" } 
-            }} 
-            className="h-40 w-full"
-          >
-            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
-              <Line type="monotone" dataKey="readiness" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-2))", r: 3 }} name="Readiness" />
-              <Legend />
-            </LineChart>
-          </ChartContainer>
-        )}
-      </Card>
+
     </div>
   );
 }
@@ -209,25 +198,25 @@ export default function ThemeDetail() {
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const { setLearningData, learningData } = useDualSidebar();
 
-  const { data: theme, isLoading: themeLoading } = useQuery<KnowledgeTopic>({ 
-    queryKey: ["/api/knowledge-topics/detail", topicId] 
+  const { data: theme, isLoading: themeLoading } = useQuery<KnowledgeTopic>({
+    queryKey: ["/api/knowledge-topics/detail", topicId]
   });
-  const { data: chapters = [] } = useQuery<LearnPlanItem[]>({ 
-    queryKey: ["/api/learn-plan-items", topicId], 
-    enabled: !!topicId 
+  const { data: chapters = [] } = useQuery<LearnPlanItem[]>({
+    queryKey: ["/api/learn-plan-items", topicId],
+    enabled: !!topicId
   });
-  const { data: flashcards = [] } = useQuery<Flashcard[]>({ 
-    queryKey: ["/api/flashcards/theme", topicId], 
-    enabled: !!topicId 
+  const { data: flashcards = [] } = useQuery<Flashcard[]>({
+    queryKey: ["/api/flashcards/theme", topicId],
+    enabled: !!topicId
   });
-  const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({ 
-    queryKey: ["/api/knowledge-metrics", topicId], 
-    enabled: !!topicId 
+  const { data: knowledgeMetrics = [] } = useQuery<KnowledgeMetric[]>({
+    queryKey: ["/api/knowledge-metrics", topicId],
+    enabled: !!topicId
   });
 
   const chapterTree = useMemo(() => buildChapterTree(chapters), [chapters]);
   const selectedChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
-  
+
   const selectedChapterChildIds = useMemo(() => {
     if (!selectedChapterId) return [];
     const chapterNode = findChapterInTree(chapterTree, selectedChapterId);
@@ -240,14 +229,13 @@ export default function ThemeDetail() {
       selectedChapterId,
       onSelectChapter: setSelectedChapterId,
     });
-    return () => setLearningData(null);
   }, [topicId, selectedChapterId, setLearningData]);
 
   useEffect(() => {
-    if (learningData?.selectedChapterId !== selectedChapterId) {
-      setSelectedChapterId(learningData?.selectedChapterId ?? null);
-    }
-  }, [learningData?.selectedChapterId]);
+    return () => setLearningData(null);
+  }, [setLearningData]);
+
+
 
   if (themeLoading) {
     return (
@@ -272,20 +260,22 @@ export default function ThemeDetail() {
     <div className="h-full overflow-y-auto p-6">
       {selectedChapterId && selectedChapter ? (
         <div className="max-w-3xl mx-auto">
-          <ChapterContentArea 
-            chapter={selectedChapter} 
-            topicId={topicId} 
-            childChapterIds={selectedChapterChildIds} 
+          <ChapterContentArea
+            chapter={selectedChapter}
+            topicId={topicId}
+            childChapterIds={selectedChapterChildIds}
           />
         </div>
       ) : (
-        <OverviewDashboard 
-          theme={theme} 
-          chapters={chapters} 
-          flashcards={flashcards} 
-          knowledgeMetrics={knowledgeMetrics} 
+        <OverviewDashboard
+          theme={theme}
+          chapters={chapters}
+          flashcards={flashcards}
+          knowledgeMetrics={knowledgeMetrics}
+          isLanguage={!!matchLanguage}
         />
       )}
     </div>
   );
 }
+

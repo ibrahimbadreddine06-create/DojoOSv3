@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -35,9 +35,13 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const LINKABLE_MODULES = [
+  { value: "goals", label: "Goals" },
   { value: "second_brain", label: "Second Brain" },
   { value: "languages", label: "Languages" },
   { value: "studies", label: "Studies" },
+  { value: "body", label: "Body" },
+  { value: "disciplines", label: "Disciplines" },
+  { value: "possessions", label: "Possessions" },
 ];
 
 interface AddTimeBlockDialogProps {
@@ -55,12 +59,13 @@ interface AddTimeBlockDialogProps {
     importance: number;
     linkedModule?: string;
     linkedItemId?: string;
+    linkedSubItemId?: string;
   }) => void;
 }
 
-export function AddTimeBlockDialog({ 
-  date, 
-  open: controlledOpen, 
+export function AddTimeBlockDialog({
+  date,
+  open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultStartTime = "09:00",
   defaultEndTime = "10:00",
@@ -76,8 +81,8 @@ export function AddTimeBlockDialog({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormData & { linkedSubItemId?: string }>({
+    resolver: zodResolver(formSchema.extend({ linkedSubItemId: z.string().optional() })),
     defaultValues: {
       date,
       startTime: defaultStartTime,
@@ -86,15 +91,37 @@ export function AddTimeBlockDialog({
       completed: false,
       linkedModule: undefined,
       linkedItemId: undefined,
+      linkedSubItemId: undefined,
       importance: 3,
     },
   });
 
   const selectedModule = form.watch("linkedModule");
+  const selectedItemId = form.watch("linkedItemId");
 
-  const { data: linkedItems } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["/api/knowledge-topics", selectedModule],
+  const { data: pageSettings } = useQuery<{ module: string; active: boolean }[]>({
+    queryKey: ["/api/page-settings"],
+  });
+
+  const activeLinkableModules = LINKABLE_MODULES.filter(m => {
+    if (!pageSettings || pageSettings.length === 0) return true;
+    // Look for exact match or normalized match (hyphen vs underscore)
+    const setting = pageSettings.find(s =>
+      s.module.toLowerCase() === m.value.toLowerCase() ||
+      s.module.toLowerCase() === m.value.replace('_', '-').toLowerCase() ||
+      s.module.toLowerCase() === m.value.replace('-', '_').toLowerCase()
+    );
+    return setting ? setting.active : true;
+  });
+
+  const { data: linkedItems, isLoading: isLinkedItemsLoading } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/linkable-items", selectedModule],
     enabled: !!selectedModule,
+  });
+
+  const { data: subItems, isLoading: isSubItemsLoading } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/linkable-sub-items", selectedModule, selectedItemId],
+    enabled: !!selectedModule && !!selectedItemId,
   });
 
   useEffect(() => {
@@ -107,6 +134,7 @@ export function AddTimeBlockDialog({
         completed: false,
         linkedModule: undefined,
         linkedItemId: undefined,
+        linkedSubItemId: undefined,
         importance: 3,
       });
     }
@@ -115,16 +143,24 @@ export function AddTimeBlockDialog({
   useEffect(() => {
     if (selectedModule) {
       form.setValue("linkedItemId", undefined);
+      form.setValue("linkedSubItemId", undefined);
     }
   }, [selectedModule, form]);
 
+  useEffect(() => {
+    if (selectedItemId) {
+      form.setValue("linkedSubItemId", undefined);
+    }
+  }, [selectedItemId, form]);
+
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: FormData & { linkedSubItemId?: string }) => {
       const payload = {
         ...data,
         parentId: parentId || null,
         linkedModule: data.linkedModule || null,
         linkedItemId: data.linkedItemId || null,
+        linkedSubItemId: data.linkedSubItemId || null,
       };
       return await apiRequest("POST", "/api/time-blocks", payload);
     },
@@ -141,33 +177,36 @@ export function AddTimeBlockDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-add-block">
-          <Plus className="w-4 h-4 mr-2" />
-          {parentId ? "Add Sub-Block" : "Add Block"}
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" data-testid="button-add-block">
+            <Plus className="w-4 h-4 mr-2" />
+            {parentId ? "Add Sub-Block" : "Add Block"}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader className="pb-3">
           <DialogTitle className="text-lg">{parentId ? "Add Sub-Block" : "Add Time Block"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => {
-              if (isPresetMode && onPresetSubmit) {
-                onPresetSubmit({
-                  title: data.title,
-                  startTime: data.startTime,
-                  endTime: data.endTime,
-                  importance: data.importance,
-                  linkedModule: data.linkedModule,
-                  linkedItemId: data.linkedItemId,
-                });
-                setOpen(false);
-                form.reset();
-              } else {
-                createMutation.mutate(data);
-              }
-            })} className="space-y-4">
+            if (isPresetMode && onPresetSubmit) {
+              onPresetSubmit({
+                title: data.title,
+                startTime: data.startTime,
+                endTime: data.endTime,
+                importance: data.importance,
+                linkedModule: data.linkedModule,
+                linkedItemId: data.linkedItemId,
+                linkedSubItemId: data.linkedSubItemId,
+              });
+              setOpen(false);
+              form.reset();
+            } else {
+              createMutation.mutate(data);
+            }
+          })} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -262,8 +301,8 @@ export function AddTimeBlockDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs font-medium text-muted-foreground">Importance</FormLabel>
-                  <Select 
-                    onValueChange={(val) => field.onChange(parseInt(val))} 
+                  <Select
+                    onValueChange={(val) => field.onChange(parseInt(val))}
                     value={String(field.value)}
                   >
                     <FormControl>
@@ -284,56 +323,116 @@ export function AddTimeBlockDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <FormField
-                control={form.control}
-                name="linkedModule"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-medium text-muted-foreground">Module</FormLabel>
-                    <Select 
-                      onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} 
-                      value={field.value || "none"}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="text-sm" data-testid="select-linked-module">
-                          <SelectValue placeholder="None" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {LINKABLE_MODULES.map((module) => (
-                          <SelectItem key={module.value} value={module.value}>
-                            {module.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              {selectedModule && (
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
-                  name="linkedItemId"
+                  name="linkedModule"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-medium text-muted-foreground">Item</FormLabel>
-                      {linkedItems && linkedItems.length > 0 ? (
-                        <Select 
-                          onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} 
+                      <FormLabel className="text-xs font-medium text-muted-foreground">Module</FormLabel>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "none" ? undefined : val)}
+                        value={field.value || "none"}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="text-sm" data-testid="select-linked-module">
+                            <SelectValue placeholder="None" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent side="top">
+                          <SelectItem value="none">None</SelectItem>
+                          {activeLinkableModules.map((module) => (
+                            <SelectItem key={module.value} value={module.value}>
+                              {module.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedModule && (
+                  <FormField
+                    control={form.control}
+                    name="linkedItemId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-medium text-muted-foreground">
+                          {selectedModule === 'second-brain' ? 'Theme' :
+                            selectedModule === 'languages' ? 'Language' :
+                              selectedModule === 'studies' ? 'Course' :
+                                selectedModule === 'body' ? 'Sub-Module' :
+                                  selectedModule === 'goals' ? 'Goal' : 'Item'}
+                        </FormLabel>
+                        {isLinkedItemsLoading ? (
+                          <div className="flex items-center gap-2 py-2 px-3 border rounded-md bg-muted/20">
+                            <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-muted-foreground">Loading items...</span>
+                          </div>
+                        ) : linkedItems && linkedItems.length > 0 ? (
+                          <Select
+                            onValueChange={(val) => field.onChange(val === "none" ? undefined : val)}
+                            value={field.value || "none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="text-sm" data-testid="select-linked-item">
+                                <SelectValue placeholder="All" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent side="top">
+                              <SelectItem value="none">Entire Module</SelectItem>
+                              {linkedItems.map((item) => (
+                                <SelectItem key={item.id} value={String(item.id)}>
+                                  {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-xs text-muted-foreground py-2 italic border rounded-md px-2 bg-muted/20">
+                            No items found
+                          </p>
+                        )}
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {selectedItemId && (
+                <FormField
+                  control={form.control}
+                  name="linkedSubItemId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-medium text-muted-foreground">
+                        {selectedModule === 'second-brain' || selectedModule === 'languages' ? 'Chapter / Milestone' :
+                          selectedModule === 'studies' ? 'Lesson / Material' :
+                            selectedModule === 'body' ? 'Exercise / Activity' :
+                              selectedModule === 'goals' ? 'Sub-Goal' : 'Detail (Optional)'}
+                      </FormLabel>
+                      {isSubItemsLoading ? (
+                        <div className="flex items-center gap-2 py-2 px-3 border rounded-md bg-muted/20">
+                          <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          <span className="text-xs text-muted-foreground">Loading specific items...</span>
+                        </div>
+                      ) : subItems && subItems.length > 0 ? (
+                        <Select
+                          onValueChange={(val) => field.onChange(val === "none" ? undefined : val)}
                           value={field.value || "none"}
                         >
                           <FormControl>
-                            <SelectTrigger className="text-sm" data-testid="select-linked-item">
-                              <SelectValue placeholder="All" />
+                            <SelectTrigger className="text-sm" data-testid="select-linked-sub-item">
+                              <SelectValue placeholder="Select specific item..." />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">All {LINKABLE_MODULES.find(m => m.value === selectedModule)?.label}</SelectItem>
-                            {linkedItems.map((item) => (
+                          <SelectContent side="top">
+                            <SelectItem value="none">Entire Sub-Module</SelectItem>
+                            {subItems.map((item) => (
                               <SelectItem key={item.id} value={String(item.id)}>
                                 {item.name}
                               </SelectItem>
@@ -341,8 +440,8 @@ export function AddTimeBlockDialog({
                           </SelectContent>
                         </Select>
                       ) : (
-                        <p className="text-xs text-muted-foreground py-2">
-                          No items
+                        <p className="text-xs text-muted-foreground py-2 italic border rounded-md px-2 bg-muted/20">
+                          No specific items found
                         </p>
                       )}
                       <FormMessage className="text-xs" />
@@ -366,3 +465,4 @@ export function AddTimeBlockDialog({
     </Dialog>
   );
 }
+

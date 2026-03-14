@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { 
-  Plus, 
-  ChevronRight, 
-  ChevronDown, 
-  Check, 
-  Trash2, 
-  MoreHorizontal, 
+import {
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  Trash2,
+  MoreHorizontal,
   LayoutDashboard,
   BookOpen,
 } from "lucide-react";
@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDualSidebar } from "@/contexts/dual-sidebar-context";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
-import type { LearnPlanItem, KnowledgeTopic, Course, Flashcard } from "@shared/schema";
+import type { LearnPlanItem, KnowledgeTopic, Course, Flashcard, Discipline } from "@shared/schema";
 
 interface ChapterWithChildren extends LearnPlanItem {
   children: ChapterWithChildren[];
@@ -40,15 +40,15 @@ function buildChapterTree(items: LearnPlanItem[], flashcards: Flashcard[] = []):
 
   const map = new Map<string, ChapterWithChildren>();
   const roots: ChapterWithChildren[] = [];
-  
+
   items.forEach(item => {
-    map.set(item.id, { 
-      ...item, 
+    map.set(item.id, {
+      ...item,
       children: [],
       flashcardCount: flashcardCountByChapter.get(item.id) || 0
     });
   });
-  
+
   items.forEach(item => {
     const node = map.get(item.id)!;
     if (item.parentId && map.has(item.parentId)) {
@@ -57,7 +57,7 @@ function buildChapterTree(items: LearnPlanItem[], flashcards: Flashcard[] = []):
       roots.push(node);
     }
   });
-  
+
   const sortByOrder = (a: ChapterWithChildren, b: ChapterWithChildren) => a.order - b.order;
   const sortRecursive = (nodes: ChapterWithChildren[]) => {
     nodes.sort(sortByOrder);
@@ -100,11 +100,10 @@ function ChapterCard({
       transition={{ duration: 0.2, delay: animationDelay * 0.04 }}
     >
       <div
-        className={`group relative flex items-center gap-2 p-2.5 my-1 rounded-lg cursor-pointer transition-all duration-200 ${
-          isSelected 
-            ? "bg-accent shadow-sm" 
-            : "hover-elevate"
-        }`}
+        className={`group relative flex items-center gap-2 p-2.5 my-1 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
+          ? "bg-accent shadow-sm"
+          : "hover-elevate"
+          }`}
         style={{ marginLeft: `${depth * 16}px` }}
         onClick={() => onSelect(chapter.id)}
         data-testid={`chapter-card-${chapter.id}`}
@@ -139,11 +138,11 @@ function ChapterCard({
         </div>
 
         {hasChildren && (
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
             className="p-0.5 hover:bg-muted rounded"
           >
-            {isExpanded 
+            {isExpanded
               ? <ChevronDown className="w-3 h-3 text-muted-foreground" />
               : <ChevronRight className="w-3 h-3 text-muted-foreground" />
             }
@@ -173,7 +172,7 @@ function ChapterCard({
                 <Plus className="h-3 w-3 mr-2" />
                 Add Subchapter
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => onDelete(chapter.id)}
               >
@@ -219,48 +218,61 @@ interface LearningTrajectorySidebarProps {
 
 export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTrajectorySidebarProps) {
   const [, navigate] = useLocation();
-  const { 
-    subModuleInfo, 
+  const {
+    subModuleInfo,
     isMobile,
     learningData,
     closeAllSidebars
   } = useDualSidebar();
 
-  const topicId = subModuleInfo?.type !== "studies" ? subModuleInfo?.id : undefined;
+  const isDiscipline = subModuleInfo?.type === "disciplines";
+  const topicId = (subModuleInfo?.type !== "studies" && subModuleInfo?.type !== "disciplines") ? subModuleInfo?.id : undefined;
   const courseId = subModuleInfo?.type === "studies" ? subModuleInfo?.id : undefined;
+  const disciplineId = subModuleInfo?.type === "disciplines" ? subModuleInfo?.id : undefined;
 
-  const { data: theme } = useQuery<KnowledgeTopic>({ 
-    queryKey: ["/api/knowledge-topics/detail", topicId], 
-    enabled: !!topicId 
-  });
-  
-  const { data: course } = useQuery<Course>({ 
-    queryKey: ["/api/courses", courseId], 
-    enabled: !!courseId 
+  const { data: theme } = useQuery<KnowledgeTopic>({
+    queryKey: ["/api/knowledge-topics/detail", topicId],
+    enabled: !!topicId
   });
 
-  const { data: chapters = [], isLoading: chaptersLoading } = useQuery<LearnPlanItem[]>({ 
-    queryKey: courseId 
+  const { data: discipline } = useQuery<Discipline>({
+    queryKey: ["/api/disciplines", disciplineId],
+    enabled: !!disciplineId
+  });
+
+  const { data: course } = useQuery<Course>({
+    queryKey: ["/api/courses", courseId],
+    enabled: !!courseId
+  });
+
+  const { data: chapters = [], isLoading: chaptersLoading } = useQuery<LearnPlanItem[]>({
+    queryKey: courseId
       ? ["/api/learn-plan-items/course", courseId]
-      : ["/api/learn-plan-items", topicId], 
-    enabled: !!topicId || !!courseId 
+      : disciplineId
+        ? ["/api/learn-plan-items/discipline", disciplineId]
+        : ["/api/learn-plan-items", topicId],
+    enabled: !!topicId || !!courseId || !!disciplineId
   });
 
-  const { data: flashcards = [] } = useQuery<Flashcard[]>({ 
-    queryKey: courseId 
+  const { data: flashcards = [] } = useQuery<Flashcard[]>({
+    queryKey: courseId
       ? ["/api/flashcards/course", courseId]
-      : ["/api/flashcards/theme", topicId], 
-    enabled: !!topicId || !!courseId 
+      : disciplineId
+        ? ["/api/flashcards/discipline", disciplineId]
+        : ["/api/flashcards/theme", topicId],
+    enabled: !!topicId || !!courseId || !!disciplineId
   });
 
   const chapterTree = useMemo(() => buildChapterTree(chapters, flashcards), [chapters, flashcards]);
-  
+
   const selectedChapterId = learningData?.selectedChapterId ?? null;
   const onSelectChapter = learningData?.onSelectChapter;
 
-  const queryKey = courseId 
+  const queryKey = courseId
     ? ["/api/learn-plan-items/course", courseId]
-    : ["/api/learn-plan-items", topicId];
+    : disciplineId
+      ? ["/api/learn-plan-items/discipline", disciplineId]
+      : ["/api/learn-plan-items", topicId];
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/learn-plan-items/${id}`),
@@ -295,16 +307,16 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
     navigate(`/chapters/new?${params.toString()}`);
   };
 
-  const title = theme?.name || course?.name || "Loading...";
+  const title = (isDiscipline ? discipline?.name : theme?.name) || course?.name || "Loading...";
 
   if (!subModuleInfo) return null;
 
   return (
     <div className="flex flex-col h-full bg-background" data-testid="sidebar-trajectory">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Chapters</h2>
-          <p className="text-sm font-medium truncate mt-0.5">{title}</p>
+      <div className="flex items-center justify-between px-4 h-16 border-b shrink-0">
+        <div className="min-w-0">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">Chapters</h2>
+          <p className="text-sm font-medium truncate">{title}</p>
         </div>
       </div>
 
@@ -332,9 +344,9 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
             <div className="text-center py-8 px-4">
               <BookOpen className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
-              <Button 
-                size="sm" 
-                onClick={() => handleAddChapter(null)} 
+              <Button
+                size="sm"
+                onClick={() => handleAddChapter(null)}
                 data-testid="button-add-first-chapter"
               >
                 <Plus className="h-4 w-4 mr-2" /> Add First Chapter
@@ -361,9 +373,9 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
       </ScrollArea>
 
       <div className="p-3 border-t">
-        <Button 
-          variant="outline" 
-          className="w-full" 
+        <Button
+          variant="outline"
+          className="w-full"
           onClick={() => handleAddChapter(null)}
           data-testid="button-add-chapter"
         >
@@ -373,3 +385,4 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
     </div>
   );
 }
+

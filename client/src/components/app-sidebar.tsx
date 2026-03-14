@@ -13,9 +13,10 @@ import {
   Briefcase,
   Users,
   Trophy,
-  Lock
+  Lock,
+  Settings
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -25,9 +26,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { UserSearchDialog } from "@/components/social/user-search-dialog";
 import { Link, useLocation } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
+import { useTheme } from "@/contexts/theme-context";
+import { useQuery } from "@tanstack/react-query";
 
 const activeModules = [
   {
@@ -55,13 +61,23 @@ const activeModules = [
     url: "/studies",
     icon: GraduationCap,
   },
-];
-
-const lockedModules = [
   {
     title: "Body",
     url: "/body",
     icon: Dumbbell,
+  },
+  {
+    title: "Disciplines",
+    url: "/disciplines",
+    icon: Award,
+  },
+];
+
+const lockedModules = [
+  {
+    title: "Possessions",
+    url: "/possessions",
+    icon: HomeIcon,
   },
   {
     title: "Worship",
@@ -79,16 +95,6 @@ const lockedModules = [
     icon: Star,
   },
   {
-    title: "Possessions",
-    url: "/possessions",
-    icon: HomeIcon,
-  },
-  {
-    title: "Disciplines",
-    url: "/disciplines",
-    icon: Award,
-  },
-  {
     title: "Business",
     url: "/business",
     icon: Briefcase,
@@ -100,7 +106,7 @@ const lockedModules = [
   },
   {
     title: "Social Purpose",
-    url: "/social-purpose",
+    url: "/social",
     icon: Users,
   },
   {
@@ -116,23 +122,54 @@ interface AppSidebarProps {
 
 export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
   const [location] = useLocation();
+  const { setOpen, state } = useSidebar();
+  const { getModuleTheme } = useTheme();
 
-  const menuItemClass = (isActive: boolean) => 
-    `flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${isActive ? "bg-accent" : ""}`;
+  // THEME LOGIC ONLY
+  useEffect(() => {
+    // Apply Module Theme
+    const root = document.documentElement;
+    let themeFound = false;
+
+    // Check if current route matches a known module
+    // We check against known prefixes from routes or just ask context
+    for (const mod of activeModules) {
+      if (location.startsWith(mod.url)) {
+        const theme = getModuleTheme(mod.url);
+        if (theme.cssVar) {
+          root.style.setProperty('--primary', theme.cssVar);
+          themeFound = true;
+        }
+        break;
+      }
+    }
+
+    // Reset to default if not in a module
+    if (!themeFound) {
+      root.style.removeProperty('--primary');
+    }
+
+  }, [location, getModuleTheme]);
+
+  const menuItemClass = (isActive: boolean, moduleUrl?: string) => {
+    // For custom colors, we can't rely on template literals for hover classes if they are dynamic/arbitrary.
+    // However, we are using a preset list in Context, so classes ARE safe, but just to be robust we can use style.
+    return `group/item flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50 ${isActive ? "bg-accent font-medium" : "text-muted-foreground"}`;
+  };
 
   const sidebarContent = (
     <>
       <div className="flex flex-col gap-2 p-2">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
-          Dojo OS
+          DojoOS
         </div>
         <div className="flex flex-col gap-0.5">
-          <Link 
+          <Link
             href="/"
             className={menuItemClass(location === "/")}
             data-testid="link-home"
           >
-            <HomeIcon className="w-4 h-4" />
+            <HomeIcon className="w-4 h-4 group-hover/item:text-foreground transition-colors" />
             <span>Home</span>
           </Link>
         </div>
@@ -143,19 +180,39 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
           Core Modules
         </div>
         <div className="flex flex-col gap-0.5">
-          {activeModules.map((item) => (
-            <Link 
-              key={item.title} 
-              href={item.url}
-              className={menuItemClass(location === item.url)}
-              data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span>{item.title}</span>
-            </Link>
-          ))}
+          {activeModules.map((item) => {
+            const theme = getModuleTheme(item.url);
+            const isActive = location.startsWith(item.url);
+
+            // Define CSS variable for the theme color
+            const style = {
+              "--theme-color": theme.cssVar ? `hsl(${theme.cssVar})` : undefined
+            } as React.CSSProperties;
+
+            return (
+              <Link
+                key={item.title}
+                href={item.url}
+                className={menuItemClass(location.startsWith(item.url), item.url)}
+                data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <item.icon
+                  className="w-4 h-4 transition-colors group-hover/item:text-[var(--theme-color)]"
+                  style={style}
+                />
+                <span
+                  className="group-hover/item:text-[var(--theme-color)] transition-colors"
+                  style={style}
+                >
+                  {item.title}
+                </span>
+              </Link>
+            )
+          })}
         </div>
       </div>
+
+
 
       <div className="flex flex-col gap-2 p-2">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
@@ -178,6 +235,7 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
       </div>
 
       <div className="flex flex-col gap-2 p-2 mt-auto">
+        <UserSearchDialog />
         <div className="flex flex-col gap-0.5">
           <ProfileMenuItemSimple />
         </div>
@@ -200,7 +258,7 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
-            Dojo OS
+            DojoOS
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -222,19 +280,42 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {activeModules.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location === item.url} data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                    <Link href={item.url}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {activeModules.map((item) => {
+                const theme = getModuleTheme(item.url);
+                const isActive = location.startsWith(item.url);
+                const style = {
+                  "--theme-color": theme.cssVar ? `hsl(${theme.cssVar})` : undefined
+                } as React.CSSProperties;
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                      className={`group/item`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon
+                          className={`w-4 h-4 transition-colors group-hover/item:text-[var(--theme-color)] ${isActive ? "text-[var(--theme-color)]" : ""}`}
+                          style={style}
+                        />
+                        <span
+                          className="group-hover/item:text-[var(--theme-color)] transition-colors"
+                          style={style}
+                        >
+                          {item.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
@@ -244,7 +325,7 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
             <SidebarMenu>
               {lockedModules.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
+                  <SidebarMenuButton
                     className="cursor-not-allowed opacity-50 hover:bg-transparent"
                     data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     aria-disabled="true"
@@ -261,10 +342,11 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
 
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
+            <div className="px-2 pb-2">
+              <UserSearchDialog />
+            </div>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <ProfileMenuItem />
-              </SidebarMenuItem>
+              <UserProfileSection />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -275,32 +357,47 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
 
 function ProfileMenuItemSimple() {
   const [location] = useLocation();
-
+  // Simplified for mobile - just settings for now to avoid clutter, or could expand
   return (
-    <Link 
+    <Link
       href="/profile"
       className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location === "/profile" ? "bg-accent" : ""}`}
       data-testid="link-profile"
     >
-      <Avatar className="h-5 w-5">
-        <AvatarFallback className="text-xs">U</AvatarFallback>
-      </Avatar>
+      <Settings className="h-4 w-4" />
       <span>Settings</span>
     </Link>
   );
 }
 
-function ProfileMenuItem() {
+function UserProfileSection() {
   const [location] = useLocation();
+  const { data: user } = useQuery<any>({ queryKey: ["/api/user"] });
+
+  if (!user) return null;
 
   return (
-    <SidebarMenuButton asChild isActive={location === "/profile"} data-testid="link-profile">
-      <Link href="/profile">
-        <Avatar className="h-5 w-5">
-          <AvatarFallback className="text-xs">U</AvatarFallback>
-        </Avatar>
-        <span>Settings</span>
-      </Link>
-    </SidebarMenuButton>
+    <>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={location === "/profile"} data-testid="link-settings">
+          <Link href="/profile">
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={location.startsWith("/social/")} data-testid="link-public-profile">
+          <Link href={`/social/${user.username}`}>
+            <Avatar className="h-5 w-5">
+              <AvatarImage src={user.profileImageUrl} />
+              <AvatarFallback className="text-xs">{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span>Public Profile</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </>
   );
 }

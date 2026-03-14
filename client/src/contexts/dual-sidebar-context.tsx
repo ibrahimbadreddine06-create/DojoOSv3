@@ -1,8 +1,9 @@
+// @refresh reset
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
 interface SubModuleInfo {
-  type: "second-brain" | "languages" | "studies";
+  type: "second-brain" | "languages" | "studies" | "body" | "disciplines";
   id: string;
   backPath: string;
 }
@@ -16,12 +17,13 @@ interface LearningTrajectoryData {
 
 interface DualSidebarContextType {
   isInSubModule: boolean;
+  hasTrajectorySidebar: boolean;
   subModuleInfo: SubModuleInfo | null;
   isMobile: boolean;
   mainSidebarOpen: boolean;
   trajectorySidebarOpen: boolean;
   learningData: LearningTrajectoryData | null;
-  
+
   setMainSidebarOpen: (open: boolean) => void;
   setTrajectorySidebarOpen: (open: boolean) => void;
   closeAllSidebars: () => void;
@@ -39,7 +41,7 @@ export function useDualSidebar() {
 }
 
 function isSubModulePath(path: string): boolean {
-  return /^\/(second-brain|languages|studies)\/[^/]+$/.test(path);
+  return /^\/(second-brain|languages|studies|body|disciplines)(\/|$)/.test(path);
 }
 
 interface DualSidebarProviderProps {
@@ -68,10 +70,19 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
     if (studiesMatch) {
       return { type: "studies", id: studiesMatch[1], backPath: "/studies" };
     }
+    const disciplinesMatch = location.match(/^\/disciplines\/([^/]+)$/);
+    if (disciplinesMatch) {
+      return { type: "disciplines", id: disciplinesMatch[1], backPath: "/disciplines" };
+    }
+    const bodyMatch = location.startsWith("/body");
+    if (bodyMatch) {
+      return { type: "body", id: "body", backPath: "/" }; /* Body acts as its own sub-module type */
+    }
     return null;
   }, [location]);
 
   const isInSubModule = !!subModuleInfo;
+  const hasTrajectorySidebar = isInSubModule && subModuleInfo?.type !== 'body';
 
   useEffect(() => {
     const checkMobile = () => {
@@ -85,7 +96,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   useEffect(() => {
     const mobileChanged = isMobile !== prevIsMobile;
     const locationChanged = location !== prevLocation;
-    
+
     if (mobileChanged) {
       if (isMobile) {
         setMainSidebarOpenInternal(false);
@@ -104,25 +115,37 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
 
     if (locationChanged) {
       const wasInSubModule = isSubModulePath(prevLocation);
+      const wasTrajectoryAvailable = wasInSubModule && !prevLocation.startsWith("/body");
       const nowInSubModule = isInSubModule;
+      const nowTrajectoryAvailable = hasTrajectorySidebar;
 
       if (isMobile) {
         setMainSidebarOpenInternal(false);
         setTrajectorySidebarOpenInternal(false);
       } else {
-        if (!wasInSubModule && nowInSubModule) {
-          setMainSidebarOpenInternal(false);
-          setTrajectorySidebarOpenInternal(true);
+        if (nowInSubModule) {
+          if (nowTrajectoryAvailable) {
+            // Entering one of the Big 4 submodules
+            setMainSidebarOpenInternal(false);
+            setTrajectorySidebarOpenInternal(true);
+          } else {
+            // Entering Body submodule
+            if (!wasInSubModule) {
+              setMainSidebarOpenInternal(false);
+            }
+            setTrajectorySidebarOpenInternal(false);
+          }
         } else if (wasInSubModule && !nowInSubModule) {
+          // Leaving a submodule to home or list pages
           setMainSidebarOpenInternal(true);
           setTrajectorySidebarOpenInternal(false);
           setLearningData(null);
         }
       }
-      
+
       setPrevLocation(location);
     }
-  }, [location, prevLocation, isMobile, prevIsMobile, isInSubModule]);
+  }, [location, prevLocation, isMobile, prevIsMobile, isInSubModule, hasTrajectorySidebar]);
 
   const setMainSidebarOpen = useCallback((open: boolean) => {
     if (isMobile) {
@@ -137,15 +160,19 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
           setTrajectorySidebarOpenInternal(false);
         } else {
           setMainSidebarOpenInternal(false);
-          setTrajectorySidebarOpenInternal(true);
+          if (hasTrajectorySidebar) {
+            setTrajectorySidebarOpenInternal(true);
+          }
         }
       } else {
         setMainSidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar]);
 
   const setTrajectorySidebarOpen = useCallback((open: boolean) => {
+    if (!hasTrajectorySidebar) return; // Prevent opening if not available
+
     if (isMobile) {
       if (open) {
         setMainSidebarOpenInternal(false);
@@ -164,7 +191,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
         setTrajectorySidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar]);
 
   const closeAllSidebars = useCallback(() => {
     if (isMobile) {
@@ -175,6 +202,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
 
   const value: DualSidebarContextType = {
     isInSubModule,
+    hasTrajectorySidebar,
     subModuleInfo,
     isMobile,
     mainSidebarOpen,

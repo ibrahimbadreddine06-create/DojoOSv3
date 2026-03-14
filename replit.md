@@ -1,8 +1,8 @@
-# Dojo OS V2
+# DojoOS
 
 ## Overview
 
-Dojo OS V2 is a focused personal operating system with 6 core active modules (Homepage, Daily Planner, Goals, Second Brain, Languages, Studies) and 10+ locked "Coming Soon" modules. It provides a unified platform for tracking daily activities, long-term goals, and knowledge acquisition with beautiful UI, mobile responsiveness, and Replit Auth integration.
+DojoOS is a focused personal operating system with 6 core active modules (Homepage, Daily Planner, Goals, Second Brain, Languages, Studies) and 10+ locked "Coming Soon" modules. It provides a unified platform for tracking daily activities, long-term goals, and knowledge acquisition with beautiful UI, mobile responsiveness, and Replit Auth integration.
 
 ## Recent Changes (December 2024)
 

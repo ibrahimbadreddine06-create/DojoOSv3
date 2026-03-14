@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, FileText, Video, Link2, File, ExternalLink, Trash2, GraduationCap, BookOpen, Brain, MoreHorizontal, List } from "lucide-react";
@@ -15,12 +15,14 @@ import {
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { NotesList } from "@/components/note-editor";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
+import { MaterialViewerDialog } from "@/components/dialogs/material-viewer-dialog";
 import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 interface ChapterContentAreaProps {
   chapter: LearnPlanItem;
   topicId?: string;
   courseId?: string;
+  disciplineId?: string;
   childChapterIds?: string[];
 }
 
@@ -48,8 +50,8 @@ function CompletionReadinessMetrics({ flashcards, chapter }: { flashcards: Flash
             <span className="text-sm font-medium">Completion</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all" 
+            <div
+              className="h-full bg-primary transition-all"
               style={{ width: `${completion}%` }}
             />
           </div>
@@ -59,12 +61,12 @@ function CompletionReadinessMetrics({ flashcards, chapter }: { flashcards: Flash
       <div className="flex items-center gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <Brain className="h-4 w-4 text-chart-2" />
+            <Brain className="h-4 w-4 text-primary/70" />
             <span className="text-sm font-medium">Readiness</span>
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-chart-2 transition-all" 
+            <div
+              className="h-full bg-primary/70 transition-all"
               style={{ width: `${readiness}%` }}
             />
           </div>
@@ -151,12 +153,13 @@ function FlashcardCircleChart({ flashcards }: { flashcards: Flashcard[] }) {
   );
 }
 
-export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds = [] }: ChapterContentAreaProps) {
+export function ChapterContentArea({ chapter, topicId, courseId, disciplineId, childChapterIds = [] }: ChapterContentAreaProps) {
   const [, navigate] = useLocation();
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
 
   const currentPath = window.location.pathname;
   const buildReturnUrl = () => currentPath + window.location.search;
-  
+
   const handleStartLearning = () => {
     const params = new URLSearchParams();
     params.set("mode", "all");
@@ -164,6 +167,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
     params.set("title", chapter.title);
     if (topicId) params.set("topicId", topicId);
     if (courseId) params.set("courseId", courseId);
+    if (disciplineId) params.set("disciplineId", disciplineId);
     navigate(`/learn/${chapter.id}?${params.toString()}`);
   };
 
@@ -171,6 +175,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
     const params = new URLSearchParams();
     if (topicId) params.set("topicId", topicId);
     if (courseId) params.set("courseId", courseId);
+    if (disciplineId) params.set("disciplineId", disciplineId);
     params.set("return", buildReturnUrl());
     navigate(`/flashcards/new/${chapter.id}?${params.toString()}`);
   };
@@ -179,6 +184,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
     const params = new URLSearchParams();
     if (topicId) params.set("topicId", topicId);
     if (courseId) params.set("courseId", courseId);
+    if (disciplineId) params.set("disciplineId", disciplineId);
     params.set("title", chapter.title);
     params.set("return", buildReturnUrl());
     navigate(`/flashcards/${chapter.id}?${params.toString()}`);
@@ -188,6 +194,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
     const params = new URLSearchParams();
     if (topicId) params.set("topicId", topicId);
     if (courseId) params.set("courseId", courseId);
+    if (disciplineId) params.set("disciplineId", disciplineId);
     params.set("return", buildReturnUrl());
     navigate(`/materials/new/${chapter.id}?${params.toString()}`);
   };
@@ -196,11 +203,11 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
   const childIdsParam = childChapterIds.join(',');
 
   const { data: materials = [], isLoading: materialsLoading } = useQuery<Material[]>({
-    queryKey: hasChildren 
+    queryKey: hasChildren
       ? ["/api/materials/chapter", chapter.id, "with-children", childIdsParam]
       : ["/api/materials/chapter", chapter.id],
     queryFn: async () => {
-      const url = hasChildren 
+      const url = hasChildren
         ? `/api/materials/chapter/${chapter.id}/with-children?childIds=${childIdsParam}`
         : `/api/materials/chapter/${chapter.id}`;
       const res = await fetch(url, { credentials: 'include' });
@@ -259,9 +266,9 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm">Flashcards</h3>
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={handleAddFlashcard}
               data-testid="button-add-flashcard"
             >
@@ -277,8 +284,8 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
             <div className="flex flex-col items-center gap-4">
               <FlashcardCircleChart flashcards={flashcards} />
               <div className="flex gap-2 w-full">
-                <Button 
-                  className="flex-1" 
+                <Button
+                  className="flex-1"
                   onClick={handleStartLearning}
                   disabled={flashcards.length === 0}
                   data-testid="button-start-learning"
@@ -286,7 +293,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
                   <GraduationCap className="h-4 w-4 mr-2" />
                   Learn
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   onClick={handleViewAllFlashcards}
                   data-testid="button-view-all-flashcards"
@@ -307,9 +314,9 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium text-sm">Materials</h3>
-          <Button 
-            size="sm" 
-            variant="ghost" 
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={handleAddMaterial}
             data-testid="button-add-material"
           >
@@ -331,7 +338,12 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
             {materials.map((material) => {
               const Icon = materialTypeIcons[material.type] || File;
               const hasUploadedFile = !!(material as any).fileData;
+
               const handleOpen = () => {
+                setSelectedMaterial(material);
+              };
+
+              const handleDownload = () => {
                 if (hasUploadedFile) {
                   const link = document.createElement("a");
                   link.href = (material as any).fileData;
@@ -341,6 +353,7 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
                   window.open(material.url, "_blank");
                 }
               };
+
               return (
                 <div
                   key={material.id}
@@ -368,9 +381,13 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpen(); }}>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          Open
+                          Open Viewer
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          {hasUploadedFile ? "Download" : "Open in New Tab"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={(e) => { e.stopPropagation(); deleteMaterialMutation.mutate(material.id); }}
                           className="text-destructive"
                         >
@@ -387,6 +404,12 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
         )}
       </Card>
 
+      <MaterialViewerDialog
+        material={selectedMaterial}
+        open={!!selectedMaterial}
+        onOpenChange={(open) => !open && setSelectedMaterial(null)}
+      />
+
       <Card className="p-4">
         <NotesList
           chapterId={chapter.id}
@@ -398,3 +421,4 @@ export function ChapterContentArea({ chapter, topicId, courseId, childChapterIds
     </div>
   );
 }
+

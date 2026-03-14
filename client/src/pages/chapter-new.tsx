@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { X, BookOpen, Save } from "lucide-react";
@@ -12,25 +12,28 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 export default function ChapterNewPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  
+
   const searchParams = new URLSearchParams(window.location.search);
   const topicId = searchParams.get("topicId") || undefined;
   const courseId = searchParams.get("courseId") || undefined;
+  const disciplineId = searchParams.get("disciplineId") || undefined;
   const parentId = searchParams.get("parentId") || null;
   const returnUrl = searchParams.get("return") || "/";
   const parentTitle = searchParams.get("parentTitle") || "";
-  
+
   const [title, setTitle] = useState("");
   const [importance, setImportance] = useState(3);
-  
-  const queryKey = courseId 
+
+  const queryKey = courseId
     ? ["/api/learn-plan-items/course", courseId]
-    : ["/api/learn-plan-items", topicId];
+    : disciplineId
+      ? ["/api/learn-plan-items/discipline", disciplineId]
+      : ["/api/learn-plan-items", topicId];
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => apiRequest("POST", "/api/learn-plan-items", data),
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey }); 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
       toast({ title: parentId ? "Sub-chapter created" : "Chapter created" });
       navigate(returnUrl);
     },
@@ -47,6 +50,7 @@ export default function ChapterNewPage() {
     const data: any = { parentId, title: title.trim(), importance };
     if (courseId) data.courseId = courseId;
     if (topicId) data.topicId = topicId;
+    if (disciplineId) data.disciplineId = disciplineId;
     createMutation.mutate(data);
   };
 
@@ -60,14 +64,14 @@ export default function ChapterNewPage() {
         <Button variant="ghost" size="icon" onClick={handleClose} data-testid="button-close">
           <X className="h-6 w-6" />
         </Button>
-        
+
         <h1 className="font-medium flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />
           {parentId ? "New Sub-chapter" : "New Chapter"}
         </h1>
-        
-        <Button 
-          onClick={handleSubmit} 
+
+        <Button
+          onClick={handleSubmit}
           disabled={!title.trim() || createMutation.isPending}
           data-testid="button-save-chapter"
         >
@@ -118,3 +122,4 @@ export default function ChapterNewPage() {
     </div>
   );
 }
+

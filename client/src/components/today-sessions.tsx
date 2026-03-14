@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, GripVertical, Trash2 } from "lucide-react";
@@ -25,7 +26,7 @@ function getBlockHeight(block: TimeBlock): number {
 }
 
 interface TodaySessionsProps {
-  module: "second_brain" | "languages" | "studies";
+  module: "second_brain" | "languages" | "studies" | "body" | "disciplines";
   itemId?: string;
 }
 
@@ -37,6 +38,7 @@ function getModuleColorVar(linkedModule?: string | null): string {
     'second-brain': '--module-second-brain',
     'languages': '--module-languages',
     'studies': '--module-studies',
+    'disciplines': '--module-disciplines',
     'planner': '--module-planner',
     'daily_planner': '--module-planner',
   };
@@ -57,6 +59,7 @@ function calculateWeightedCompletion(tasks?: Array<{ completed: boolean; importa
 }
 
 export function TodaySessions({ module, itemId }: TodaySessionsProps) {
+  const [, navigate] = useLocation();
   const today = format(new Date(), "yyyy-MM-dd");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -64,9 +67,12 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
   const { data: sessions, isLoading } = useQuery<TimeBlock[]>({
     queryKey: ["/api/time-blocks/linked", module, today, itemId],
     queryFn: async () => {
-      const params = new URLSearchParams({ date: today, module });
-      if (itemId) params.append("itemId", itemId);
-      const response = await fetch(`/api/time-blocks/linked?${params.toString()}`);
+      const url = new URL(`${window.location.origin}/api/time-blocks/linked`);
+      url.searchParams.append("date", today);
+      url.searchParams.append("module", module);
+      if (itemId) url.searchParams.append("itemId", itemId);
+
+      const response = await fetch(url.toString());
       if (!response.ok) throw new Error("Failed to fetch sessions");
       return response.json();
     },
@@ -135,13 +141,18 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
             Today's Sessions
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No sessions scheduled for today
-          </p>
-          <p className="text-xs text-muted-foreground text-center">
-            Link time blocks from the Daily Planner
-          </p>
+        <CardContent className="py-10 px-4 flex flex-col items-center justify-center gap-4">
+          <div className="text-center space-y-1">
+            <p className="text-sm font-medium">
+              No sessions scheduled for today
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Link time blocks from the Daily Planner
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigate('/planner')}>
+            Go to Daily Planner
+          </Button>
         </CardContent>
       </Card>
     );
@@ -176,9 +187,9 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
                 data-testid={`session-block-${block.id}`}
               >
                 {/* Header */}
-                <div 
+                <div
                   className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
-                  style={{ 
+                  style={{
                     backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                     minHeight: 32,
                   }}
@@ -194,9 +205,8 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
                     }}
                     data-testid={`checkbox-block-${block.id}`}
                   />
-                  <span className={`text-sm font-medium truncate flex-1 ${
-                    block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
-                  }`}>
+                  <span className={`text-sm font-medium truncate flex-1 ${block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
+                    }`}>
                     {block.title}
                   </span>
                   <span className="text-xs text-muted-foreground/70 font-mono shrink-0">
@@ -223,17 +233,17 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
 
                 {/* Content area */}
                 {block.tasks && block.tasks.length > 0 && (
-                  <div 
+                  <div
                     className={`flex-1 flex flex-col gap-2 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
-                    style={{ 
+                    style={{
                       backgroundColor: `hsl(var(${colorVar}) / 0.25)`,
                     }}
                   >
                     {block.tasks.map((task) => (
-                      <div 
+                      <div
                         key={task.id}
                         className="flex items-center gap-1 px-2 py-1 rounded transition-all duration-150 hover-elevate"
-                        style={{ 
+                        style={{
                           backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                         }}
                       >

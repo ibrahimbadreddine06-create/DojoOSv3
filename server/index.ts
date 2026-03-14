@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -10,11 +11,12 @@ declare module 'http' {
   }
 }
 app.use(express.json({
+  limit: "50mb",
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -46,7 +48,46 @@ app.use((req, res, next) => {
   next();
 });
 
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { EXERCISES_DATA } from "./seeds/exercises";
+
 (async () => {
+  // SEEDING: Check if exercises exist, if not, populate them (Fix for MemStorage persistence)
+  try {
+    const existing = await storage.getExerciseLibrary();
+    if (existing.length === 0) {
+      console.log("Seeding verified exercises into active storage...");
+      for (const ex of EXERCISES_DATA) {
+        await storage.createExerciseLibraryItem(ex);
+      }
+      console.log(`Seeded ${EXERCISES_DATA.length} exercises successfully.`);
+    }
+
+    // Seed sample discipline
+    const existingDisciplines = await storage.getDisciplines();
+    if (existingDisciplines.length === 0) {
+      console.log("Seeding sample discipline...");
+      await storage.createDiscipline({
+        name: "Mastery Quest",
+        description: "Your journey starts here. Learn to use DojoOS to master any skill.",
+        level: 1,
+        currentXp: 0,
+        maxXp: 100,
+        color: "text-primary",
+        icon: "Zap"
+      });
+      console.log("Sample discipline seeded.");
+    }
+  } catch (err) {
+    console.error("Seeding failed:", err);
+  }
+
+  // Auth Setup - REVERSIBLE: Set DISABLE_AUTH=true env var to disable
+  if (process.env.DISABLE_AUTH !== "true") {
+    setupAuth(app);
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -74,7 +115,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });

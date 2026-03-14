@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { X, Target, Save } from "lucide-react";
@@ -132,3 +132,4 @@ export default function GoalNewPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid, Brush } from "recharts";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -65,7 +65,7 @@ export default function Languages() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/knowledge-topics/${id}`);
+      return await apiRequest("DELETE", `/ api / knowledge - topics / ${id} `);
     },
     onMutate: async (id: string) => {
       await queryClient.cancelQueries({ queryKey: ["/api/knowledge-topics", "language"] });
@@ -98,6 +98,15 @@ export default function Languages() {
 
     const dateMap = new Map<string, Record<string, number>>();
 
+    // Always initialize with at least the last 14 days so the Brush scrollbar (arrows) can render
+    const today = new Date();
+    for (let i = 14; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      dateMap.set(dateStr, {});
+    }
+
     // Add all metrics data if available
     if (metricsData && metricsData.length > 0) {
       for (const m of metricsData) {
@@ -112,14 +121,7 @@ export default function Languages() {
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
-    
-    // If no metrics yet, create initial data with 0 completion
-    if (sortedDates.length === 0 && languageNames.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      sortedDates.push(today);
-      dateMap.set(today, {});
-    }
-    
+
     // Build continuous data with all languages on each date (fill gaps with previous value or 0)
     const finalLanguageNames = languageNames;
     const data = sortedDates.map((date, idx) => {
@@ -127,7 +129,7 @@ export default function Languages() {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
-      
+
       for (const langName of finalLanguageNames) {
         // Get value for this date, or use previous value, or default to 0
         if (dateMap.get(date)?.[langName] !== undefined) {
@@ -181,50 +183,51 @@ export default function Languages() {
             <CardDescription>Completion progress over time for each language</CardDescription>
           </CardHeader>
           <CardContent>
-            {chartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-80 w-full">
-                <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
+            <ChartContainer config={chartConfig} className="h-80 w-full aspect-auto">
+              <LineChart data={chartData} margin={{ top: 12, right: 0, bottom: 30, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                  tick={{ fontSize: 12, textAnchor: 'start', dx: -8 }}
+                  tickLine={false}
+                  axisLine={false}
+                  mirror={true}
+                  width={1}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <ChartTooltip
+                  content={<ChartTooltipContent />}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                {Object.keys(chartConfig).map((key) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    name={chartConfig[key].label}
+                    stroke={chartConfig[key].color}
+                    strokeWidth={2}
+                    dot={{ fill: chartConfig[key].color, r: 3 }}
+                    activeDot={{ r: 5 }}
                   />
-                  <YAxis 
-                    domain={[0, 100]} 
-                    ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                    tick={{ fontSize: 12 }} 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <ChartTooltip 
-                    content={<ChartTooltipContent />} 
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                  {Object.keys(chartConfig).map((key) => (
-                    <Line
-                      key={key}
-                      type="monotone"
-                      dataKey={key}
-                      name={chartConfig[key].label}
-                      stroke={chartConfig[key].color}
-                      strokeWidth={2}
-                      dot={{ fill: chartConfig[key].color, r: 3 }}
-                      activeDot={{ r: 5 }}
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-80 flex items-center justify-center text-muted-foreground">
-                {languages && languages.length > 0 
-                  ? "No metrics data yet - track your progress to see the chart"
-                  : "Add languages to see metrics chart"
-                }
-              </div>
-            )}
+                ))}
+                <Brush
+                  dataKey="date"
+                  height={30}
+                  stroke="hsl(var(--primary) / 0.5)"
+                  fill="transparent"
+                  startIndex={Math.max(0, chartData.length - 14)}
+                />
+              </LineChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -289,7 +292,7 @@ export default function Languages() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <LanguagesIcon className="w-5 h-5 text-chart-2" />
+                          <LanguagesIcon className="w-5 h-5 text-chart-4" />
                         </div>
                       </div>
                     </CardHeader>
@@ -341,3 +344,4 @@ export default function Languages() {
     </div>
   );
 }
+

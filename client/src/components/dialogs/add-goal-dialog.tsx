@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -93,7 +93,7 @@ export function AddGoalDialog() {
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea {...field} placeholder="Detailed description of the goal" data-testid="input-description" />
+                    <Textarea {...field} value={field.value ?? ""} placeholder="Detailed description of the goal" data-testid="input-description" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -108,13 +108,13 @@ export function AddGoalDialog() {
                   <FormItem>
                     <FormLabel>Year</FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        type="number" 
-                        value={field.value || ""} 
+                      <Input
+                        {...field}
+                        type="number"
+                        value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        placeholder="2025" 
-                        data-testid="input-year" 
+                        placeholder="2025"
+                        data-testid="input-year"
                       />
                     </FormControl>
                     <FormMessage />
@@ -128,8 +128,8 @@ export function AddGoalDialog() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Quarter</FormLabel>
-                    <Select 
-                      onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)} 
+                    <Select
+                      onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)}
                       value={field.value?.toString() || ""}
                     >
                       <FormControl>
@@ -156,15 +156,15 @@ export function AddGoalDialog() {
                   <FormItem>
                     <FormLabel>Month (Optional)</FormLabel>
                     <FormControl>
-                      <Input 
-                        {...field} 
-                        type="number" 
-                        value={field.value || ""} 
+                      <Input
+                        {...field}
+                        type="number"
+                        value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        placeholder="1-12" 
-                        min="1" 
-                        max="12" 
-                        data-testid="input-month" 
+                        placeholder="1-12"
+                        min="1"
+                        max="12"
+                        data-testid="input-month"
                       />
                     </FormControl>
                     <FormMessage />
@@ -213,3 +213,4 @@ export function AddGoalDialog() {
     </Dialog>
   );
 }
+

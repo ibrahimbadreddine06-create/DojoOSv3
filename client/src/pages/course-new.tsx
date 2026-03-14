@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { X, GraduationCap, Save } from "lucide-react";
@@ -131,3 +131,4 @@ export default function CourseNewPage() {
     </div>
   );
 }
+

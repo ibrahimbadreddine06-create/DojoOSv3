@@ -1,7 +1,7 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useParams, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { 
+import {
   X, FileText, Link2, Upload, Video, File, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,12 +30,13 @@ export default function MaterialNewPage() {
   const [, navigate] = useLocation();
   const chapterId = params.chapterId || "";
   const { toast } = useToast();
-  
+
   const searchParams = new URLSearchParams(window.location.search);
   const topicId = searchParams.get("topicId") || undefined;
   const courseId = searchParams.get("courseId") || undefined;
+  const disciplineId = searchParams.get("disciplineId") || undefined;
   const returnUrl = searchParams.get("return") || "/";
-  
+
   const [type, setType] = useState("link");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -43,7 +44,7 @@ export default function MaterialNewPage() {
   const [uploadMode, setUploadMode] = useState(false);
   const [fileName, setFileName] = useState("");
   const [fileData, setFileData] = useState("");
-  
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       return apiRequest("POST", "/api/materials", data);
@@ -61,19 +62,19 @@ export default function MaterialNewPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setFileName(file.name);
     if (!title.trim()) {
       setTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = reader.result as string;
       setFileData(base64);
     };
     reader.readAsDataURL(file);
-    
+
     if (file.type.includes("pdf")) {
       setType("pdf");
     } else if (file.type.includes("video")) {
@@ -92,7 +93,7 @@ export default function MaterialNewPage() {
       toast({ title: "Please select a file", variant: "destructive" });
       return;
     }
-    
+
     createMutation.mutate({
       type,
       title: title.trim(),
@@ -103,6 +104,7 @@ export default function MaterialNewPage() {
       chapterId,
       topicId,
       courseId,
+      disciplineId,
     });
   };
 
@@ -116,14 +118,14 @@ export default function MaterialNewPage() {
         <Button variant="ghost" size="icon" onClick={handleClose} data-testid="button-close">
           <X className="h-6 w-6" />
         </Button>
-        
+
         <h1 className="font-medium flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" />
           Add Material
         </h1>
-        
-        <Button 
-          onClick={handleSubmit} 
+
+        <Button
+          onClick={handleSubmit}
           disabled={!title.trim() || (uploadMode && !fileData) || createMutation.isPending}
           data-testid="button-save-material"
         >
@@ -135,9 +137,9 @@ export default function MaterialNewPage() {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-lg mx-auto space-y-6">
           <div className="flex gap-2">
-            <Button 
-              type="button" 
-              variant={!uploadMode ? "default" : "outline"} 
+            <Button
+              type="button"
+              variant={!uploadMode ? "default" : "outline"}
               onClick={() => setUploadMode(false)}
               className="flex-1"
               data-testid="button-link-mode"
@@ -145,9 +147,9 @@ export default function MaterialNewPage() {
               <Link2 className="h-4 w-4 mr-2" />
               Link
             </Button>
-            <Button 
-              type="button" 
-              variant={uploadMode ? "default" : "outline"} 
+            <Button
+              type="button"
+              variant={uploadMode ? "default" : "outline"}
               onClick={() => setUploadMode(true)}
               className="flex-1"
               data-testid="button-upload-mode"
@@ -238,3 +240,4 @@ export default function MaterialNewPage() {
     </div>
   );
 }
+

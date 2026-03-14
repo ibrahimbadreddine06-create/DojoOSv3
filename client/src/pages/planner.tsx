@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,17 +69,17 @@ function getSubBlockInternalWeight(subBlock: any): { total: number; completed: n
   const tasks = subBlock.tasks || [];
   if (tasks.length === 0) {
     // If no tasks, the sub-block itself counts as 1 unit
-    return { 
-      total: DEFAULT_IMPORTANCE, 
-      completed: subBlock.completed ? DEFAULT_IMPORTANCE : 0 
+    return {
+      total: DEFAULT_IMPORTANCE,
+      completed: subBlock.completed ? DEFAULT_IMPORTANCE : 0
     };
   }
-  
+
   const total = tasks.reduce((sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE), 0);
   const completed = tasks
     .filter((t: any) => t.completed)
     .reduce((sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE), 0);
-  
+
   return { total, completed };
 }
 
@@ -87,10 +87,10 @@ function getSubBlockInternalWeight(subBlock: any): { total: number; completed: n
 function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?: any[] | null | undefined): number {
   if (!tasks) tasks = [];
   if (!subBlocks) subBlocks = [];
-  
+
   let totalWeight = 0;
   let completedWeight = 0;
-  
+
   // Add direct tasks (each weighted by their importance)
   tasks.forEach(task => {
     const importance = task.importance || DEFAULT_IMPORTANCE;
@@ -99,18 +99,18 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
       completedWeight += importance;
     }
   });
-  
+
   // Add sub-blocks with hierarchical weighting
   // Sub-block weight = (sum of internal task importances) * (subBlock importance / DEFAULT_IMPORTANCE)
   subBlocks.forEach(subBlock => {
     const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
     const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
-    
+
     const internal = getSubBlockInternalWeight(subBlock);
     const subBlockWeight = internal.total * importanceMultiplier;
-    
+
     totalWeight += subBlockWeight;
-    
+
     // Calculate completion proportionally
     if (subBlock.completed) {
       // If manually marked complete, count full weight
@@ -121,28 +121,28 @@ function calculateWeightedCompletion(tasks: any[] | null | undefined, subBlocks?
       completedWeight += subBlockWeight * completionRatio;
     }
   });
-  
+
   return totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
 }
 
 // Calculate overall day completion using weighted logic across all time blocks
 function calculateDayCompletion(allBlocks: any[]): number {
   if (!allBlocks || allBlocks.length === 0) return 0;
-  
+
   const parentBlocks = allBlocks.filter(b => !b.parentId);
   if (parentBlocks.length === 0) return 0;
-  
+
   let totalDayWeight = 0;
   let completedDayWeight = 0;
-  
+
   parentBlocks.forEach(block => {
     const blockImportance = block.importance || DEFAULT_IMPORTANCE;
     const subBlocks = allBlocks.filter(b => b.parentId === block.id);
-    
+
     // Calculate this block's internal weight (tasks + sub-blocks)
     let blockInternalWeight = 0;
     let blockCompletedWeight = 0;
-    
+
     // Add direct tasks
     const tasks = block.tasks || [];
     tasks.forEach((task: any) => {
@@ -152,16 +152,16 @@ function calculateDayCompletion(allBlocks: any[]): number {
         blockCompletedWeight += taskImportance;
       }
     });
-    
+
     // Add sub-blocks with their hierarchical weights
     subBlocks.forEach(subBlock => {
       const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
       const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
       const internal = getSubBlockInternalWeight(subBlock);
       const subBlockWeight = internal.total * importanceMultiplier;
-      
+
       blockInternalWeight += subBlockWeight;
-      
+
       if (subBlock.completed) {
         blockCompletedWeight += subBlockWeight;
       } else if (internal.total > 0) {
@@ -169,7 +169,7 @@ function calculateDayCompletion(allBlocks: any[]): number {
         blockCompletedWeight += subBlockWeight * completionRatio;
       }
     });
-    
+
     // If block has no content, use block importance as base weight
     if (blockInternalWeight === 0) {
       blockInternalWeight = blockImportance;
@@ -177,13 +177,13 @@ function calculateDayCompletion(allBlocks: any[]): number {
         blockCompletedWeight = blockImportance;
       }
     }
-    
+
     // Apply block's importance as a multiplier to scale its contribution to the day
     const blockMultiplier = blockImportance / DEFAULT_IMPORTANCE;
     const finalBlockWeight = blockInternalWeight * blockMultiplier;
-    
+
     totalDayWeight += finalBlockWeight;
-    
+
     if (block.completed) {
       // If block is manually marked complete, count full weight
       completedDayWeight += finalBlockWeight;
@@ -193,48 +193,48 @@ function calculateDayCompletion(allBlocks: any[]): number {
       completedDayWeight += finalBlockWeight * blockCompletionRatio;
     }
   });
-  
+
   return totalDayWeight > 0 ? (completedDayWeight / totalDayWeight) * 100 : 0;
 }
 
 // Merge tasks and sub-blocks into one unified ordered list
 function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] | null | undefined): Array<{ type: 'task' | 'block'; data: any; order: number }> {
   const content: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
-  
+
   // Collect all items with their original orders
-  const taskItems = (tasks || []).map((t, idx) => ({ 
-    type: 'task' as const, 
-    data: t, 
+  const taskItems = (tasks || []).map((t, idx) => ({
+    type: 'task' as const,
+    data: t,
     order: typeof t.order === 'number' ? t.order : -1,
     originalIndex: idx
   }));
-  
-  const blockItems = (subBlocks || []).map((b, idx) => ({ 
-    type: 'block' as const, 
-    data: b, 
+
+  const blockItems = (subBlocks || []).map((b, idx) => ({
+    type: 'block' as const,
+    data: b,
     order: typeof b.order === 'number' ? b.order : -1,
     originalIndex: idx
   }));
-  
+
   // Check if we have meaningful order values (not all same/missing)
   const allItems = [...taskItems, ...blockItems];
   const orders = allItems.map(i => i.order).filter(o => o >= 0);
   const hasUniqueOrders = new Set(orders).size === orders.length && orders.length === allItems.length;
-  
+
   if (hasUniqueOrders) {
     // All items have unique order values - use them directly
     return allItems
       .map(({ type, data, order }) => ({ type, data, order }))
       .sort((a, b) => a.order - b.order);
   }
-  
+
   // Fallback: assign sequential orders, interleaving tasks and blocks alternately
   // This ensures they mix rather than group together
   let result: Array<{ type: 'task' | 'block'; data: any; order: number }> = [];
   let taskIdx = 0;
   let blockIdx = 0;
   let orderCounter = 0;
-  
+
   // Interleave: alternate between tasks and blocks
   while (taskIdx < taskItems.length || blockIdx < blockItems.length) {
     // Add a task if available
@@ -248,7 +248,7 @@ function mergeContentByOrder(tasks: any[] | null | undefined, subBlocks: any[] |
       blockIdx++;
     }
   }
-  
+
   return result;
 }
 
@@ -305,7 +305,7 @@ export default function Planner() {
   const [dragCursorY, setDragCursorY] = useState(0);
   const [draggedSubBlockId, setDraggedSubBlockId] = useState<string | null>(null);
   const [isPlannerExpanded, setIsPlannerExpanded] = useState(false);
-  
+
   // Preset creation mode state
   const [isPresetMode, setIsPresetMode] = useState(false);
   const [presetName, setPresetName] = useState("");
@@ -322,7 +322,7 @@ export default function Planner() {
   const [selectedPresetBlockId, setSelectedPresetBlockId] = useState<string | null>(null);
   const [presetBlockDialogOpen, setPresetBlockDialogOpen] = useState(false);
   const [presetBlockDialogTime, setPresetBlockDialogTime] = useState<{ start: string; end: string } | null>(null);
-  
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
@@ -383,9 +383,12 @@ export default function Planner() {
     queryKey: ["/api/daily-metrics"],
   });
 
-  const { data: presets, isLoading: presetsLoading } = useQuery<DayPreset[]>({
+  const { data: presets, isLoading: presetsLoading, isError: presetsError } = useQuery<DayPreset[]>({
     queryKey: ["/api/day-presets"],
   });
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [hasAutoScrolled, setHasAutoScrolled] = useState(false);
 
   // Calculate visible hours based on current time and expanded state
   // In preset mode, always show all hours
@@ -399,6 +402,21 @@ export default function Planner() {
     const hours = ALL_HOURS.filter(h => h >= startHour && h <= endHour);
     return { visibleHours: hours, hourOffset: startHour };
   }, [isPlannerExpanded, isPresetMode]);
+
+  useEffect(() => {
+    if (scrollContainerRef.current && !presetsLoading && !hasAutoScrolled && !isPresetMode && isPlannerExpanded) {
+      const currentHour = new Date().getHours();
+      // Scroll to 1 hour before current time to provide context
+      const targetScroll = Math.max(0, (currentHour - 1) * HOUR_HEIGHT);
+      scrollContainerRef.current.scrollTop = targetScroll;
+      setHasAutoScrolled(true);
+    }
+  }, [presetsLoading, hasAutoScrolled, isPresetMode, selectedDate, isPlannerExpanded]);
+
+  // Reset auto-scroll when date changes so we can scroll back to the current time
+  useEffect(() => {
+    setHasAutoScrolled(false);
+  }, [selectedDate, isPlannerExpanded]);
 
   const chartData = useMemo(() => {
     if (!allMetrics || allMetrics.length === 0) return [];
@@ -438,8 +456,9 @@ export default function Planner() {
       }
       return results;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", dateStr] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/time-blocks", dateStr] });
+      await queryClient.refetchQueries({ queryKey: ["/api/daily-metrics"] });
       toast({ title: "Preset applied successfully" });
     },
     onError: () => {
@@ -491,19 +510,19 @@ export default function Planner() {
   const handlePresetGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!gridRef.current) return;
     if ((e.target as HTMLElement).closest('[data-preset-block-id]')) return;
-    
+
     const rect = gridRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
     const hourIndex = Math.floor(y / HOUR_HEIGHT);
     const hour = Math.min(Math.max(hourIndex + hourOffset, 0), 23);
     const startTime = `${hour.toString().padStart(2, "0")}:00`;
     const endTime = `${Math.min(hour + 1, 24).toString().padStart(2, "0")}:00`;
-    
+
     // Open dialog instead of adding directly
     setPresetBlockDialogTime({ start: startTime, end: endTime });
     setPresetBlockDialogOpen(true);
   };
-  
+
   const handleAddPresetBlock = (block: {
     title: string;
     startTime: string;
@@ -522,7 +541,7 @@ export default function Planner() {
       linkedItemId: block.linkedItemId,
       tasks: [],
     };
-    setPresetBlocks([...presetBlocks, newBlock]);
+    setPresetBlocks(prev => [...prev, newBlock]);
     setSelectedPresetBlockId(newBlock.id);
     setPresetBlockDialogOpen(false);
     setPresetBlockDialogTime(null);
@@ -563,8 +582,8 @@ export default function Planner() {
     },
     onSuccess: async () => {
       // Fetch fresh data after mutation to get accurate completion
-      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
-        queryKey: ["/api/time-blocks", dateStr] 
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({
+        queryKey: ["/api/time-blocks", dateStr]
       });
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
@@ -582,8 +601,8 @@ export default function Planner() {
       return await apiRequest("PATCH", `/api/time-blocks/${id}`, { startTime, endTime });
     },
     onSuccess: async () => {
-      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
-        queryKey: ["/api/time-blocks", dateStr] 
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({
+        queryKey: ["/api/time-blocks", dateStr]
       });
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
@@ -600,11 +619,11 @@ export default function Planner() {
     mutationFn: async ({ blockId, taskText, importance }: { blockId: string; taskText: string; importance?: number }) => {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
-      
+
       // Calculate next order considering both existing tasks AND sub-blocks
       const existingTasks = block.tasks || [];
       const subBlocks = blocks?.filter(b => b.parentId === blockId) || [];
-      
+
       let maxOrder = -1;
       existingTasks.forEach((t: any) => {
         if (typeof t.order === 'number' && t.order > maxOrder) maxOrder = t.order;
@@ -612,7 +631,7 @@ export default function Planner() {
       subBlocks.forEach(b => {
         if (typeof b.order === 'number' && b.order > maxOrder) maxOrder = b.order;
       });
-      
+
       const newTask = {
         id: crypto.randomUUID(),
         text: taskText,
@@ -638,22 +657,22 @@ export default function Planner() {
     mutationFn: async ({ blockId, taskId }: { blockId: string; taskId: string }) => {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
-      const updatedTasks = block.tasks?.map(t => 
+      const updatedTasks = block.tasks?.map(t =>
         t.id === taskId ? { ...t, completed: !t.completed } : t
       ) || [];
-      
+
       // Check if all tasks are now completed or if any task is incomplete
       const allTasksCompleted = updatedTasks.length > 0 && updatedTasks.every(t => t.completed);
       const anyTaskIncomplete = updatedTasks.some(t => !t.completed);
-      
+
       // Update tasks
       await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks: updatedTasks });
-      
+
       // If all tasks are completed, mark the block as completed
       if (allTasksCompleted && !block.completed) {
         return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: true });
       }
-      
+
       // If any task is incomplete and block is completed, mark block as incomplete
       if (anyTaskIncomplete && block.completed) {
         return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { completed: false });
@@ -661,8 +680,8 @@ export default function Planner() {
     },
     onSuccess: async () => {
       // Fetch fresh data after mutation to get accurate completion
-      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({ 
-        queryKey: ["/api/time-blocks", dateStr] 
+      const updatedBlocks = await queryClient.fetchQuery<TimeBlock[]>({
+        queryKey: ["/api/time-blocks", dateStr]
       });
       if (updatedBlocks && updatedBlocks.length > 0) {
         const plannerCompletion = Math.round(calculateDayCompletion(updatedBlocks));
@@ -709,14 +728,14 @@ export default function Planner() {
       const fromBlock = blocks?.find(b => b.id === fromBlockId);
       const toBlock = blocks?.find(b => b.id === toBlockId);
       if (!fromBlock || !toBlock) throw new Error("Block not found");
-      
+
       // Find and remove task from source block
       const task = fromBlock.tasks?.find(t => t.id === taskId);
       if (!task) throw new Error("Task not found");
-      
+
       const fromTasks = fromBlock.tasks?.filter(t => t.id !== taskId) || [];
       const toTasks = [...(toBlock.tasks || []), task];
-      
+
       // Update both blocks
       await apiRequest("PATCH", `/api/time-blocks/${fromBlockId}`, { tasks: fromTasks });
       return await apiRequest("PATCH", `/api/time-blocks/${toBlockId}`, { tasks: toTasks });
@@ -734,13 +753,13 @@ export default function Planner() {
       const block = blocks?.find(b => b.id === blockId);
       if (!block) throw new Error("Block not found");
       const tasks = [...(block.tasks || [])];
-      
+
       const draggedIndex = tasks.findIndex(t => t.id === draggedTaskId);
       if (draggedIndex === -1) throw new Error("Task not found");
-      
+
       // Remove dragged task
       const [draggedTask] = tasks.splice(draggedIndex, 1);
-      
+
       // If target task exists, insert before it; otherwise add to end
       if (targetTaskId) {
         const targetIndex = tasks.findIndex(t => t.id === targetTaskId);
@@ -752,7 +771,7 @@ export default function Planner() {
       } else {
         tasks.push(draggedTask);
       }
-      
+
       return await apiRequest("PATCH", `/api/time-blocks/${blockId}`, { tasks });
     },
     onSuccess: () => {
@@ -768,31 +787,31 @@ export default function Planner() {
       const allBlocks = blocks || [];
       const parentBlock = allBlocks.find(b => b.id === parentId);
       if (!parentBlock) throw new Error("Parent block not found");
-      
+
       const subBlocks = allBlocks.filter(b => b.parentId === parentId);
       const content = mergeContentByOrder(parentBlock.tasks, subBlocks);
-      
-      const idx = content.findIndex(item => 
-        (item.type === 'task' && item.data.id === itemId) || 
+
+      const idx = content.findIndex(item =>
+        (item.type === 'task' && item.data.id === itemId) ||
         (item.type === 'block' && item.data.id === itemId)
       );
-      
+
       if (idx === -1) throw new Error("Item not found");
       if (direction === 'up' && idx === 0) throw new Error("Already at top");
       if (direction === 'down' && idx === content.length - 1) throw new Error("Already at bottom");
-      
+
       const newIdx = direction === 'up' ? idx - 1 : idx + 1;
-      
+
       // Assign new order values: swap positions
       const updates = [];
       const item1 = content[idx];
       const item2 = content[newIdx];
-      
+
       // Simple swap: item1 gets item2's order, item2 gets item1's order
       const tempOrder = item1.order;
       const newOrder1 = item2.order;
       const newOrder2 = tempOrder;
-      
+
       if (item1.type === 'task') {
         const updatedTask = { ...item1.data, order: newOrder1 };
         const updatedTasks = parentBlock.tasks!.map(t => t.id === itemId ? updatedTask : t);
@@ -800,7 +819,7 @@ export default function Planner() {
       } else {
         updates.push(apiRequest("PATCH", `/api/time-blocks/${item1.data.id}`, { order: newOrder1 }));
       }
-      
+
       if (item2.type === 'task') {
         const updatedTask = { ...item2.data, order: newOrder2 };
         const updatedTasks = parentBlock.tasks!.map(t => t.id === item2.data.id ? updatedTask : t);
@@ -808,7 +827,7 @@ export default function Planner() {
       } else {
         updates.push(apiRequest("PATCH", `/api/time-blocks/${item2.data.id}`, { order: newOrder2 }));
       }
-      
+
       return Promise.all(updates);
     },
     onSuccess: () => {
@@ -827,7 +846,7 @@ export default function Planner() {
   const handleTaskDragStart = (e: React.DragEvent, taskId: string, containerId: string, container: HTMLElement) => {
     e.dataTransfer!.effectAllowed = "move";
     const rect = container.getBoundingClientRect();
-    
+
     setDraggedTaskId(taskId);
     setDragInfo({
       id: taskId,
@@ -835,7 +854,7 @@ export default function Planner() {
       offset: 0,
       containerY: rect.top
     });
-    
+
     e.dataTransfer!.setData("draggedTaskId", taskId);
     e.dataTransfer!.setData("sourceBlockId", containerId);
   };
@@ -894,7 +913,7 @@ export default function Planner() {
     if (dragState) return;
     if (!gridRef.current) return;
     if ((e.target as HTMLElement).closest('[data-block-id]')) return;
-    
+
     const rect = gridRef.current.getBoundingClientRect();
     const y = e.clientY - rect.top + gridRef.current.scrollTop;
     const hourIndex = Math.floor(y / HOUR_HEIGHT);
@@ -933,15 +952,15 @@ export default function Planner() {
 
   const handleDragMove = useCallback((e: React.PointerEvent) => {
     if (!dragState || !gridRef.current) return;
-    
+
     const deltaY = e.clientY - dragState.startY;
     const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
-    
+
     if (dragState.type === 'move') {
       const newStartMinutes = snapToGrid(dragState.originalStartMinutes + deltaMinutes);
       const duration = dragState.originalEndMinutes - dragState.originalStartMinutes;
       const newEndMinutes = newStartMinutes + duration;
-      
+
       if (newStartMinutes >= 6 * 60 && newEndMinutes <= 24 * 60) {
         setTempBlock({
           id: dragState.blockId,
@@ -952,7 +971,7 @@ export default function Planner() {
     } else {
       const newEndMinutes = snapToGrid(dragState.originalEndMinutes + deltaMinutes);
       const minEnd = dragState.originalStartMinutes + 30;
-      
+
       if (newEndMinutes >= minEnd && newEndMinutes <= 24 * 60) {
         setTempBlock({
           id: dragState.blockId,
@@ -969,7 +988,7 @@ export default function Planner() {
         dragState.targetElement.releasePointerCapture(dragState.pointerId);
       } catch {
       }
-      
+
       if (tempBlock) {
         const block = blocks?.find(b => b.id === dragState.blockId);
         if (block && (block.startTime !== tempBlock.startTime || block.endTime !== tempBlock.endTime)) {
@@ -985,8 +1004,8 @@ export default function Planner() {
     setTempBlock(null);
   }, [dragState, tempBlock, blocks, updateBlockMutation]);
 
-  const completionPercent = dailyMetrics?.plannerCompletion 
-    ? parseFloat(dailyMetrics.plannerCompletion) 
+  const completionPercent = dailyMetrics?.plannerCompletion
+    ? parseFloat(dailyMetrics.plannerCompletion)
     : 0;
 
   const showTodayButton = !isToday(selectedDate);
@@ -999,7 +1018,7 @@ export default function Planner() {
   };
 
   return (
-    <div 
+    <div
       className="container mx-auto p-4 md:p-6 max-w-7xl"
       onPointerMove={dragState ? handleDragMove : undefined}
       onPointerUp={dragState ? handleDragEnd : undefined}
@@ -1036,32 +1055,27 @@ export default function Planner() {
         )}
 
         {!isPresetMode && (
-        <Card className="flex-shrink-0">
-          <CardHeader className="py-3 px-4">
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle className="text-sm font-medium">Completion History</CardTitle>
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${completionPercent}%` }}
-                  />
+          <Card className="flex-shrink-0">
+            <CardHeader className="py-3 px-4">
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-sm font-medium">Completion History</CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${completionPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-mono font-medium" data-testid="text-completion-score">
+                    {completionPercent.toFixed(0)}%
+                  </span>
                 </div>
-                <span className="text-sm font-mono font-medium" data-testid="text-completion-score">
-                  {completionPercent.toFixed(0)}%
-                </span>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="py-4 px-4">
-            {chartData.length === 0 ? (
-              <div className="h-96 flex items-center justify-center text-sm text-muted-foreground">
-                Start tracking to see your completion history
-              </div>
-            ) : (
+            </CardHeader>
+            <CardContent className="py-4 px-4">
               <div className="h-96">
-                <ChartContainer 
-                  config={chartConfig} 
+                <ChartContainer
+                  config={chartConfig}
                   className="h-full w-full"
                 >
                   <AreaChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
@@ -1072,17 +1086,17 @@ export default function Planner() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                    <XAxis 
-                      dataKey="date" 
-                      tickLine={false} 
+                    <XAxis
+                      dataKey="date"
+                      tickLine={false}
                       axisLine={false}
                       tick={{ fontSize: 12 }}
                       interval="preserveStartEnd"
                     />
-                    <YAxis 
-                      domain={[0, 100]} 
+                    <YAxis
+                      domain={[0, 100]}
                       ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                      tickLine={false} 
+                      tickLine={false}
                       axisLine={false}
                       tick={{ fontSize: 12 }}
                       width={40}
@@ -1109,108 +1123,110 @@ export default function Planner() {
                   </AreaChart>
                 </ChartContainer>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         )}
 
         <div className={`grid gap-4 auto-rows-max lg:auto-rows-auto ${isPresetMode ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-4'}`}>
-          <Card className={`order-1 lg:order-none ${isPresetMode ? '' : 'lg:col-span-3'}`}>
+          <Card className={`order-1 lg:order-none flex flex-col ${isPresetMode ? '' : 'lg:col-span-3 lg:h-[calc(100vh-[12rem])]'}`}>
             {isPresetMode && (
-            <CardHeader className="py-3 px-4 border-b">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Preset Schedule</CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    setPresetBlockDialogTime({ start: "09:00", end: "10:00" });
-                    setPresetBlockDialogOpen(true);
-                  }}
-                  data-testid="button-add-preset-block"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Block
-                </Button>
-              </div>
-            </CardHeader>
+              <CardHeader className="py-3 px-4 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium">Preset Schedule</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPresetBlockDialogTime({ start: "09:00", end: "10:00" });
+                      setPresetBlockDialogOpen(true);
+                    }}
+                    data-testid="button-add-preset-block"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Block
+                  </Button>
+                </div>
+              </CardHeader>
             )}
             {!isPresetMode && (
-            <CardHeader className="py-3 px-4 border-b">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePrevDay}
-                    data-testid="button-prev-day"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm font-medium" data-testid="text-selected-date">
-                    {getDateLabel(selectedDate)}
-                    {!isToday(selectedDate) && !isYesterday(selectedDate) && !isTomorrow(selectedDate) && (
-                      <span className="text-muted-foreground font-normal ml-2">
-                        {format(selectedDate, "yyyy")}
-                      </span>
-                    )}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleNextDay}
-                    data-testid="button-next-day"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  {showTodayButton && (
-                    <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
-                      Today
+              <CardHeader className="py-3 px-4 border-b">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrevDay}
+                      data-testid="button-prev-day"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
                     </Button>
-                  )}
-                  <AddTimeBlockDialog 
-                    date={dateStr} 
-                    open={addDialogOpen}
-                    onOpenChange={(open) => {
-                      setAddDialogOpen(open);
-                      if (!open) setAddSubBlockParentId(null);
-                    }}
-                    defaultStartTime={clickedTime?.start}
-                    defaultEndTime={clickedTime?.end}
-                    parentId={addSubBlockParentId || undefined}
-                  />
+                    <span className="text-sm font-medium" data-testid="text-selected-date">
+                      {getDateLabel(selectedDate)}
+                      {!isToday(selectedDate) && !isYesterday(selectedDate) && !isTomorrow(selectedDate) && (
+                        <span className="text-muted-foreground font-normal ml-2">
+                          {format(selectedDate, "yyyy")}
+                        </span>
+                      )}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleNextDay}
+                      data-testid="button-next-day"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {showTodayButton && (
+                      <Button variant="outline" size="sm" onClick={handleToday} data-testid="button-today">
+                        Today
+                      </Button>
+                    )}
+                    <AddTimeBlockDialog
+                      date={dateStr}
+                      open={addDialogOpen}
+                      onOpenChange={(open) => {
+                        setAddDialogOpen(open);
+                        if (!open) setAddSubBlockParentId(null);
+                      }}
+                      defaultStartTime={clickedTime?.start}
+                      defaultEndTime={clickedTime?.end}
+                      parentId={addSubBlockParentId || undefined}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
+              </CardHeader>
             )}
             <div className="h-px bg-border" />
-            
+
             {/* Expand/Collapse toggle - hidden in preset mode */}
             {!isPresetMode && (
-            <div 
-              className="flex items-center justify-center py-2 cursor-pointer hover-elevate border-b border-border/30"
-              onClick={() => setIsPlannerExpanded(!isPlannerExpanded)}
-              data-testid="planner-expand-toggle"
-            >
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {isPlannerExpanded ? (
-                  <>
-                    <ChevronUp className="w-4 h-4" />
-                    <span>Show less</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-4 h-4" />
-                    <span>Show full day ({ALL_HOURS.length - visibleHours.length} more hours)</span>
-                  </>
-                )}
+              <div
+                className="flex items-center justify-center py-2 cursor-pointer hover-elevate border-b border-border/30"
+                onClick={() => setIsPlannerExpanded(!isPlannerExpanded)}
+                data-testid="planner-expand-toggle"
+              >
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {isPlannerExpanded ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      <span>Show less</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      <span>Show full day ({ALL_HOURS.length - visibleHours.length} more hours)</span>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
             )}
-            
-            <div className="flex pl-3 pr-3 pt-4">
+
+            <div
+              className="flex pl-3 pr-3 pt-4 overflow-y-auto flex-1 relative min-h-[500px]"
+              ref={scrollContainerRef}
+            >
               <div className="w-14 flex-shrink-0 relative" style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}>
                 {visibleHours.map((hour, index) => (
                   <div
@@ -1225,7 +1241,7 @@ export default function Planner() {
                 ))}
               </div>
 
-              <div 
+              <div
                 ref={gridRef}
                 className={`relative flex-1 ${dragState ? 'cursor-grabbing select-none' : ''}`}
                 onClick={isPresetMode ? handlePresetGridClick : handleGridClick}
@@ -1234,7 +1250,7 @@ export default function Planner() {
                 style={{ height: visibleHours.length * HOUR_HEIGHT + 20 }}
               >
                 {visibleHours.map((hour, index) => (
-                  <div 
+                  <div
                     key={`grid-${hour}`}
                     className="absolute left-0 right-0 border-t border-border/50"
                     style={{ top: index * HOUR_HEIGHT }}
@@ -1269,7 +1285,7 @@ export default function Planner() {
                       const taskCount = block.tasks?.length || 0;
                       const completedTasks = block.tasks?.filter(t => t.completed).length || 0;
                       const isExpanded = expandedBlocks.has(block.id);
-                      
+
                       const HEADER_HEIGHT = 32;
                       const CONTENT_MIN_HEIGHT = 40;
                       const hasContent = taskCount > 0 || subBlocks.length > 0;
@@ -1277,33 +1293,32 @@ export default function Planner() {
                       const isCollapsed = contentOverflows && !isExpanded;
                       // If there's content and overflow, expand; otherwise use normal height
                       const displayHeight = isCollapsed ? HEADER_HEIGHT : (hasContent ? 'auto' : (isExpanded ? 'auto' : height));
-                      
+
                       return (
                         <div
                           key={block.id}
                           data-block-id={block.id}
-                          className={`absolute rounded-lg border flex flex-col overflow-hidden transition-all duration-200 ${
-                            isDragging ? 'shadow-2xl z-20' : 'shadow-sm hover:shadow-md'
-                          }`}
-                          style={{ 
-                            top: top + 2, 
+                          className={`absolute rounded-lg border flex flex-col overflow-hidden transition-all duration-200 ${isDragging ? 'shadow-2xl z-20' : 'shadow-sm hover:shadow-md'
+                            }`}
+                          style={{
+                            top: top + 2,
                             height: typeof displayHeight === 'number' ? Math.max(displayHeight - 4, HEADER_HEIGHT) : displayHeight,
                             minHeight: isExpanded ? height - 4 : HEADER_HEIGHT,
-                            left: '8px', 
+                            left: '8px',
                             right: '8px',
                             borderColor: `hsl(var(${colorVar}) / 0.5)`,
                             backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
                             zIndex: isExpanded ? 15 : isDragging ? 20 : 1,
-                            ...(isDragging && { 
+                            ...(isDragging && {
                               boxShadow: `0 25px 50px -12px hsl(var(${colorVar}) / 0.4), 0 0 0 1px hsl(var(${colorVar}) / 0.2)`,
                             })
                           }}
                           data-testid={`block-${block.id}`}
                         >
                           {/* Header - ONLY circular progress, title, time, drag */}
-                          <div 
+                          <div
                             className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
-                            style={{ 
+                            style={{
                               backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                               minHeight: HEADER_HEIGHT,
                             }}
@@ -1321,23 +1336,22 @@ export default function Planner() {
                               }}
                               data-testid={`checkbox-block-${block.id}`}
                             />
-                            <span className={`text-sm font-medium truncate flex-1 ${
-                              block.completed ? "line-through text-muted-foreground/60" : ""
-                            }`}>
+                            <span className={`text-sm font-medium truncate flex-1 ${block.completed ? "line-through text-muted-foreground/60" : ""
+                              }`}>
                               {block.title}
                             </span>
                             <span className="text-xs text-muted-foreground/70 font-mono shrink-0">
                               {block.startTime}–{block.endTime}
                             </span>
                             {!isPresetMode && (
-                            <div 
-                              className="cursor-grab active:cursor-grabbing shrink-0"
-                              style={{ touchAction: 'none' }}
-                              onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
-                              data-testid={`block-drag-handle-${block.id}`}
-                            >
-                              <GripVertical className="w-4 h-4 text-muted-foreground/60" />
-                            </div>
+                              <div
+                                className="cursor-grab active:cursor-grabbing shrink-0"
+                                style={{ touchAction: 'none' }}
+                                onPointerDown={(e) => handleDragStart(e, originalBlock, 'move')}
+                                data-testid={`block-drag-handle-${block.id}`}
+                              >
+                                <GripVertical className="w-4 h-4 text-muted-foreground/60" />
+                              </div>
                             )}
                             {contentOverflows && (
                               <Button
@@ -1380,9 +1394,9 @@ export default function Planner() {
 
                           {/* Content area - EVERYTHING (tasks, sub-blocks, buttons) - transparent */}
                           {!isCollapsed ? (
-                            <div 
+                            <div
                               className={`flex-1 flex flex-col gap-1.5 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
-                              style={{ 
+                              style={{
                                 ...(expandedContent === block.id && {
                                   position: 'fixed',
                                   inset: '0',
@@ -1403,7 +1417,7 @@ export default function Planner() {
                             >
                               {/* Unified Tasks and Sub-blocks - freely ordered together */}
                               {(taskCount > 0 || subBlocks.length > 0) && (
-                                <div 
+                                <div
                                   className="flex flex-col gap-1.5 overflow-y-auto flex-1 relative min-h-fit p-1"
                                   onClick={(e) => e.stopPropagation()}
                                 >
@@ -1411,7 +1425,7 @@ export default function Planner() {
                                     if (item.type === 'task') {
                                       const task = item.data;
                                       return (
-                                        <div 
+                                        <div
                                           key={task.id}
                                           className={`flex items-center gap-1.5 px-2 py-1 rounded border group transition-all duration-150 hover-elevate`}
                                           style={{
@@ -1477,229 +1491,229 @@ export default function Planner() {
                                       );
                                     } else {
                                       const subBlock = item.data;
-                                    const subIsExpanded = expandedBlocks.has(subBlock.id);
-                                    const SUB_HEADER_HEIGHT = 24;
-                                    const SUB_CONTENT_MIN = 20;
-                                    const subTaskCount = subBlock.tasks?.length || 0;
-                                    const subContentOverflows = subTaskCount > 0 && 60 < SUB_HEADER_HEIGHT + SUB_CONTENT_MIN;
-                                    const subIsCollapsed = subContentOverflows && !subIsExpanded;
-                                    
-                                    return (
-                                      <div
-                                        key={subBlock.id}
-                                        className={`relative flex flex-col group transition-all duration-200 rounded border ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
-                                        style={{
-                                          borderColor: `hsl(var(${colorVar}) / 0.5)`,
-                                          ...(expandedContent === subBlock.id && {
-                                            position: 'fixed',
-                                            inset: '0',
-                                            zIndex: 40,
-                                            margin: 0,
-                                            padding: '3rem 2.5rem 2.5rem 2.5rem',
-                                            borderRadius: '0.5rem',
-                                            maxHeight: '90vh',
-                                            left: '50%',
-                                            top: '50%',
-                                            transform: 'translate(-50%, -50%)',
-                                            width: '90%',
-                                            maxWidth: '600px',
-                                            backgroundColor: `hsl(var(${colorVar}) / 0.95)`,
-                                          })
-                                        }}
-                                        data-testid={`sub-block-nested-${subBlock.id}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {/* Sub-block header with drag handle */}
-                                        <div 
-                                          className="flex items-center gap-1.5 px-2 py-1 shrink-0 cursor-grab group rounded-t"
-                                          style={{ 
-                                            backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
+                                      const subIsExpanded = expandedBlocks.has(subBlock.id);
+                                      const SUB_HEADER_HEIGHT = 24;
+                                      const SUB_CONTENT_MIN = 20;
+                                      const subTaskCount = subBlock.tasks?.length || 0;
+                                      const subContentOverflows = subTaskCount > 0 && 60 < SUB_HEADER_HEIGHT + SUB_CONTENT_MIN;
+                                      const subIsCollapsed = subContentOverflows && !subIsExpanded;
+
+                                      return (
+                                        <div
+                                          key={subBlock.id}
+                                          className={`relative flex flex-col group transition-all duration-200 rounded border ${draggedSubBlockId === subBlock.id ? 'opacity-30 scale-95' : ''}`}
+                                          style={{
+                                            borderColor: `hsl(var(${colorVar}) / 0.5)`,
                                             ...(expandedContent === subBlock.id && {
-                                              position: 'sticky',
-                                              top: 0,
-                                              zIndex: 41,
+                                              position: 'fixed',
+                                              inset: '0',
+                                              zIndex: 40,
+                                              margin: 0,
+                                              padding: '3rem 2.5rem 2.5rem 2.5rem',
+                                              borderRadius: '0.5rem',
+                                              maxHeight: '90vh',
+                                              left: '50%',
+                                              top: '50%',
+                                              transform: 'translate(-50%, -50%)',
+                                              width: '90%',
+                                              maxWidth: '600px',
+                                              backgroundColor: `hsl(var(${colorVar}) / 0.95)`,
                                             })
                                           }}
-                                          draggable
-                                          onDragStart={(e) => {
-                                            e.dataTransfer!.effectAllowed = "move";
-                                            setDraggedSubBlockId(subBlock.id);
-                                            e.dataTransfer!.setData("draggedBlockId", subBlock.id);
-                                          }}
-                                          onDragEnd={() => setDraggedSubBlockId(null)}
+                                          data-testid={`sub-block-nested-${subBlock.id}`}
+                                          onClick={(e) => e.stopPropagation()}
                                         >
-                                          <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
-                                          </div>
-                                          <CircularProgress
-                                            completed={subBlock.completed}
-                                            progress={calculateWeightedCompletion(subBlock.tasks)}
-                                            diameter={14}
-                                            colorVar={colorVar}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (!dragState && !isPresetMode) {
-                                                toggleBlockMutation.mutate({ id: subBlock.id, completed: !subBlock.completed });
-                                              }
-                                            }}
-                                          />
-                                          <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
-                                            {subBlock.title}
-                                          </span>
-                                          {subContentOverflows && (
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              className="h-3 w-3 shrink-0"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setExpandedContent(expandedContent === subBlock.id ? null : subBlock.id);
-                                              }}
-                                              data-testid={`button-expand-sub-nested-${subBlock.id}`}
-                                            >
-                                              {expandedContent === subBlock.id ? (
-                                                <Minimize2 className="w-2 h-2" />
-                                              ) : (
-                                                <Maximize2 className="w-2 h-2" />
-                                              )}
-                                            </Button>
-                                          )}
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'up' });
-                                            }}
-                                            data-testid={`button-move-up-sub-${subBlock.id}`}
-                                          >
-                                            <ChevronUp className="w-2 h-2" />
-                                          </Button>
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'down' });
-                                            }}
-                                            data-testid={`button-move-down-sub-${subBlock.id}`}
-                                          >
-                                            <ChevronDown className="w-2 h-2" />
-                                          </Button>
-                                        </div>
-                                        
-                                        {/* Sub-block content */}
-                                        {!subIsCollapsed && (
-                                          <div 
-                                            className="flex flex-col gap-0.5 px-1.5 py-1 overflow-y-auto"
-                                            style={{ 
+                                          {/* Sub-block header with drag handle */}
+                                          <div
+                                            className="flex items-center gap-1.5 px-2 py-1 shrink-0 cursor-grab group rounded-t"
+                                            style={{
+                                              backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
                                               ...(expandedContent === subBlock.id && {
-                                                flex: 1,
+                                                position: 'sticky',
+                                                top: 0,
+                                                zIndex: 41,
                                               })
                                             }}
-                                            onClick={(e) => e.stopPropagation()}
+                                            draggable
+                                            onDragStart={(e) => {
+                                              e.dataTransfer!.effectAllowed = "move";
+                                              setDraggedSubBlockId(subBlock.id);
+                                              e.dataTransfer!.setData("draggedBlockId", subBlock.id);
+                                            }}
+                                            onDragEnd={() => setDraggedSubBlockId(null)}
                                           >
-                                            {subTaskCount > 0 && (
-                                              <div 
-                                                className="flex flex-col gap-0.5 relative min-h-fit"
-                                                data-task-container={subBlock.id}
-                                                onDragOver={(e) => {
-                                                  e.preventDefault();
-                                                  e.dataTransfer!.dropEffect = "move";
-                                                  handleTaskDragMove(e, subBlock.id);
+                                            <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
+                                            </div>
+                                            <CircularProgress
+                                              completed={subBlock.completed}
+                                              progress={calculateWeightedCompletion(subBlock.tasks)}
+                                              diameter={14}
+                                              colorVar={colorVar}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!dragState && !isPresetMode) {
+                                                  toggleBlockMutation.mutate({ id: subBlock.id, completed: !subBlock.completed });
+                                                }
+                                              }}
+                                            />
+                                            <span className={`text-xs font-medium truncate flex-1 ${subBlock.completed ? "line-through text-muted-foreground/60" : ""}`}>
+                                              {subBlock.title}
+                                            </span>
+                                            {subContentOverflows && (
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-3 w-3 shrink-0"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setExpandedContent(expandedContent === subBlock.id ? null : subBlock.id);
                                                 }}
-                                                onDrop={(e) => {
-                                                  e.preventDefault();
-                                                  const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
-                                                  const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
-                                                  handleTaskDragEnd();
-                                                  
-                                                  if (sourceBlockId && sourceBlockId !== subBlock.id) {
-                                                    moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: subBlock.id, taskId: draggedTaskId });
-                                                  } else if (draggedTaskId) {
-                                                    reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId: undefined });
-                                                  }
-                                                }}
+                                                data-testid={`button-expand-sub-nested-${subBlock.id}`}
                                               >
-                                                {sortChronologically(subBlock.tasks || []).map((task: any, idx: number) => {
-                                                  let transform = '';
-                                                  if (dragInfo && dragInfo.containerId === subBlock.id && dragInfo.id !== task.id) {
-                                                    const tasks = sortChronologically(subBlock.tasks || []);
-                                                    const draggedIdx = tasks.findIndex(t => t.id === dragInfo.id);
-                                                    const currentIdx = idx;
-                                                    const itemHeight = 24;
-                                                    if (dragCursorY > (idx + 0.5) * itemHeight && draggedIdx < currentIdx) {
-                                                      transform = `translateY(-${itemHeight}px)`;
-                                                    } else if (dragCursorY < (idx + 0.5) * itemHeight && draggedIdx > currentIdx) {
-                                                      transform = `translateY(${itemHeight}px)`;
-                                                    }
-                                                  }
-                                                  
-                                                  return (
-                                                  <div 
-                                                    key={task.id}
-                                                    data-drag-item
-                                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group rounded border ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
-                                                    style={{
-                                                      borderColor: `hsl(var(${colorVar}) / 0.4)`,
-                                                      transform,
-                                                      zIndex: draggedTaskId === task.id ? 50 : 'auto',
-                                                      position: draggedTaskId === task.id ? 'relative' : 'static'
-                                                    }}
-                                                    draggable
-                                                    onDragStart={(e) => handleTaskDragStart(e, task.id, subBlock.id, e.currentTarget.parentElement as HTMLElement)}
-                                                    onDragOver={(e) => {
-                                                      e.preventDefault();
-                                                      e.dataTransfer!.effectAllowed = "move";
-                                                      handleTaskDragMove(e);
-                                                    }}
-                                                    onDragEnd={handleTaskDragEnd}
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
-                                                    }}
-                                                  >
-                                                    <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                      <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
-                                                    </div>
-                                                    <CircularProgress
-                                                      completed={task.completed}
-                                                      diameter={12}
-                                                      colorVar={colorVar}
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
-                                                      }}
-                                                    />
-                                                    <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/60' : 'text-foreground/80'}`}>
-                                                      {task.text}
-                                                    </span>
-                                                  </div>
-                                                  );
-                                                })}
-                                              </div>
+                                                {expandedContent === subBlock.id ? (
+                                                  <Minimize2 className="w-2 h-2" />
+                                                ) : (
+                                                  <Maximize2 className="w-2 h-2" />
+                                                )}
+                                              </Button>
                                             )}
-                                            
-                                            
-                                            {/* Add task button for sub-block - opens form directly */}
                                             <Button
                                               size="icon"
                                               variant="ghost"
-                                              className="h-4 w-4 self-start"
+                                              className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                setAddTaskParentId(subBlock.id);
-                                                setAddTaskDialogOpen(true);
+                                                moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'up' });
                                               }}
-                                              data-testid={`button-add-task-sub-nested-${subBlock.id}`}
+                                              data-testid={`button-move-up-sub-${subBlock.id}`}
                                             >
-                                              <Plus className="w-2 h-2" style={{ color: `hsl(var(${colorVar}))` }} />
+                                              <ChevronUp className="w-2 h-2" />
+                                            </Button>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                moveContentMutation.mutate({ parentId: block.id, itemId: subBlock.id, direction: 'down' });
+                                              }}
+                                              data-testid={`button-move-down-sub-${subBlock.id}`}
+                                            >
+                                              <ChevronDown className="w-2 h-2" />
                                             </Button>
                                           </div>
-                                        )}
-                                      </div>
+
+                                          {/* Sub-block content */}
+                                          {!subIsCollapsed && (
+                                            <div
+                                              className="flex flex-col gap-0.5 px-1.5 py-1 overflow-y-auto"
+                                              style={{
+                                                ...(expandedContent === subBlock.id && {
+                                                  flex: 1,
+                                                })
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              {subTaskCount > 0 && (
+                                                <div
+                                                  className="flex flex-col gap-0.5 relative min-h-fit"
+                                                  data-task-container={subBlock.id}
+                                                  onDragOver={(e) => {
+                                                    e.preventDefault();
+                                                    e.dataTransfer!.dropEffect = "move";
+                                                    handleTaskDragMove(e, subBlock.id);
+                                                  }}
+                                                  onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    const draggedTaskId = e.dataTransfer!.getData("draggedTaskId");
+                                                    const sourceBlockId = e.dataTransfer!.getData("sourceBlockId");
+                                                    handleTaskDragEnd();
+
+                                                    if (sourceBlockId && sourceBlockId !== subBlock.id) {
+                                                      moveTaskMutation.mutate({ fromBlockId: sourceBlockId, toBlockId: subBlock.id, taskId: draggedTaskId });
+                                                    } else if (draggedTaskId) {
+                                                      reorderTasksMutation.mutate({ blockId: subBlock.id, draggedTaskId, targetTaskId: undefined });
+                                                    }
+                                                  }}
+                                                >
+                                                  {sortChronologically(subBlock.tasks || []).map((task: any, idx: number) => {
+                                                    let transform = '';
+                                                    if (dragInfo && dragInfo.containerId === subBlock.id && dragInfo.id !== task.id) {
+                                                      const tasks = sortChronologically(subBlock.tasks || []);
+                                                      const draggedIdx = tasks.findIndex(t => t.id === dragInfo.id);
+                                                      const currentIdx = idx;
+                                                      const itemHeight = 24;
+                                                      if (dragCursorY > (idx + 0.5) * itemHeight && draggedIdx < currentIdx) {
+                                                        transform = `translateY(-${itemHeight}px)`;
+                                                      } else if (dragCursorY < (idx + 0.5) * itemHeight && draggedIdx > currentIdx) {
+                                                        transform = `translateY(${itemHeight}px)`;
+                                                      }
+                                                    }
+
+                                                    return (
+                                                      <div
+                                                        key={task.id}
+                                                        data-drag-item
+                                                        className={`flex items-center gap-1 px-1.5 py-0.5 text-xs cursor-pointer hover-elevate transition-all duration-150 group rounded border ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
+                                                        style={{
+                                                          borderColor: `hsl(var(${colorVar}) / 0.4)`,
+                                                          transform,
+                                                          zIndex: draggedTaskId === task.id ? 50 : 'auto',
+                                                          position: draggedTaskId === task.id ? 'relative' : 'static'
+                                                        }}
+                                                        draggable
+                                                        onDragStart={(e) => handleTaskDragStart(e, task.id, subBlock.id, e.currentTarget.parentElement as HTMLElement)}
+                                                        onDragOver={(e) => {
+                                                          e.preventDefault();
+                                                          e.dataTransfer!.effectAllowed = "move";
+                                                          handleTaskDragMove(e);
+                                                        }}
+                                                        onDragEnd={handleTaskDragEnd}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
+                                                        }}
+                                                      >
+                                                        <div className="cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                          <GripVertical className="w-2.5 h-2.5 text-muted-foreground/30" />
+                                                        </div>
+                                                        <CircularProgress
+                                                          completed={task.completed}
+                                                          diameter={12}
+                                                          colorVar={colorVar}
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleTaskMutation.mutate({ blockId: subBlock.id, taskId: task.id });
+                                                          }}
+                                                        />
+                                                        <span className={`truncate text-xs ${task.completed ? 'line-through text-muted-foreground/60' : 'text-foreground/80'}`}>
+                                                          {task.text}
+                                                        </span>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              )}
+
+
+                                              {/* Add task button for sub-block - opens form directly */}
+                                              <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-4 w-4 self-start"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setAddTaskParentId(subBlock.id);
+                                                  setAddTaskDialogOpen(true);
+                                                }}
+                                                data-testid={`button-add-task-sub-nested-${subBlock.id}`}
+                                              >
+                                                <Plus className="w-2 h-2" style={{ color: `hsl(var(${colorVar}))` }} />
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     }
                                   })}
@@ -1707,7 +1721,7 @@ export default function Planner() {
                               )}
 
                               {/* Footer with + button and minimize button */}
-                              <div 
+                              <div
                                 className="flex items-center gap-1 px-2 py-1 mt-auto shrink-0"
                               >
                                 <Popover>
@@ -1766,7 +1780,7 @@ export default function Planner() {
                                     }}
                                     data-testid={`button-expand-${block.id}`}
                                   >
-                                    <ChevronDown 
+                                    <ChevronDown
                                       className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                                       style={{ color: `hsl(var(${colorVar}))` }}
                                     />
@@ -1780,15 +1794,15 @@ export default function Planner() {
 
                           {/* Resize handle - only in normal mode */}
                           {!isPresetMode && (
-                          <div 
-                            className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize"
-                            style={{ 
-                              touchAction: 'none',
-                              backgroundColor: `hsla(var(${colorVar}), 0.4)`,
-                            }}
-                            onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
-                            data-testid={`block-resize-handle-${block.id}`}
-                          />
+                            <div
+                              className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize"
+                              style={{
+                                touchAction: 'none',
+                                backgroundColor: `hsla(var(${colorVar}), 0.4)`,
+                              }}
+                              onPointerDown={(e) => handleDragStart(e, originalBlock, 'resize')}
+                              data-testid={`block-resize-handle-${block.id}`}
+                            />
                           )}
                         </div>
                       );
@@ -1807,65 +1821,70 @@ export default function Planner() {
           </Card>
 
           {!isPresetMode && (
-          <Card className="order-2 lg:order-none self-start">
-            <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
-              <div className="flex items-center justify-between gap-4">
-                <CardTitle className="text-sm font-medium">Presets</CardTitle>
-                <Button variant="ghost" size="icon" onClick={enterPresetMode} data-testid="button-create-preset">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-3 min-h-0">
-              {presetsLoading ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  Loading...
+            <Card className="order-2 lg:order-none self-start">
+              <CardHeader className="py-3 px-4 flex-shrink-0 border-b">
+                <div className="flex items-center justify-between gap-4">
+                  <CardTitle className="text-sm font-medium">Presets</CardTitle>
+                  <Button variant="ghost" size="icon" onClick={enterPresetMode} data-testid="button-create-preset">
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
-              ) : presets && presets.length > 0 ? (
-                <div className="space-y-2">
-                  {presets.map((preset) => (
-                    <div
-                      key={preset.id}
-                      className="group border rounded-md p-2 bg-card hover-elevate"
-                      data-testid={`preset-${preset.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm truncate">{preset.name}</span>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => applyPresetMutation.mutate(preset)}
-                            disabled={applyPresetMutation.isPending}
-                            data-testid={`button-apply-preset-${preset.id}`}
-                          >
-                            <Play className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deletePresetMutation.mutate(preset.id)}
-                            disabled={deletePresetMutation.isPending}
-                            data-testid={`button-delete-preset-${preset.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto p-3 min-h-[200px]">
+                {presetsLoading ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    Loading...
+                  </div>
+                ) : presetsError ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-destructive">
+                    <p className="text-sm">Failed to load presets</p>
+                    <p className="text-xs mt-1">Please try refreshing the page</p>
+                  </div>
+                ) : presets && presets.length > 0 ? (
+                  <div className="space-y-2">
+                    {presets.map((preset) => (
+                      <div
+                        key={preset.id}
+                        className="group border rounded-md p-2 bg-card hover-elevate"
+                        data-testid={`preset-${preset.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-sm truncate">{preset.name}</span>
+                          <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => applyPresetMutation.mutate(preset)}
+                              disabled={applyPresetMutation.isPending}
+                              data-testid={`button-apply-preset-${preset.id}`}
+                            >
+                              <Play className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => deletePresetMutation.mutate(preset.id)}
+                              disabled={deletePresetMutation.isPending}
+                              data-testid={`button-delete-preset-${preset.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {preset.blocks.length} block{preset.blocks.length !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {preset.blocks.length} block{preset.blocks.length !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                  <p className="text-sm">No presets saved</p>
-                  <p className="text-xs mt-1">Create a preset to quickly add common schedules</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                    <p className="text-sm">No presets saved</p>
+                    <p className="text-xs mt-1">Create a preset to quickly add common schedules</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
 
@@ -1875,7 +1894,7 @@ export default function Planner() {
           onSubmit={handleAddTaskDialog}
           isLoading={addTaskMutation.isPending}
         />
-        
+
         {/* Preset Block Dialog - uses the same dialog as normal mode */}
         <AddTimeBlockDialog
           date={dateStr}
@@ -1892,3 +1911,4 @@ export default function Planner() {
     </div>
   );
 }
+

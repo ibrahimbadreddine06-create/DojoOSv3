@@ -4,27 +4,30 @@ import { storage } from "./storage";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
-  insertMaterialSchema, insertFlashcardSchema, insertWorkoutSchema, insertExerciseSchema,
+  insertMaterialSchema, insertFlashcardSchema, insertWorkoutSchema,
+  insertExerciseLibrarySchema, insertWorkoutExerciseSchema, insertWorkoutSetSchema,
   insertIntakeLogSchema, insertSleepLogSchema, insertHygieneRoutineSchema,
   insertSalahLogSchema, insertQuranLogSchema, insertDhikrLogSchema, insertDuaLogSchema,
   insertTransactionSchema, insertMasterpieceSchema, insertMasterpieceSectionSchema,
   insertPossessionSchema, insertOutfitSchema, insertCourseSchema, insertLessonSchema,
   insertCourseExerciseSchema, insertBusinessSchema, insertWorkProjectSchema, insertTaskSchema,
-  insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema
+  insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema,
+  insertDisciplineSchema, insertDisciplineLogSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ===== TIME BLOCKS & PRESETS =====
   // Note: /linked route must come BEFORE /:date to avoid matching "linked" as a date
   app.get("/api/time-blocks/linked", async (req, res) => {
-    const { date, module, itemId } = req.query;
+    const { date, module, itemId, subItemId } = req.query;
     if (!date || !module) {
       return res.status(400).json({ message: "date and module are required" });
     }
     const blocks = await storage.getLinkedTimeBlocks(
-      date as string, 
-      module as string, 
-      itemId as string | undefined
+      date as string,
+      (module as string).replace(/-/g, '_'),
+      itemId as string | undefined,
+      subItemId as string | undefined
     );
     res.json(blocks);
   });
@@ -36,7 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/time-blocks", async (req, res) => {
     const data = insertTimeBlockSchema.parse(req.body);
-    
+
     if (data.parentId) {
       const parent = await storage.getTimeBlock(data.parentId);
       if (!parent) {
@@ -46,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Maximum nesting depth is 2 levels (block → sub-block)" });
       }
     }
-    
+
     const block = await storage.createTimeBlock(data);
     res.json(block);
   });
@@ -116,20 +119,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== KNOWLEDGE TRACKING =====
-  app.get("/api/knowledge-topics/:type", async (req, res) => {
-    const themes = await storage.getKnowledgeTopics(req.params.type);
-    res.json(themes);
-  });
-
   app.get("/api/knowledge-topics/detail/:id", async (req, res) => {
     const theme = await storage.getKnowledgeTopic(req.params.id);
     res.json(theme);
   });
 
+  app.get("/api/knowledge-topics/:type", async (req, res) => {
+    const type = req.params.type;
+
+    const normalizedType = type.replace(/-/g, '_');
+
+    // Generic hub for linkable items across modules
+    switch (normalizedType) {
+      case "goals":
+        const goals = await storage.getGoals();
+        return res.json(goals.map(g => ({ id: g.id, name: g.title })));
+      case "disciplines":
+        const disciplines = await storage.getDisciplines();
+        return res.json(disciplines.map(d => ({ id: d.id, name: d.name })));
+      case "body":
+        // Level 2 for body is the sub-modules
+        return res.json([
+          { id: "body_intake", name: "Intake & Hydration" },
+          { id: "body_sleep", name: "Sleep & Recovery" },
+          { id: "body_hygiene", name: "Hygiene & Appearance" },
+          { id: "body_workouts", name: "Workouts & Fitness" },
+        ]);
+      case "masterpieces":
+        const masterpieces = await storage.getMasterpieces();
+        return res.json(masterpieces.map(m => ({ id: m.id, name: m.title })));
+      case "possessions":
+        const possessions = await storage.getPossessions();
+        return res.json(possessions.map(p => ({ id: p.id, name: p.name })));
+      case "studies":
+        const courses = await storage.getCourses();
+        return res.json(courses.map(c => ({ id: c.id, name: c.name })));
+      case "business":
+        const businesses = await storage.getBusinesses();
+        return res.json(businesses.map(b => ({ id: b.id, name: b.name })));
+      case "work":
+        const projects = await storage.getWorkProjects("work");
+        return res.json(projects.map(p => ({ id: p.id, name: p.name })));
+      case "social_purpose":
+        const activities = await storage.getSocialActivities();
+        return res.json(activities.map(a => ({ id: a.id, name: a.title })));
+      case "second_brain":
+      case "languages":
+      case "language":
+        const dbType = (normalizedType === "languages" || normalizedType === "language") ? "language" : normalizedType;
+        const themes = await storage.getKnowledgeTopics(dbType);
+        return res.json(themes.map(t => ({ id: t.id, name: t.name })));
+      default:
+        res.json([]);
+    }
+  });
+
+  app.get("/api/page-settings", async (req, res) => {
+    const settings = await storage.getPageSettings();
+    res.json(settings);
+  });
+
   app.post("/api/knowledge-topics", async (req, res) => {
-    const data = insertKnowledgeTopicSchema.parse(req.body);
-    const theme = await storage.createKnowledgeTopic(data);
-    res.json(theme);
+    try {
+      const data = insertKnowledgeTopicSchema.parse(req.body);
+      const theme = await storage.createKnowledgeTopic(data);
+      res.json(theme);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message || "Invalid request data" });
+    }
   });
 
   app.delete("/api/knowledge-topics/:id", async (req, res) => {
@@ -138,12 +195,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route for course chapters must come first (more specific path)
+  app.get("/api/learn-plan-items/discipline/:disciplineId", async (req, res) => {
+    const items = await storage.getLearnPlanItemsByDiscipline(req.params.disciplineId);
+    res.json(items);
+  });
+
   app.get("/api/learn-plan-items/course/:courseId", async (req, res) => {
     const items = await storage.getCourseLearnPlanItems(req.params.courseId);
     res.json(items);
   });
 
-  // Route for theme chapters (less specific, matches any :topicId)
+  app.get("/api/linkable-sub-items/:module/:itemId", async (req, res) => {
+    const { module, itemId } = req.params;
+    const normalizedModule = module.replace(/-/g, '_');
+
+    switch (normalizedModule) {
+      case "second_brain":
+      case "languages":
+      case "language":
+        const items = await storage.getLearnPlanItems(itemId);
+        return res.json(items.map(i => ({ id: i.id, name: i.title })));
+      case "disciplines":
+        const disciplineItems = await storage.getLearnPlanItemsByDiscipline(itemId);
+        return res.json(disciplineItems.map(i => ({ id: i.id, name: i.title })));
+      case "studies":
+        const lessons = await storage.getCourseLearnPlanItems(itemId);
+        return res.json(lessons.map(l => ({ id: l.id, name: l.title })));
+      case "goals":
+        const allGoals = await storage.getGoals();
+        const subgoals = allGoals.filter(g => g.parentId === itemId);
+        return res.json(subgoals.map(g => ({ id: g.id, name: g.title })));
+      case "masterpieces":
+        const sections = await storage.getMasterpieceSections(itemId);
+        return res.json(sections.map(s => ({ id: s.id, name: s.title })));
+      case "body":
+        if (itemId === "body_workouts") {
+          const exercises = await storage.getExerciseLibrary();
+          return res.json(exercises.map(e => ({ id: e.id, name: e.name })));
+        }
+        if (itemId === "body_hygiene") {
+          const today = new Date().toISOString().split('T')[0];
+          const routines = await storage.getHygieneRoutines(today);
+          return res.json(routines.map(r => ({ id: r.id, name: r.name || "Routine" })));
+        }
+        return res.json([]);
+      case "business":
+      case "work":
+        const tasks = await storage.getTasks(itemId);
+        return res.json(tasks.map(t => ({ id: t.id, name: t.title })));
+      default:
+        res.json([]);
+    }
+  });
+
   app.get("/api/learn-plan-items/:topicId", async (req, res) => {
     const items = await storage.getLearnPlanItems(req.params.topicId);
     res.json(items);
@@ -163,6 +267,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/learn-plan-items/:id", async (req, res) => {
     await storage.deleteLearnPlanItem(req.params.id);
     res.json({ success: true });
+  });
+
+  app.get("/api/learn-plan-items/discipline/:disciplineId", async (req, res) => {
+    const items = await storage.getLearnPlanItemsByDiscipline(req.params.disciplineId);
+    res.json(items);
   });
 
   // Materials routes - more specific routes first
@@ -185,6 +294,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/materials/:topicId", async (req, res) => {
     const materials = await storage.getMaterials(req.params.topicId);
+    res.json(materials);
+  });
+
+  app.get("/api/materials/discipline/:disciplineId", async (req, res) => {
+    const materials = await storage.getMaterialsByDiscipline(req.params.disciplineId);
     res.json(materials);
   });
 
@@ -255,6 +369,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(flashcards);
   });
 
+  app.get("/api/flashcards/discipline/:disciplineId", async (req, res) => {
+    const flashcards = await storage.getFlashcardsByDiscipline(req.params.disciplineId);
+    res.json(flashcards);
+  });
+
   app.get("/api/flashcards/course/:courseId", async (req, res) => {
     const flashcards = await storage.getFlashcardsByCourse(req.params.courseId);
     res.json(flashcards);
@@ -291,7 +410,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== BODY =====
   app.get("/api/workouts/:date", async (req, res) => {
     const workouts = await storage.getWorkouts(req.params.date);
-    res.json(workouts);
+    // Enhance workouts with exercises
+    const enhancedWorkouts = await Promise.all(workouts.map(async (w) => {
+      const exercises = await storage.getWorkoutExercises(w.id);
+      return { ...w, exercises };
+    }));
+    res.json(enhancedWorkouts);
   });
 
   app.post("/api/workouts", async (req, res) => {
@@ -300,15 +424,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(workout);
   });
 
-  app.get("/api/exercises/:workoutId", async (req, res) => {
-    const exercises = await storage.getExercises(req.params.workoutId);
+  app.get("/api/workouts/detail/:id", async (req, res) => {
+    const workout = await storage.getWorkout(req.params.id);
+    if (!workout) return res.status(404).json({ message: "Workout not found" });
+    const exercises = await storage.getWorkoutExercises(workout.id);
+    res.json({ ...workout, exercises });
+  });
+
+  app.patch("/api/workouts/:id", async (req, res) => {
+    const workout = await storage.updateWorkout(req.params.id, req.body);
+    res.json(workout);
+  });
+
+  app.get("/api/workout-presets", async (req, res) => {
+    const presets = await storage.getWorkoutPresets();
+    res.json(presets);
+  });
+
+  app.post("/api/workout-presets", async (req, res) => {
+    const { insertWorkoutPresetSchema } = await import("@shared/schema");
+    const data = insertWorkoutPresetSchema.parse(req.body);
+    const preset = await storage.createWorkoutPreset(data);
+    res.json(preset);
+  });
+
+  app.delete("/api/workout-presets/:id", async (req, res) => {
+    await storage.deleteWorkoutPreset(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Exercise Library
+  app.get("/api/exercise-library", async (req, res) => {
+    const library = await storage.getExerciseLibrary();
+    res.json(library);
+  });
+
+  // Alias for legacy/frontend compatibility
+  app.get("/api/exercises", async (req, res) => {
+    const library = await storage.getExerciseLibrary();
+    res.json(library);
+  });
+
+  app.post("/api/exercise-library", async (req, res) => {
+    const data = insertExerciseLibrarySchema.parse(req.body);
+    const item = await storage.createExerciseLibraryItem(data);
+    res.json(item);
+  });
+
+  // Workout Execution
+  app.get("/api/workouts/:id/exercises", async (req, res) => {
+    const exercises = await storage.getWorkoutExercises(req.params.id);
     res.json(exercises);
   });
 
-  app.post("/api/exercises", async (req, res) => {
-    const data = insertExerciseSchema.parse(req.body);
-    const exercise = await storage.createExercise(data);
-    res.json(exercise);
+  app.post("/api/workout-exercises", async (req, res) => {
+    const data = insertWorkoutExerciseSchema.parse(req.body);
+    const we = await storage.createWorkoutExercise(data);
+    res.json(we);
+  });
+
+  app.patch("/api/workout-exercises/:id", async (req, res) => {
+    // Need to add updateWorkoutExercise to storage if not exists, but for now just skip or assume it exists? 
+    // Actually I haven't added updateWorkoutExercise to storage interface. 
+    // I'll skip this one for now as I might not need to update exercise-level notes often, 
+    // but sets definitively need updates.
+    res.status(501).json({ message: "Not implemented" });
+  });
+
+  app.post("/api/workout-sets", async (req, res) => {
+    const data = insertWorkoutSetSchema.parse(req.body);
+    const set = await storage.createWorkoutSet(data);
+    res.json(set);
+  });
+
+  app.patch("/api/workout-sets/:id", async (req, res) => {
+    // Need updateWorkoutSet in storage
+    const set = await storage.updateWorkoutSet(req.params.id, req.body);
+    res.json(set);
+  });
+
+  // Muscle Stats
+  app.get("/api/muscle-stats", async (req, res) => {
+    const stats = await storage.getMuscleStats();
+    res.json(stats);
+  });
+
+  app.post("/api/muscle-stats", async (req, res) => {
+    const { muscleId, recoveryScore } = req.body;
+    const stat = await storage.upsertMuscleStat(muscleId, recoveryScore);
+    res.json(stat);
   });
 
   app.get("/api/intake-logs/:date", async (req, res) => {
@@ -434,6 +638,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = insertPossessionSchema.parse(req.body);
     const possession = await storage.createPossession(data);
     res.json(possession);
+  });
+
+  app.patch("/api/possessions/:id", async (req, res) => {
+    const possession = await storage.updatePossession(req.params.id, req.body);
+    res.json(possession);
+  });
+
+  app.delete("/api/possessions/:id", async (req, res) => {
+    await storage.deletePossession(req.params.id);
+    res.json({ success: true });
   });
 
   app.get("/api/outfits", async (req, res) => {
@@ -639,6 +853,244 @@ export async function registerRoutes(app: Express): Promise<Server> {
       speech: 0,
     });
   });
+
+  // ===== DISCIPLINES MOODULE =====
+  app.get("/api/disciplines", async (req, res) => {
+    const disciplines = await storage.getDisciplines();
+    res.json(disciplines);
+  });
+
+  app.get("/api/discipline-metrics-all", async (req, res) => {
+    // For now, we can calculate the current completion for each discipline
+    const disciplines = await storage.getDisciplines();
+    const metrics = await Promise.all(disciplines.map(async (d) => {
+      const completion = await storage.calculateDisciplineWeightedCompletion(d.id);
+      return {
+        topicId: d.id,
+        topicName: d.name,
+        date: new Date().toISOString().split('T')[0],
+        completion: completion.toString(),
+        importance: 0 // Placeholder
+      };
+    }));
+    res.json(metrics);
+  });
+
+  app.get("/api/disciplines/:id", async (req, res) => {
+    const discipline = await storage.getDiscipline(req.params.id);
+    if (!discipline) return res.status(404).json({ message: "Discipline not found" });
+    res.json(discipline);
+  });
+
+  app.post("/api/disciplines", async (req, res) => {
+    try {
+      const data = insertDisciplineSchema.parse(req.body);
+      const discipline = await storage.createDiscipline(data);
+      res.json(discipline);
+    } catch (error: any) {
+      console.error("Discipline creation error:", error);
+      res.status(400).json({ message: error.message || "Failed to create discipline" });
+    }
+  });
+
+  app.patch("/api/disciplines/:id", async (req, res) => {
+    const discipline = await storage.updateDiscipline(req.params.id, req.body);
+    res.json(discipline);
+  });
+
+  app.delete("/api/disciplines/:id", async (req, res) => {
+    await storage.deleteDiscipline(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/disciplines/:id/logs", async (req, res) => {
+    const logs = await storage.getDisciplineLogs(req.params.id);
+    res.json(logs);
+  });
+
+  app.post("/api/disciplines/:id/log", async (req, res) => {
+    const data = insertDisciplineLogSchema.parse(req.body);
+
+    // Create the log
+    const log = await storage.createDisciplineLog({ ...data, disciplineId: req.params.id });
+
+    // Update Discipline XP and Level logic
+    const discipline = await storage.getDiscipline(req.params.id);
+    if (discipline) {
+      let level = discipline.level || 1;
+      let currentXp = (discipline.currentXp || 0) + data.xpGained;
+      let maxXp = discipline.maxXp || 100;
+
+      // Level up logic
+      while (currentXp >= maxXp) {
+        currentXp -= maxXp;
+        level += 1;
+        maxXp = Math.floor(maxXp * 1.5);
+      }
+
+      await storage.updateDiscipline(req.params.id, {
+        level,
+        currentXp,
+        maxXp
+      });
+    }
+
+    res.json(log);
+  });
+
+  // ===== SOCIAL =====
+  app.get("/api/users/:username/profile", async (req, res) => {
+    const user = await storage.getUserByUsername(req.params.username);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Determine relationship
+    let isFollowing = false;
+    let isSelf = false;
+
+    if (req.user) {
+      isSelf = req.user.id === user.id;
+      if (!isSelf) {
+        const followers = await storage.getFollowers(user.id);
+        isFollowing = followers.some(f => f.followerId === req.user!.id);
+      }
+    }
+
+    // Check visibility logic
+    // If public -> show. If private -> show only if following or self.
+    const canView = !user.isPrivate || isFollowing || isSelf;
+
+    // Fetch privacy settings
+    const privacySettings = await storage.getPrivacySettings(user.id);
+    const settingsMap = new Map(privacySettings.map(s => [s.module, s.visibility]));
+
+    // Helper to check if a specific module is visible
+    const isModuleVisible = (moduleName: string) => {
+      if (isSelf) return true;
+      const setting = settingsMap.get(moduleName as any) || "private"; // Default strict
+      if (setting === "public") return true;
+      if (setting === "followers" && isFollowing) return true;
+      return false;
+    };
+
+    // Construct response
+    const profile = {
+      id: user.id,
+      username: user.username,
+      bio: user.bio,
+      profileImageUrl: user.profileImageUrl,
+      isPrivate: user.isPrivate,
+      stats: {
+        following: (await storage.getFollowing(user.id)).length,
+        followers: (await storage.getFollowers(user.id)).length,
+      },
+      relationship: { isFollowing, isSelf },
+      modules: {
+        goals: isModuleVisible("goals") ? await storage.getGoals().then(gs => gs.length) : null, // Privacy-aware summary
+        // Add more modules summaries based on visibility
+      }
+    };
+
+    res.json(profile);
+  });
+
+  app.get("/api/users/search", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+
+    const query = (req.query.q as string) || "";
+
+    try {
+      const users = await storage.searchUsers(query);
+      const myFollowing = await storage.getFollowing(req.user.id);
+      const followingIds = new Set(myFollowing.map(f => f.followingId));
+
+      // Sanitize and map results
+      const results = users
+        .filter(u => u.id !== req.user!.id) // Exclude self
+        .map(u => ({
+          id: u.id,
+          username: u.username,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          profileImageUrl: u.profileImageUrl,
+          isFollowing: followingIds.has(u.id)
+        }));
+
+      res.json(results);
+    } catch (err) {
+      console.error("User search failed:", err);
+      res.status(500).send("Search failed");
+    }
+  });
+
+  app.post("/api/users/:id/follow", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    if (req.user.id === req.params.id) return res.status(400).send("Cannot follow self");
+
+    // Check if user exists
+    const target = await storage.getUser(req.params.id);
+    if (!target) return res.status(404).send("User not found");
+
+    // Check if already following
+    const followers = await storage.getFollowers(req.params.id);
+    if (followers.some(f => f.followerId === req.user!.id)) {
+      return res.status(200).json({ message: "Already following" });
+    }
+
+    const follow = await storage.followUser(req.user.id, req.params.id);
+    res.json(follow);
+  });
+
+  app.delete("/api/users/:id/follow", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    await storage.unfollowUser(req.user.id, req.params.id);
+    res.sendStatus(200);
+  });
+
+  app.patch("/api/me/profile", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const { bio, username } = req.body;
+
+    if (username && username !== req.user.username) {
+      const existing = await storage.getUserByUsername(username);
+      if (existing) return res.status(400).json({ message: "Username already taken" });
+    }
+
+    const updated = await storage.upsertUser({
+      ...req.user,
+      ...(bio !== undefined ? { bio } : {}),
+      ...(username !== undefined ? { username } : {})
+    } as any);
+
+    res.json(updated);
+  });
+
+  app.patch("/api/me/privacy", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    // Body: { module: string, visibility: 'public' | 'followers' | 'private' }
+    // or { globalPrivate: boolean }
+
+    if (req.body.globalPrivate !== undefined) {
+      await storage.upsertUser({ ...req.user, isPrivate: req.body.globalPrivate } as any);
+    }
+
+    if (req.body.module && req.body.visibility) {
+      const setting = await storage.upsertPrivacySetting({
+        userId: req.user.id,
+        module: req.body.module,
+        visibility: req.body.visibility
+      } as any);
+    }
+
+    res.sendStatus(200);
+  });
+
+  app.get("/api/me/privacy", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const settings = await storage.getPrivacySettings(req.user.id);
+    res.json(settings);
+  });
+
+
 
   const httpServer = createServer(app);
   return httpServer;

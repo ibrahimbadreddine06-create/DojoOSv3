@@ -4,6 +4,19 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ===== ENUMS =====
+export const priorityEnum = pgEnum("priority", ["low", "medium", "high"]);
+export const salahStatusEnum = pgEnum("salah_status", ["on_time", "late", "makeup", "missed"]);
+export const laundryStatusEnum = pgEnum("laundry_status", ["clean", "second_wear", "dirty"]);
+export const intakeStatusEnum = pgEnum("intake_status", ["planned", "consumed"]);
+export const moduleEnum = pgEnum("module", [
+  "planner", "goals", "second_brain", "languages", "disciplines",
+  "body", "body_workout", "body_intake", "body_sleep", "body_hygiene",
+  "worship", "finances", "masterpieces", "possessions", "studies",
+  "business", "work", "social_purpose"
+]);
+export const visibilityEnum = pgEnum("visibility", ["public", "followers", "private"]);
+
 // ===== AUTHENTICATION (Replit Auth) =====
 // Session storage table - mandatory for Replit Auth
 export const sessions = pgTable(
@@ -23,24 +36,50 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  username: varchar("username").unique().notNull(),
+  password: text("password").notNull(),
+  salt: text("salt"), // Optional manual salt if needed, though scrypt/argon2 usually handle it
+  encryptionKeySalt: text("encryption_key_salt"), // Reserved for client-side encryption key derivation
+  bio: text("bio"),
+  isPrivate: boolean("is_private").notNull().default(true),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
+export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-// ===== ENUMS =====
-export const priorityEnum = pgEnum("priority", ["low", "medium", "high"]);
-export const salahStatusEnum = pgEnum("salah_status", ["on_time", "late", "makeup", "missed"]);
-export const laundryStatusEnum = pgEnum("laundry_status", ["clean", "second_wear", "dirty"]);
-export const moduleEnum = pgEnum("module", [
-  "planner", "goals", "second_brain", "languages", "disciplines",
-  "body", "body_workout", "body_intake", "body_sleep", "body_hygiene",
-  "worship", "finances", "masterpieces", "possessions", "studies",
-  "business", "work", "social_purpose"
-]);
+// ===== SOCIAL & PRIVACY =====
+
+export const follows = pgTable(
+  "follows",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    followerId: varchar("follower_id").notNull(),
+    followingId: varchar("following_id").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_follows_follower").on(table.followerId),
+    index("IDX_follows_following").on(table.followingId),
+  ]
+);
+
+export const privacySettings = pgTable(
+  "privacy_settings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    module: moduleEnum("module").notNull(),
+    visibility: visibilityEnum("visibility").notNull().default("private"),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("IDX_privacy_user").on(table.userId),
+  ]
+);
 
 // ===== TIME BLOCKS & PRESETS =====
 export const timeBlocks = pgTable("time_blocks", {
@@ -135,6 +174,7 @@ export const learnPlanItems = pgTable("learn_plan_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
+  disciplineId: varchar("discipline_id"), // For Disciplines
   parentId: varchar("parent_id"), // For nested chapters (infinite depth: 1.1 → 1.1.1 → 1.1.1.1)
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
@@ -148,6 +188,7 @@ export const materials = pgTable("materials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
+  disciplineId: varchar("discipline_id"), // For Disciplines
   chapterId: varchar("chapter_id"), // Optional: link material to specific chapter
   type: text("type").notNull(), // "pdf", "video", "link", "file"
   title: text("title").notNull(),
@@ -162,6 +203,7 @@ export const flashcards = pgTable("flashcards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   topicId: varchar("topic_id"), // For Second Brain / Languages
   courseId: varchar("course_id"), // For Studies (courses)
+  disciplineId: varchar("discipline_id"), // For Disciplines
   chapterId: varchar("chapter_id"), // Optional: link to specific chapter
   front: text("front").notNull(),
   back: text("back").notNull(),
@@ -200,6 +242,10 @@ export const learnPlanItemsRelations = relations(learnPlanItems, ({ one, many })
     fields: [learnPlanItems.courseId],
     references: [courses.id],
   }),
+  discipline: one(disciplines, {
+    fields: [learnPlanItems.disciplineId],
+    references: [disciplines.id],
+  }),
   parent: one(learnPlanItems, {
     fields: [learnPlanItems.parentId],
     references: [learnPlanItems.id],
@@ -217,6 +263,10 @@ export const materialsRelations = relations(materials, ({ one, many }) => ({
     fields: [materials.courseId],
     references: [courses.id],
   }),
+  discipline: one(disciplines, {
+    fields: [materials.disciplineId],
+    references: [disciplines.id],
+  }),
   chapter: one(learnPlanItems, {
     fields: [materials.chapterId],
     references: [learnPlanItems.id],
@@ -232,6 +282,10 @@ export const flashcardsRelations = relations(flashcards, ({ one }) => ({
   course: one(courses, {
     fields: [flashcards.courseId],
     references: [courses.id],
+  }),
+  discipline: one(disciplines, {
+    fields: [flashcards.disciplineId],
+    references: [disciplines.id],
   }),
   chapter: one(learnPlanItems, {
     fields: [flashcards.chapterId],
@@ -252,6 +306,7 @@ export const chapterNotes = pgTable("chapter_notes", {
   chapterId: varchar("chapter_id").notNull(),
   topicId: varchar("topic_id"),
   courseId: varchar("course_id"),
+  disciplineId: varchar("discipline_id"),
   title: text("title").notNull(),
   content: text("content").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow(),
@@ -271,42 +326,91 @@ export const chapterNotesRelations = relations(chapterNotes, ({ one }) => ({
     fields: [chapterNotes.courseId],
     references: [courses.id],
   }),
+  discipline: one(disciplines, {
+    fields: [chapterNotes.disciplineId],
+    references: [disciplines.id],
+  }),
 }));
 
 // ===== BODY TRACKING =====
 export const workouts = pgTable("workouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: date("date").notNull(),
+  date: timestamp("date").notNull(),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const exercises = pgTable("exercises", {
+export const exerciseLibrary = pgTable("exercise_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  targetMuscleGroup: text("target_muscle_group"), // Matches BodyMap IDs
+  secondaryMuscles: text("secondary_muscles").array(),
+  category: text("category"), // barbell, dumbbell, machine, bodyweight, cardio
+  instructions: text("instructions"),
+  imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const workoutExercises = pgTable("workout_exercises", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workoutId: varchar("workout_id").notNull(),
-  name: text("name").notNull(),
-  sets: integer("sets"),
+  exerciseId: varchar("exercise_id").notNull(), // Links to exerciseLibrary
+  order: integer("order").notNull().default(0),
+  notes: text("notes"),
+});
+
+export const workoutSets = pgTable("workout_sets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workoutExerciseId: varchar("workout_exercise_id").notNull(),
+  setNumber: integer("set_number").notNull(),
   reps: integer("reps"),
   weight: decimal("weight", { precision: 6, scale: 2 }),
-  notes: text("notes"),
+  rpe: decimal("rpe", { precision: 3, scale: 1 }), // Rate of Perceived Exertion (1-10)
+  completed: boolean("completed").notNull().default(false),
+});
+
+export const muscleStats = pgTable("muscle_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  muscleId: text("muscle_id").notNull(), // Matches BodyMap IDs
+  recoveryScore: integer("recovery_score").default(100), // 0-100%
+  lastTrained: timestamp("last_trained"),
+  volumeAccumulated: integer("volume_accumulated").default(0), // Rolling window volume
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const workoutPresets = pgTable("workout_presets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  // exercises: list of { exerciseId: string, sets: number, targetReps: string }
+  exercises: jsonb("exercises").$type<{ exerciseId: string; sets: number; targetReps?: string }[]>().notNull(),
+  lastPerformed: timestamp("last_performed"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const intakeLogs = pgTable("intake_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: date("date").notNull(),
+  date: timestamp("date").notNull(), // Changed from date to timestamp for time tracking
   mealName: text("meal_name"),
   calories: decimal("calories", { precision: 7, scale: 2 }),
   protein: decimal("protein", { precision: 6, scale: 2 }),
   carbs: decimal("carbs", { precision: 6, scale: 2 }),
   fats: decimal("fats", { precision: 6, scale: 2 }),
   notes: text("notes"),
+  imageUrl: text("image_url"), // Added for food photos
+  status: intakeStatusEnum("status").notNull().default("consumed"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const sleepLogs = pgTable("sleep_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   date: date("date").notNull(),
+  startTime: timestamp("start_time"), // Added for precise tracking
+  endTime: timestamp("end_time"),     // Added for precise tracking
   plannedHours: decimal("planned_hours", { precision: 4, scale: 2 }),
   actualHours: decimal("actual_hours", { precision: 4, scale: 2 }),
   quality: integer("quality"), // 1-5
@@ -321,13 +425,29 @@ export const hygieneRoutines = pgTable("hygiene_routines", {
 });
 
 export const workoutsRelations = relations(workouts, ({ many }) => ({
-  exercises: many(exercises),
+  workoutExercises: many(workoutExercises),
 }));
 
-export const exercisesRelations = relations(exercises, ({ one }) => ({
+export const exerciseLibraryRelations = relations(exerciseLibrary, ({ many }) => ({
+  workoutExercises: many(workoutExercises),
+}));
+
+export const workoutExercisesRelations = relations(workoutExercises, ({ one, many }) => ({
   workout: one(workouts, {
-    fields: [exercises.workoutId],
+    fields: [workoutExercises.workoutId],
     references: [workouts.id],
+  }),
+  exercise: one(exerciseLibrary, {
+    fields: [workoutExercises.exerciseId],
+    references: [exerciseLibrary.id],
+  }),
+  sets: many(workoutSets),
+}));
+
+export const workoutSetsRelations = relations(workoutSets, ({ one }) => ({
+  workoutExercise: one(workoutExercises, {
+    fields: [workoutSets.workoutExerciseId],
+    references: [workoutExercises.id],
   }),
 }));
 
@@ -411,6 +531,7 @@ export const possessions = pgTable("possessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   category: text("category").notNull(), // "clothing", "perfume", "house", "car", etc.
   name: text("name").notNull(),
+  imageUrl: text("image_url"),
   value: decimal("value", { precision: 12, scale: 2 }),
   wishlist: boolean("wishlist").notNull().default(false),
   laundryStatus: laundryStatusEnum("laundry_status"), // Only for clothing
@@ -557,6 +678,7 @@ export const pageSettings = pgTable("page_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   module: text("module").notNull().unique(),
   active: boolean("active").notNull().default(true),
+  color: text("color"), // Hex code or HSL value
 });
 
 // ===== DAILY METRICS =====
@@ -578,7 +700,11 @@ export const insertMaterialSchema = createInsertSchema(materials).omit({ id: tru
 export const insertChapterNoteSchema = createInsertSchema(chapterNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true, createdAt: true });
 export const insertWorkoutSchema = createInsertSchema(workouts).omit({ id: true, createdAt: true });
-export const insertExerciseSchema = createInsertSchema(exercises).omit({ id: true });
+export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true, createdAt: true });
+export const insertWorkoutExerciseSchema = createInsertSchema(workoutExercises).omit({ id: true });
+export const insertWorkoutSetSchema = createInsertSchema(workoutSets).omit({ id: true });
+export const insertMuscleStatSchema = createInsertSchema(muscleStats).omit({ id: true, updatedAt: true });
+
 export const insertIntakeLogSchema = createInsertSchema(intakeLogs).omit({ id: true, createdAt: true });
 export const insertSleepLogSchema = createInsertSchema(sleepLogs).omit({ id: true });
 export const insertHygieneRoutineSchema = createInsertSchema(hygieneRoutines).omit({ id: true });
@@ -601,6 +727,7 @@ export const insertSocialActivitySchema = createInsertSchema(socialActivities).o
 export const insertPersonSchema = createInsertSchema(people).omit({ id: true, createdAt: true });
 export const insertPageSettingSchema = createInsertSchema(pageSettings).omit({ id: true });
 export const insertDailyMetricSchema = createInsertSchema(dailyMetrics).omit({ id: true, createdAt: true });
+export const insertWorkoutPresetSchema = createInsertSchema(workoutPresets).omit({ id: true, createdAt: true, lastPerformed: true });
 
 // ===== TYPES =====
 export type TimeBlock = typeof timeBlocks.$inferSelect;
@@ -623,8 +750,15 @@ export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type Workout = typeof workouts.$inferSelect;
 export type InsertWorkout = z.infer<typeof insertWorkoutSchema>;
-export type Exercise = typeof exercises.$inferSelect;
-export type InsertExercise = z.infer<typeof insertExerciseSchema>;
+export type ExerciseLibraryItem = typeof exerciseLibrary.$inferSelect;
+export type InsertExerciseLibraryItem = z.infer<typeof insertExerciseLibrarySchema>;
+export type WorkoutExercise = typeof workoutExercises.$inferSelect;
+export type InsertWorkoutExercise = z.infer<typeof insertWorkoutExerciseSchema>;
+export type WorkoutSet = typeof workoutSets.$inferSelect;
+export type InsertWorkoutSet = z.infer<typeof insertWorkoutSetSchema>;
+export type MuscleStat = typeof muscleStats.$inferSelect;
+export type InsertMuscleStat = z.infer<typeof insertMuscleStatSchema>;
+
 export type IntakeLog = typeof intakeLogs.$inferSelect;
 export type InsertIntakeLog = z.infer<typeof insertIntakeLogSchema>;
 export type SleepLog = typeof sleepLogs.$inferSelect;
@@ -639,6 +773,10 @@ export type DhikrLog = typeof dhikrLogs.$inferSelect;
 export type InsertDhikrLog = z.infer<typeof insertDhikrLogSchema>;
 export type DuaLog = typeof duaLogs.$inferSelect;
 export type InsertDuaLog = z.infer<typeof insertDuaLogSchema>;
+
+export type WorkoutPreset = typeof workoutPresets.$inferSelect;
+export type InsertWorkoutPreset = z.infer<typeof insertWorkoutPresetSchema>;
+
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Masterpiece = typeof masterpieces.$inferSelect;
@@ -671,3 +809,59 @@ export type DailyMetric = typeof dailyMetrics.$inferSelect;
 export type InsertDailyMetric = z.infer<typeof insertDailyMetricSchema>;
 export type KnowledgeMetric = typeof knowledgeMetrics.$inferSelect;
 export type CourseMetric = typeof courseMetrics.$inferSelect;
+
+// ===== DISCIPLINES (Gamified Skill Tracking) =====
+export const disciplines = pgTable("disciplines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  level: integer("level").default(1),
+  currentXp: integer("current_xp").default(0),
+  maxXp: integer("max_xp").default(100), // Scaling XP per level
+  color: text("color").default("text-primary"), // Custom branding
+  icon: text("icon").default("Zap"), // Lucide icon name
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const disciplineLogs = pgTable("discipline_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  disciplineId: varchar("discipline_id").references(() => disciplines.id),
+  date: timestamp("date").defaultNow(),
+  durationMinutes: integer("duration_minutes"), // Optional
+  notes: text("notes"),
+  xpGained: integer("xp_gained").notNull(),
+});
+
+export const disciplinesRelations = relations(disciplines, ({ many }) => ({
+  logs: many(disciplineLogs),
+}));
+
+export const disciplineLogsRelations = relations(disciplineLogs, ({ one }) => ({
+  discipline: one(disciplines, {
+    fields: [disciplineLogs.disciplineId],
+    references: [disciplines.id],
+  }),
+}));
+
+export const insertDisciplineSchema = createInsertSchema(disciplines, {
+  level: z.number().optional(),
+  currentXp: z.number().optional(),
+  maxXp: z.number().optional(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+}).omit({ id: true, createdAt: true });
+export const insertDisciplineLogSchema = createInsertSchema(disciplineLogs, {
+  durationMinutes: z.number().optional(),
+}).omit({ id: true });
+
+export type Discipline = typeof disciplines.$inferSelect;
+export type InsertDiscipline = z.infer<typeof insertDisciplineSchema>;
+export type DisciplineLog = typeof disciplineLogs.$inferSelect;
+export type InsertDisciplineLog = z.infer<typeof insertDisciplineLogSchema>;
+
+// Social & Privacy Types
+export type Follow = typeof follows.$inferSelect;
+export type InsertFollow = typeof follows.$inferInsert;
+export type PrivacySetting = typeof privacySettings.$inferSelect;
+export type InsertPrivacySetting = typeof privacySettings.$inferInsert;
+export type UpdatePrivacySetting = Partial<InsertPrivacySetting>;

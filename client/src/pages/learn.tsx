@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { 
+import {
   X, Settings, HelpCircle, Keyboard, MoreHorizontal,
   Plus, Frown, Meh, Smile, Laugh
 } from "lucide-react";
@@ -38,6 +38,68 @@ interface StudyCard extends Flashcard {
   originalIndex: number;
 }
 
+function calculateSM2(rating: RatingType, card: Pick<Flashcard, "interval" | "ease" | "goodCount">) {
+  let interval = card.interval || 0;
+  let goodCount = card.goodCount || 0;
+  let ease = parseFloat(card.ease?.toString() || "2.5");
+
+  let quality = 0;
+  let shouldLock = true;
+  let pushPos = -1;
+
+  switch (rating) {
+    case "bad": quality = 0; break;
+    case "ok": quality = 3; break;
+    case "good": quality = 4; break;
+    case "perfect": quality = 5; break;
+  }
+
+  if (quality < 3) {
+    goodCount = 0;
+    interval = 0;
+    shouldLock = false;
+    pushPos = 4;
+  } else {
+    if (interval === 0) {
+      if (rating === "ok") {
+        interval = 0;
+        shouldLock = false;
+        pushPos = 999;
+      } else if (rating === "good") {
+        interval = 1;
+        goodCount = 1;
+      } else if (rating === "perfect") {
+        interval = 3;
+        goodCount = 1;
+      }
+    } else {
+      if (goodCount === 0) {
+        interval = 1;
+      } else if (goodCount === 1) {
+        interval = 6;
+      } else {
+        interval = Math.round(interval * ease);
+        if (rating === "ok") interval = Math.max(Math.round(interval * 0.8), interval + 1);
+        if (rating === "perfect") interval = Math.round(interval * 1.3);
+      }
+      goodCount++;
+    }
+  }
+
+  ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  if (ease < 1.3) ease = 1.3;
+
+  return { interval, ease: ease.toFixed(2), goodCount, shouldLock, pushPos };
+}
+
+function formatInterval(interval: number) {
+  if (interval === 0) return "<10m";
+  if (interval === 1) return "1d";
+  if (interval < 30) return `${interval}d`;
+  if (interval < 365) return `${Math.round(interval / 30)}mo`;
+  return `${Math.round(interval / 365)}y`;
+}
+
 const colorClasses: Record<CardColor, string> = {
   gray: "bg-muted-foreground/30",
   red: "bg-red-500",
@@ -46,19 +108,19 @@ const colorClasses: Record<CardColor, string> = {
   blue: "bg-blue-500",
 };
 
-function SegmentedProgressBar({ 
+function SegmentedProgressBar({
   lockedCards,
   activeCards,
   currentCardId,
   total,
-}: { 
+}: {
   lockedCards: StudyCard[];
   activeCards: StudyCard[];
   currentCardId: string | null;
   total: number;
 }) {
   if (total === 0) return null;
-  
+
   return (
     <div className="flex items-center gap-0.5 px-4 py-3" data-testid="progress-bar">
       {/* Locked cards first (with thick border) */}
@@ -72,7 +134,7 @@ function SegmentedProgressBar({
           title={`Locked (${card.color})`}
         />
       ))}
-      
+
       {/* Active cards */}
       {activeCards.map((card) => {
         const isCurrent = card.id === currentCardId;
@@ -103,14 +165,7 @@ function FlashcardView({
   onFlip: () => void;
   queueLength: number;
 }) {
-  const stripHtml = (html: string) => {
-    if (!html) return "";
-    const tmp = document.createElement("div");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
-  };
-
-  const displayText = showBack ? stripHtml(card.back) : stripHtml(card.front);
+  const displayHtml = showBack ? card.back : card.front;
 
   return (
     <div className="flex-1 flex items-center justify-center p-4 md:p-8">
@@ -118,20 +173,20 @@ function FlashcardView({
       <div className="relative w-full max-w-3xl">
         {/* Stacked cards behind (show up to 2 cards in queue) */}
         {queueLength > 2 && (
-          <div 
+          <div
             className="absolute inset-0 bg-card/40 border border-border/30 rounded-2xl transform translate-x-3 translate-y-3 md:translate-x-4 md:translate-y-4"
             style={{ zIndex: 1 }}
           />
         )}
         {queueLength > 1 && (
-          <div 
+          <div
             className="absolute inset-0 bg-card/60 border border-border/50 rounded-2xl transform translate-x-1.5 translate-y-1.5 md:translate-x-2 md:translate-y-2"
             style={{ zIndex: 2 }}
           />
         )}
-        
+
         {/* Main flashcard */}
-        <div 
+        <div
           className="relative w-full bg-card border border-border rounded-2xl shadow-xl cursor-pointer min-h-[360px] md:min-h-[420px] p-4 md:p-6 flex flex-col"
           style={{ zIndex: 3 }}
           onClick={onFlip}
@@ -141,8 +196,8 @@ function FlashcardView({
           <div className="flex justify-end mb-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   className="text-muted-foreground hover:text-foreground h-8 w-8"
                   onClick={(e) => e.stopPropagation()}
@@ -159,10 +214,11 @@ function FlashcardView({
 
           {/* Card content - centered */}
           <div className="flex-1 flex items-center justify-center overflow-hidden">
-            <div className="w-full overflow-y-auto max-h-[280px] md:max-h-[320px]">
-              <p className="text-lg md:text-2xl lg:text-3xl text-foreground text-center leading-relaxed break-words">
-                {displayText}
-              </p>
+            <div className="w-full overflow-y-auto max-h-[280px] md:max-h-[320px] px-2 py-4">
+              <div
+                className="text-lg md:text-2xl lg:text-3xl text-foreground text-center leading-relaxed break-words prose dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: displayHtml }}
+              />
             </div>
           </div>
         </div>
@@ -174,36 +230,44 @@ function FlashcardView({
 function RatingButtons({
   onRate,
   disabled,
+  card,
 }: {
   onRate: (rating: RatingType) => void;
   disabled: boolean;
+  card: StudyCard;
 }) {
+  const getIntervalLabel = (rating: RatingType) => {
+    const next = calculateSM2(rating, card);
+    if (!next.shouldLock) return "<10m";
+    return formatInterval(next.interval);
+  };
+
   const ratings = [
-    { 
-      type: "bad" as RatingType, 
-      label: "Bad", 
-      interval: "in 4 cards",
+    {
+      type: "bad" as RatingType,
+      label: "Bad",
+      interval: getIntervalLabel("bad"),
       icon: Frown,
       bgColor: "bg-red-700 hover:bg-red-800 dark:bg-red-800 dark:hover:bg-red-900",
     },
-    { 
-      type: "ok" as RatingType, 
-      label: "OK", 
-      interval: "in 4 days",
+    {
+      type: "ok" as RatingType,
+      label: "OK",
+      interval: getIntervalLabel("ok"),
       icon: Meh,
       bgColor: "bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800",
     },
-    { 
-      type: "good" as RatingType, 
-      label: "Good", 
-      interval: "in 8 days",
+    {
+      type: "good" as RatingType,
+      label: "Good",
+      interval: getIntervalLabel("good"),
       icon: Smile,
       bgColor: "bg-green-700 hover:bg-green-800 dark:bg-green-800 dark:hover:bg-green-900",
     },
-    { 
-      type: "perfect" as RatingType, 
-      label: "Perfect", 
-      interval: "in 18 days",
+    {
+      type: "perfect" as RatingType,
+      label: "Perfect",
+      interval: getIntervalLabel("perfect"),
       icon: Laugh,
       bgColor: "bg-blue-700 hover:bg-blue-800 dark:bg-blue-800 dark:hover:bg-blue-900",
     },
@@ -251,7 +315,7 @@ function SessionComplete({
       <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-6">
         <Smile className="w-12 h-12 text-green-500" />
       </div>
-      
+
       <h2 className="text-3xl font-bold mb-2 text-foreground">Session Complete!</h2>
       <p className="text-muted-foreground mb-8">Great work on your study session</p>
 
@@ -271,15 +335,15 @@ function SessionComplete({
       </div>
 
       <div className="flex gap-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="lg"
           onClick={onContinue}
           data-testid="button-continue-learning"
         >
           Continue Learning
         </Button>
-        <Button 
+        <Button
           size="lg"
           onClick={onExit}
           data-testid="button-finish"
@@ -295,7 +359,7 @@ export default function LearnPage() {
   const params = useParams<{ chapterId: string }>();
   const [, navigate] = useLocation();
   const chapterId = params.chapterId || "";
-  
+
   const [studyQueue, setStudyQueue] = useState<StudyCard[]>([]);
   const [lockedCards, setLockedCards] = useState<StudyCard[]>([]);
   const [initialTotal, setInitialTotal] = useState(0);
@@ -309,6 +373,7 @@ export default function LearnPage() {
   const shuffle = searchParams.get("shuffle") !== "false";
   const topicId = searchParams.get("topicId") || undefined;
   const courseId = searchParams.get("courseId") || undefined;
+  const disciplineId = searchParams.get("disciplineId") || undefined;
   const chapterTitle = searchParams.get("title") || "Learning";
 
   const { data: flashcards = [], isLoading } = useQuery<Flashcard[]>({
@@ -318,24 +383,30 @@ export default function LearnPage() {
   useEffect(() => {
     if (flashcards.length > 0 && !initialized) {
       let cards: Flashcard[] = [];
-      
+
       switch (mode) {
         case "new":
-          cards = flashcards.filter(f => f.mastery === 0);
+          cards = flashcards.filter(f => !f.interval || f.interval === 0);
           break;
         case "review":
-          cards = flashcards.filter(f => f.mastery > 0 && f.mastery < 4);
+          const now = new Date();
+          cards = flashcards.filter(f => {
+            if (f.interval && f.interval > 0 && f.nextReview) {
+              return new Date(f.nextReview) <= now;
+            }
+            return f.mastery > 0 && f.mastery < 4;
+          });
           break;
         case "all":
         default:
           cards = [...flashcards];
           break;
       }
-      
-      const orderedCards = shuffle 
+
+      const orderedCards = shuffle
         ? cards.sort(() => Math.random() - 0.5)
         : cards.sort((a, b) => (a.order || 0) - (b.order || 0));
-        
+
       const studyCards: StudyCard[] = orderedCards.map((card, i) => ({
         ...card,
         color: "gray" as CardColor,
@@ -343,7 +414,7 @@ export default function LearnPage() {
         previousRating: null,
         originalIndex: i,
       }));
-      
+
       setStudyQueue(studyCards);
       setLockedCards([]);
       setInitialTotal(studyCards.length);
@@ -354,14 +425,15 @@ export default function LearnPage() {
   const currentCard = studyQueue[0];
   const currentIndex = initialTotal - studyQueue.length;
 
+
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string; updates: Partial<Flashcard> }) => {
       return apiRequest("PATCH", `/api/flashcards/${data.id}`, data.updates);
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/flashcards/chapter", chapterId] });
-      
-      const entityId = topicId || courseId;
+
+      const entityId = topicId || courseId || disciplineId;
       if (entityId) {
         if (topicId) {
           await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/theme", topicId] });
@@ -369,19 +441,31 @@ export default function LearnPage() {
         if (courseId) {
           await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/course", courseId] });
         }
-        
-        const chaptersKey = topicId ? ["/api/learn-plan-items", topicId] : ["/api/learn-plan-items/course", courseId];
-        const flashcardsKey = topicId ? ["/api/flashcards/theme", topicId] : ["/api/flashcards/course", courseId];
-        
+        if (disciplineId) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/flashcards/discipline", disciplineId] });
+        }
+
+        const chaptersKey = topicId
+          ? ["/api/learn-plan-items", topicId]
+          : courseId
+            ? ["/api/learn-plan-items/course", courseId]
+            : ["/api/learn-plan-items/discipline", disciplineId];
+
+        const flashcardsKey = topicId
+          ? ["/api/flashcards/theme", topicId]
+          : courseId
+            ? ["/api/flashcards/course", courseId]
+            : ["/api/flashcards/discipline", disciplineId];
+
         const chapters = queryClient.getQueryData<LearnPlanItem[]>(chaptersKey);
         const allFlashcards = queryClient.getQueryData<Flashcard[]>(flashcardsKey) || [];
-        
+
         if (chapters && chapters.length > 0) {
           const total = chapters.length;
           const completed = chapters.filter(c => c.completed).length;
           const completion = Math.round((completed / total) * 100);
           const readiness = calculateReadinessWithDecay(allFlashcards);
-          
+
           const today = format(new Date(), "yyyy-MM-dd");
           await apiRequest("PUT", `/api/knowledge-metrics/${entityId}/${today}`, { completion, readiness });
           queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics", entityId] });
@@ -393,79 +477,62 @@ export default function LearnPage() {
   const handleRate = (rating: RatingType) => {
     if (!currentCard) return;
 
-    let newMastery = currentCard.mastery;
-    const newQueue = [...studyQueue];
-    let shouldLock = false;
-    let newColor: CardColor = currentCard.color;
+    const { interval, ease, goodCount, shouldLock, pushPos } = calculateSM2(rating, currentCard);
 
-    switch (rating) {
-      case "bad":
-        newMastery = Math.max(1, currentCard.mastery);
-        newColor = "red";
-        newQueue.shift();
-        const insertPos = Math.min(4, newQueue.length + 1);
-        newQueue.splice(insertPos - 1, 0, { 
-          ...currentCard, 
-          color: newColor,
-          previousRating: "bad",
-          mastery: newMastery 
-        });
-        break;
-        
-      case "ok":
-        newMastery = Math.max(2, currentCard.mastery);
-        newColor = "yellow";
-        newQueue.shift();
-        newQueue.push({ 
-          ...currentCard, 
-          color: newColor,
-          previousRating: "ok",
-          mastery: newMastery 
-        });
-        break;
-        
-      case "good":
-        newColor = "green";
-        if (currentCard.previousRating === "good") {
-          newMastery = 4;
-          shouldLock = true;
-        } else {
-          newMastery = Math.max(3, currentCard.mastery);
-          newQueue.shift();
-          newQueue.push({ 
-            ...currentCard, 
-            color: newColor,
-            previousRating: "good",
-            mastery: newMastery 
-          });
-        }
-        break;
-        
-      case "perfect":
-        newMastery = 4;
-        newColor = "blue";
-        shouldLock = true;
-        break;
+    // Legacy metrics fallback
+    let newMastery = currentCard.mastery;
+    if (rating === "bad") newMastery = 1;
+    else if (rating === "ok") newMastery = Math.max(2, currentCard.mastery);
+    else if (rating === "good") newMastery = Math.max(3, currentCard.mastery);
+    else if (rating === "perfect") newMastery = 4;
+    if (interval > 0) newMastery = 4;
+
+    const nextReviewDate = new Date();
+    if (interval > 0) {
+      nextReviewDate.setDate(nextReviewDate.getDate() + interval);
+    }
+
+    const newColor: CardColor = rating === "bad" ? "red" : rating === "ok" ? "yellow" : rating === "good" ? "green" : "blue";
+
+    const newQueue = [...studyQueue];
+    newQueue.shift();
+
+    if (shouldLock) {
+      const lockedCard: StudyCard = {
+        ...currentCard,
+        color: newColor,
+        locked: true,
+        mastery: newMastery,
+        interval,
+        ease,
+        goodCount,
+      };
+      setLockedCards(prev => [...prev, lockedCard]);
+    } else {
+      const updatedCard = {
+        ...currentCard,
+        color: newColor,
+        previousRating: rating,
+        mastery: newMastery,
+        interval,
+        ease,
+        goodCount,
+      };
+      const insertIdx = Math.min(pushPos, newQueue.length);
+      newQueue.splice(insertIdx, 0, updatedCard);
     }
 
     updateMutation.mutate({
       id: currentCard.id,
       updates: {
         lastReviewed: new Date(),
+        nextReview: nextReviewDate,
+        interval,
+        ease: ease.toString(), // ensure it persists as decimal string
+        goodCount,
         mastery: newMastery,
       },
     });
-
-    if (shouldLock) {
-      newQueue.shift();
-      const lockedCard: StudyCard = { 
-        ...currentCard, 
-        color: newColor,
-        locked: true,
-        mastery: newMastery 
-      };
-      setLockedCards(prev => [...prev, lockedCard]);
-    }
 
     setStudyQueue(newQueue);
     setShowBack(false);
@@ -475,11 +542,38 @@ export default function LearnPage() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+      if (sessionComplete || !currentCard) return;
+
+      if (!showBack && e.code === "Space") {
+        e.preventDefault();
+        setShowBack(true);
+      } else if (showBack && !updateMutation.isPending) {
+        if (e.key === "1") handleRate("bad");
+        else if (e.key === "2") handleRate("ok");
+        else if (e.key === "3") handleRate("good");
+        else if (e.key === "4") handleRate("perfect");
+        else if (e.code === "Space") {
+          e.preventDefault();
+          handleRate("good"); // Space defaults to Good
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showBack, currentCard, sessionComplete, updateMutation.isPending]);
+
   const handleExit = () => {
     if (topicId) {
       navigate(`/second-brain/${topicId}`);
     } else if (courseId) {
       navigate(`/studies/${courseId}`);
+    } else if (disciplineId) {
+      navigate(`/disciplines/${disciplineId}`);
     } else {
       navigate("/");
     }
@@ -508,8 +602,8 @@ export default function LearnPage() {
     return (
       <div className="fixed inset-0 bg-background flex flex-col" data-testid="learn-page-empty">
         <header className="flex items-center justify-between p-4 border-b border-border">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             onClick={handleExit}
             data-testid="button-close"
@@ -519,7 +613,7 @@ export default function LearnPage() {
           <h1 className="font-medium truncate max-w-[200px]">{chapterTitle}</h1>
           <div className="w-10" />
         </header>
-        
+
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-muted-foreground mb-4">No flashcards available</p>
@@ -535,26 +629,26 @@ export default function LearnPage() {
   return (
     <div className="fixed inset-0 bg-background flex flex-col" data-testid="learn-page-container">
       <header className="flex items-center justify-between p-4 border-b border-border">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           onClick={handleClose}
           data-testid="button-close"
         >
           <X className="h-6 w-6" />
         </Button>
-        
+
         <h1 className="font-medium truncate max-w-[200px]">{chapterTitle}</h1>
-        
+
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
           >
             <HelpCircle className="h-5 w-5" />
           </Button>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
           >
             <Settings className="h-5 w-5" />
@@ -562,7 +656,7 @@ export default function LearnPage() {
         </div>
       </header>
 
-      <SegmentedProgressBar 
+      <SegmentedProgressBar
         lockedCards={lockedCards}
         activeCards={studyQueue}
         currentCardId={currentCard?.id || null}
@@ -596,14 +690,14 @@ export default function LearnPage() {
           <div className="h-[120px]">
             {!showBack ? (
               <div className="flex flex-col items-center justify-center gap-4 p-4 h-full">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   className="text-muted-foreground"
                 >
                   <Keyboard className="h-6 w-6" />
                 </Button>
-                <Button 
+                <Button
                   size="lg"
                   variant="secondary"
                   className="px-12 py-6 rounded-full text-lg"
@@ -614,9 +708,10 @@ export default function LearnPage() {
                 </Button>
               </div>
             ) : (
-              <RatingButtons 
-                onRate={handleRate} 
+              <RatingButtons
+                onRate={handleRate}
                 disabled={updateMutation.isPending}
+                card={currentCard}
               />
             )}
           </div>
@@ -635,7 +730,7 @@ export default function LearnPage() {
             <AlertDialogCancel data-testid="button-continue-session">
               Continue Studying
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleExit}
               data-testid="button-exit-session"
             >
@@ -647,3 +742,4 @@ export default function LearnPage() {
     </div>
   );
 }
+

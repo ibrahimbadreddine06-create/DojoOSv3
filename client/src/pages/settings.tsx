@@ -80,14 +80,14 @@ export default function Settings() {
 
         <Card>
           <CardHeader>
-            <CardTitle>About Dojo OS</CardTitle>
+            <CardTitle>About DojoOS</CardTitle>
             <CardDescription>
               Your personal operating system for life management
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Dojo OS helps you track and manage all aspects of your life in one integrated system.
+              DojoOS helps you track and manage all aspects of your life in one integrated system.
               Use the module toggles above to customize your experience.
             </p>
           </CardContent>

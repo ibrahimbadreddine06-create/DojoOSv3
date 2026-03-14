@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddCourseDialog } from "@/components/dialogs/add-course-dialog";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid, Brush } from "recharts";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -141,6 +141,15 @@ export default function Studies() {
 
     const dateMap = new Map<string, Record<string, number>>();
 
+    // Always initialize with at least the last 14 days so the Brush scrollbar (arrows) can render
+    const today = new Date();
+    for (let i = 14; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      dateMap.set(dateStr, {});
+    }
+
     // Add all metrics data if available
     if (metricsData && metricsData.length > 0) {
       for (const m of metricsData) {
@@ -155,14 +164,7 @@ export default function Studies() {
     }
 
     const sortedDates = Array.from(dateMap.keys()).sort();
-    
-    // If no metrics yet, create initial data with 0 completion
-    if (sortedDates.length === 0 && courseNamesList.length > 0) {
-      const today = new Date().toISOString().split('T')[0];
-      sortedDates.push(today);
-      dateMap.set(today, {});
-    }
-    
+
     // Build continuous data with all courses on each date (fill gaps with previous value or 0)
     const finalCourseNamesList = courseNamesList;
     const data = sortedDates.map((date, idx) => {
@@ -170,7 +172,7 @@ export default function Studies() {
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
       };
-      
+
       for (const courseName of finalCourseNamesList) {
         // Get value for this date, or use previous value, or default to 0
         if (dateMap.get(date)?.[courseName] !== undefined) {
@@ -224,50 +226,51 @@ export default function Studies() {
             <CardDescription>Completion progress over time for each course</CardDescription>
           </CardHeader>
           <CardContent>
-            {chartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-80 w-full">
-                <LineChart data={chartData} margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
+            <ChartContainer config={chartConfig} className="h-80 w-full aspect-auto">
+              <LineChart data={chartData} margin={{ top: 12, right: 0, bottom: 30, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                  tick={{ fontSize: 12, textAnchor: 'start', dx: -8 }}
+                  tickLine={false}
+                  axisLine={false}
+                  mirror={true}
+                  width={1}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <ChartTooltip
+                  content={<ChartTooltipContent />}
+                />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                {Object.keys(chartConfig).map((key) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    name={chartConfig[key].label}
+                    stroke={chartConfig[key].color}
+                    strokeWidth={2}
+                    dot={{ fill: chartConfig[key].color, r: 3 }}
+                    activeDot={{ r: 5 }}
                   />
-                  <YAxis 
-                    domain={[0, 100]} 
-                    ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                    tick={{ fontSize: 12 }} 
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `${v}%`}
-                  />
-                  <ChartTooltip 
-                    content={<ChartTooltipContent />} 
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                  {Object.keys(chartConfig).map((key) => (
-                    <Line
-                      key={key}
-                      type="monotone"
-                      dataKey={key}
-                      name={chartConfig[key].label}
-                      stroke={chartConfig[key].color}
-                      strokeWidth={2}
-                      dot={{ fill: chartConfig[key].color, r: 3 }}
-                      activeDot={{ r: 5 }}
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-80 flex items-center justify-center text-muted-foreground">
-                {courses && courses.length > 0 
-                  ? "No metrics data yet - track your progress to see the chart"
-                  : "Add courses to see metrics chart"
-                }
-              </div>
-            )}
+                ))}
+                <Brush
+                  dataKey="date"
+                  height={30}
+                  stroke="hsl(var(--primary) / 0.5)"
+                  fill="transparent"
+                  startIndex={Math.max(0, chartData.length - 14)}
+                />
+              </LineChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -296,7 +299,7 @@ export default function Studies() {
                   ))}
                 </SelectContent>
               </Select>
-              
+
               <Button
                 variant={showArchived ? "default" : "outline"}
                 size="sm"
@@ -392,7 +395,7 @@ export default function Studies() {
                             </DropdownMenu>
                             <GraduationCap className="w-5 h-5 text-chart-1" />
                           </div>
-                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="space-y-2">
@@ -432,7 +435,7 @@ export default function Studies() {
                   {showArchived ? "No archived courses" : "No courses yet"}
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {showArchived 
+                  {showArchived
                     ? "Archive completed courses to see them here"
                     : "Start tracking your academic courses"
                   }
@@ -450,3 +453,4 @@ export default function Studies() {
     </div>
   );
 }
+

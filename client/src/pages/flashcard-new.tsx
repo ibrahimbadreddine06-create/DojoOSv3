@@ -1,12 +1,12 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { 
+import {
   X, Plus, MoreVertical, Bold, Italic, Underline, Strikethrough,
   Image, ChevronDown, Tag, Music, Link, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,13 +41,13 @@ interface FlashcardDraft {
   isNew: boolean;
 }
 
-function FormatToolbar({ 
-  onCommand, 
+function FormatToolbar({
+  onCommand,
   onFontSize,
   onImageUpload,
   onAudioUpload,
-  fontSize 
-}: { 
+  fontSize
+}: {
   onCommand: (cmd: string) => void;
   onFontSize: (size: string) => void;
   onImageUpload: () => void;
@@ -56,51 +56,51 @@ function FormatToolbar({
 }) {
   return (
     <div className="flex items-center gap-1 py-2 border-t border-border mt-2">
-      <Button 
-        type="button" 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
         className="h-8 w-8"
-        onClick={() => onCommand('bold')} 
+        onClick={() => onCommand('bold')}
         title="Bold"
         data-testid="format-bold"
       >
         <Bold className="h-4 w-4" />
       </Button>
-      <Button 
-        type="button" 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
         className="h-8 w-8"
-        onClick={() => onCommand('italic')} 
+        onClick={() => onCommand('italic')}
         title="Italic"
         data-testid="format-italic"
       >
         <Italic className="h-4 w-4" />
       </Button>
-      <Button 
-        type="button" 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
         className="h-8 w-8"
-        onClick={() => onCommand('underline')} 
+        onClick={() => onCommand('underline')}
         title="Underline"
         data-testid="format-underline"
       >
         <Underline className="h-4 w-4" />
       </Button>
-      <Button 
-        type="button" 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
         className="h-8 w-8"
-        onClick={() => onCommand('strikeThrough')} 
+        onClick={() => onCommand('strikeThrough')}
         title="Strikethrough"
         data-testid="format-strikethrough"
       >
         <Strikethrough className="h-4 w-4" />
       </Button>
-      
+
       <Select value={fontSize} onValueChange={onFontSize}>
         <SelectTrigger className="w-16 h-8 text-xs" data-testid="format-fontsize">
           <SelectValue placeholder="Size" />
@@ -112,12 +112,12 @@ function FormatToolbar({
           <SelectItem value="7">Huge</SelectItem>
         </SelectContent>
       </Select>
-      
+
       <div className="ml-auto flex items-center gap-1">
-        <Button 
-          type="button" 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           className="h-8 w-8"
           onClick={onImageUpload}
           title="Add image"
@@ -125,10 +125,10 @@ function FormatToolbar({
         >
           <Image className="h-4 w-4" />
         </Button>
-        <Button 
-          type="button" 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           className="h-8 w-8"
           onClick={onAudioUpload}
           title="Add audio"
@@ -141,13 +141,13 @@ function FormatToolbar({
   );
 }
 
-function FlashcardPreviewCard({ 
-  card, 
-  isSelected, 
-  onClick 
-}: { 
-  card: FlashcardDraft; 
-  isSelected: boolean; 
+function FlashcardPreviewCard({
+  card,
+  isSelected,
+  onClick
+}: {
+  card: FlashcardDraft;
+  isSelected: boolean;
   onClick: () => void;
 }) {
   const stripHtml = (html: string) => {
@@ -164,8 +164,8 @@ function FlashcardPreviewCard({
     <div
       className={`
         p-3 rounded-lg cursor-pointer transition-all border overflow-hidden
-        ${isSelected 
-          ? "border-l-4 border-l-primary border-t border-r border-b border-border bg-card" 
+        ${isSelected
+          ? "border-l-4 border-l-primary border-t border-r border-b border-border bg-card"
           : "border-border hover-elevate bg-card/50"
         }
       `}
@@ -179,11 +179,11 @@ function FlashcardPreviewCard({
       ) : (
         <div className="h-20 overflow-hidden relative">
           <div className="space-y-1">
-            <p 
+            <p
               className="text-xs text-muted-foreground overflow-hidden"
-              style={{ 
-                display: '-webkit-box', 
-                WebkitLineClamp: 2, 
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
                 wordBreak: 'break-word',
                 overflowWrap: 'break-word'
@@ -191,11 +191,11 @@ function FlashcardPreviewCard({
             >
               {frontText || "No question"}
             </p>
-            <p 
+            <p
               className="text-sm overflow-hidden"
-              style={{ 
-                display: '-webkit-box', 
-                WebkitLineClamp: 2, 
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
                 wordBreak: 'break-word',
                 overflowWrap: 'break-word'
@@ -275,7 +275,7 @@ function InlineEditor({
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
-      
+
       if (editorRef.current) {
         editorRef.current.focus();
         document.execCommand('insertImage', false, base64);
@@ -283,7 +283,7 @@ function InlineEditor({
       }
     };
     reader.readAsDataURL(file);
-    
+
     e.target.value = "";
   };
 
@@ -313,7 +313,7 @@ function InlineEditor({
       setShowAudioDialog(false);
     };
     reader.readAsDataURL(file);
-    
+
     e.target.value = "";
   };
 
@@ -355,7 +355,7 @@ function InlineEditor({
           data-testid={`editor-${label.toLowerCase()}`}
         />
         <div className="px-6 pb-4">
-          <FormatToolbar 
+          <FormatToolbar
             onCommand={execCommand}
             onFontSize={handleFontSize}
             onImageUpload={handleImageUpload}
@@ -406,8 +406,8 @@ function InlineEditor({
                   data-testid="input-audio-url"
                 />
               </div>
-              <Button 
-                onClick={handleAudioUrlSubmit} 
+              <Button
+                onClick={handleAudioUrlSubmit}
                 className="w-full"
                 disabled={!audioUrl.trim()}
                 data-testid="button-add-audio-url"
@@ -445,7 +445,7 @@ function CardSidePlaceholder({
   if (isEditing) return null;
 
   return (
-    <div 
+    <div
       className="rounded-lg border border-dashed border-border p-6 cursor-pointer hover-elevate transition-all min-h-[120px]"
       onClick={onClick}
       data-testid={`placeholder-${label.toLowerCase()}`}
@@ -453,7 +453,7 @@ function CardSidePlaceholder({
       {hasContent ? (
         <div className="space-y-3">
           <span className="text-sm font-medium text-muted-foreground">{label}</span>
-          <div 
+          <div
             className="text-foreground prose prose-base max-w-none [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg"
             dangerouslySetInnerHTML={{ __html: content }}
           />
@@ -473,12 +473,13 @@ export default function FlashcardNewPage() {
   const [, navigate] = useLocation();
   const chapterId = params.chapterId || "";
   const { toast } = useToast();
-  
+
   const searchParams = new URLSearchParams(window.location.search);
   const topicId = searchParams.get("topicId") || undefined;
   const courseId = searchParams.get("courseId") || undefined;
+  const disciplineId = searchParams.get("disciplineId") || undefined;
   const returnUrl = searchParams.get("return") || "/";
-  
+
   // State for flashcard drafts
   const [cards, setCards] = useState<FlashcardDraft[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -523,7 +524,7 @@ export default function FlashcardNewPage() {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: { front: string; back: string; imageUrl?: string; chapterId: string; topicId?: string; courseId?: string }) => {
+    mutationFn: async (data: { front: string; back: string; imageUrl?: string; chapterId: string; topicId?: string; courseId?: string; disciplineId?: string }) => {
       return apiRequest("POST", "/api/flashcards", data);
     },
     onSuccess: () => {
@@ -554,9 +555,9 @@ export default function FlashcardNewPage() {
   // Auto-save function
   const saveCard = useCallback(async (card: FlashcardDraft) => {
     if (!card.front.trim() && !card.back.trim()) return;
-    
+
     setSaveStatus("saving");
-    
+
     try {
       if (card.isNew) {
         const response = await createMutation.mutateAsync({
@@ -565,11 +566,12 @@ export default function FlashcardNewPage() {
           chapterId,
           topicId,
           courseId,
+          disciplineId,
         });
-        
+
         // Update the card ID to the real one
         const newId = (response as any).id;
-        setCards(prev => prev.map(c => 
+        setCards(prev => prev.map(c =>
           c.id === card.id ? { ...c, id: newId, isNew: false } : c
         ));
         if (selectedCardId === card.id) {
@@ -592,7 +594,7 @@ export default function FlashcardNewPage() {
   // Debounced auto-save
   useEffect(() => {
     if (!selectedCard) return;
-    
+
     const timer = setTimeout(() => {
       if (selectedCard.front.trim() || selectedCard.back.trim()) {
         saveCard(selectedCard);
@@ -607,7 +609,7 @@ export default function FlashcardNewPage() {
     if (selectedCard && (selectedCard.front.trim() || selectedCard.back.trim())) {
       saveCard(selectedCard);
     }
-    
+
     const newCard: FlashcardDraft = {
       id: `new-${Date.now()}`,
       front: "",
@@ -637,11 +639,11 @@ export default function FlashcardNewPage() {
 
   const handleContentChange = (side: "question" | "answer", value: string) => {
     if (!selectedCardId) return;
-    
+
     setSaveStatus("unsaved");
     setCards(prev => prev.map(card => {
       if (card.id === selectedCardId) {
-        return side === "question" 
+        return side === "question"
           ? { ...card, front: value }
           : { ...card, back: value };
       }
@@ -659,7 +661,7 @@ export default function FlashcardNewPage() {
 
   const handleDeleteCard = async () => {
     if (!selectedCardId) return;
-    
+
     const cardToDelete = cards.find(c => c.id === selectedCardId);
     if (!cardToDelete) return;
 
@@ -672,13 +674,13 @@ export default function FlashcardNewPage() {
         return;
       }
     }
-    
+
     // Get remaining cards before removing
     const remainingCards = cards.filter(c => c.id !== selectedCardId);
-    
+
     // Remove from local state
     setCards(remainingCards);
-    
+
     // Select another card or create new empty one (without triggering save)
     if (remainingCards.length > 0) {
       setSelectedCardId(remainingCards[0].id);
@@ -702,8 +704,8 @@ export default function FlashcardNewPage() {
       {/* Left Panel - Flashcard List */}
       <div className="w-64 border-r border-border flex flex-col bg-muted/30">
         <div className="p-4 border-b border-border">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-center gap-2"
             onClick={handleNewFlashcard}
             data-testid="button-new-flashcard"
@@ -712,7 +714,7 @@ export default function FlashcardNewPage() {
             New flashcard
           </Button>
         </div>
-        
+
         <ScrollArea className="flex-1">
           <div className="p-3 space-y-2">
             {cards.map(card => (
@@ -732,9 +734,9 @@ export default function FlashcardNewPage() {
         {/* Header */}
         <header className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleClose}
               data-testid="button-close"
             >
@@ -755,16 +757,16 @@ export default function FlashcardNewPage() {
             <div className="w-full max-w-2xl">
               {/* Tags and Menu Bar */}
               <div className="flex items-center justify-between mb-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="text-muted-foreground gap-1"
                   data-testid="button-add-tags"
                 >
                   <Plus className="h-3 w-3" />
                   Add tags
                 </Button>
-                
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" data-testid="button-card-menu">
@@ -772,7 +774,7 @@ export default function FlashcardNewPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="text-destructive"
                       onClick={handleDeleteCard}
                     >
@@ -827,3 +829,4 @@ export default function FlashcardNewPage() {
     </div>
   );
 }
+
