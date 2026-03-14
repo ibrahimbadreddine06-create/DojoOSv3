@@ -1,10 +1,6 @@
-// Referenced from javascript_database blueprint
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool, neon } from '@neondatabase/serverless';
+import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
   console.warn(
@@ -16,4 +12,8 @@ export const pool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : null;
 
-export const db: any = pool ? drizzle({ client: pool, schema }) : null;
+// Use HTTP driver for main DB queries - more stable on Vercel
+const httpClient = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
+export const db: any = httpClient ? drizzleHttp(httpClient, { schema }) : null;
+
+

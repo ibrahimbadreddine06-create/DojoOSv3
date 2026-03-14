@@ -341,15 +341,18 @@ export class DatabaseStorage implements IStorage {
 
   // Time Blocks & Presets
   async getTimeBlocks(date: string): Promise<TimeBlock[]> {
+    this.ensureDb();
     return await db.select().from(timeBlocks).where(eq(timeBlocks.date, date));
   }
 
   async getTimeBlock(id: string): Promise<TimeBlock | undefined> {
+    this.ensureDb();
     const [block] = await db.select().from(timeBlocks).where(eq(timeBlocks.id, id));
     return block;
   }
 
   async getLinkedTimeBlocks(date: string, module: string, itemId?: string, subItemId?: string): Promise<TimeBlock[]> {
+    this.ensureDb();
     const conditions = [
       eq(timeBlocks.date, date),
       eq(timeBlocks.linkedModule, module)
@@ -364,6 +367,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTimeBlock(data: InsertTimeBlock): Promise<TimeBlock> {
+    this.ensureDb();
     // If this is a sub-block (has parentId), calculate the next order value
     if (data.parentId) {
       // Get all siblings (other sub-blocks with same parent) and all parent's tasks
@@ -396,6 +400,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTimeBlock(id: string, data: Partial<InsertTimeBlock>): Promise<TimeBlock> {
+    this.ensureDb();
     // Only update if there are fields to update
     if (Object.keys(data).length === 0) {
       const block = await this.getTimeBlock(id);
@@ -407,71 +412,86 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTimeBlock(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(timeBlocks).where(eq(timeBlocks.id, id));
   }
 
   async getDayPresets(): Promise<DayPreset[]> {
+    this.ensureDb();
     return await db.select().from(dayPresets).orderBy(desc(dayPresets.createdAt));
   }
 
   async createDayPreset(data: InsertDayPreset): Promise<DayPreset> {
+    this.ensureDb();
     const [preset] = await db.insert(dayPresets).values(data).returning();
     return preset;
   }
 
   async deleteDayPreset(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(dayPresets).where(eq(dayPresets.id, id));
   }
 
   async getActivityPresets(module: string): Promise<ActivityPreset[]> {
+    this.ensureDb();
     return await db.select().from(activityPresets).where(eq(activityPresets.module, module));
   }
 
   async createActivityPreset(data: InsertActivityPreset): Promise<ActivityPreset> {
+    this.ensureDb();
     const [preset] = await db.insert(activityPresets).values(data).returning();
     return preset;
   }
 
   // Goals
   async getGoals(): Promise<Goal[]> {
+    this.ensureDb();
     return await db.select().from(goals).orderBy(desc(goals.createdAt));
   }
 
   async getGoal(id: string): Promise<Goal | undefined> {
+    this.ensureDb();
     const [goal] = await db.select().from(goals).where(eq(goals.id, id));
     return goal;
   }
 
   async createGoal(data: InsertGoal): Promise<Goal> {
+    this.ensureDb();
     const [goal] = await db.insert(goals).values(data).returning();
     return goal;
   }
 
   async updateGoal(id: string, data: Partial<InsertGoal>): Promise<Goal> {
+    this.ensureDb();
     const [goal] = await db.update(goals).set(data).where(eq(goals.id, id)).returning();
     return goal;
   }
 
   async deleteGoal(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(goals).where(eq(goals.id, id));
   }
 
   // Knowledge Tracking
   async getKnowledgeTopics(type: string): Promise<KnowledgeTopic[]> {
+    this.ensureDb();
     return await db.select().from(knowledgeTopics).where(eq(knowledgeTopics.type, type));
   }
 
   async getKnowledgeTopic(id: string): Promise<KnowledgeTopic | undefined> {
+    this.ensureDb();
     const [theme] = await db.select().from(knowledgeTopics).where(eq(knowledgeTopics.id, id));
     return theme;
   }
 
   async createKnowledgeTopic(data: InsertKnowledgeTopic): Promise<KnowledgeTopic> {
+    this.ensureDb();
     const [theme] = await db.insert(knowledgeTopics).values(data).returning();
     return theme;
   }
 
   async deleteKnowledgeTopic(id: string): Promise<void> {
+    this.ensureDb();
     await db.delete(knowledgeMetrics).where(eq(knowledgeMetrics.topicId, id));
     await db.delete(knowledgeTopics).where(eq(knowledgeTopics.id, id));
   }
@@ -801,6 +821,7 @@ export class DatabaseStorage implements IStorage {
 
   // Worship
   async getSalahLogs(date: string): Promise<SalahLog[]> {
+    this.ensureDb();
     return await db.select().from(salahLogs).where(eq(salahLogs.date, date));
   }
 
@@ -810,6 +831,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuranLogs(date: string): Promise<QuranLog[]> {
+    this.ensureDb();
     return await db.select().from(quranLogs).where(eq(quranLogs.date, date));
   }
 
@@ -819,6 +841,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDhikrLogs(date: string): Promise<DhikrLog[]> {
+    this.ensureDb();
     return await db.select().from(dhikrLogs).where(eq(dhikrLogs.date, date));
   }
 
@@ -828,6 +851,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDuaLogs(date: string): Promise<DuaLog[]> {
+    this.ensureDb();
     return await db.select().from(duaLogs).where(eq(duaLogs.date, date));
   }
 
@@ -838,6 +862,7 @@ export class DatabaseStorage implements IStorage {
 
   // Finances
   async getTransactions(): Promise<Transaction[]> {
+    this.ensureDb();
     return await db.select().from(transactions).orderBy(desc(transactions.date));
   }
 
@@ -848,6 +873,7 @@ export class DatabaseStorage implements IStorage {
 
   // Masterpieces
   async getMasterpieces(): Promise<Masterpiece[]> {
+    this.ensureDb();
     return await db.select().from(masterpieces).orderBy(desc(masterpieces.createdAt));
   }
 
@@ -867,6 +893,7 @@ export class DatabaseStorage implements IStorage {
 
   // Possessions
   async getPossessions(): Promise<Possession[]> {
+    this.ensureDb();
     return await db.select().from(possessions).orderBy(desc(possessions.createdAt));
   }
 
@@ -895,6 +922,7 @@ export class DatabaseStorage implements IStorage {
 
   // Studies
   async getCourses(): Promise<Course[]> {
+    this.ensureDb();
     return await db.select().from(courses).orderBy(desc(courses.createdAt));
   }
 
@@ -943,6 +971,7 @@ export class DatabaseStorage implements IStorage {
 
   // Business & Work
   async getBusinesses(): Promise<Business[]> {
+    this.ensureDb();
     return await db.select().from(businesses).orderBy(desc(businesses.createdAt));
   }
 
@@ -993,6 +1022,7 @@ export class DatabaseStorage implements IStorage {
 
   // Settings & Metrics
   async getPageSettings(): Promise<PageSetting[]> {
+    this.ensureDb();
     return await db.select().from(pageSettings);
   }
 

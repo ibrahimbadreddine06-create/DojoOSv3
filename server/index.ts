@@ -6,6 +6,14 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { EXERCISES_DATA } from "./seeds/exercises";
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("!!! Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("!!! Uncaught Exception:", err);
+});
+
 const app = express();
 export default app; // Export immediately for Vercel
 
@@ -70,6 +78,9 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // 4. Background Database Seeding (Fire and Forget)
 async function seedDatabase() {
   try {
+    // Only seed if we have a database
+    if (!process.env.DATABASE_URL) return;
+
     const existing = await storage.getExerciseLibrary().catch(err => {
       console.error("DB Query Failed (Missing DATABASE_URL on Vercel?):", err);
       return [];
@@ -95,7 +106,7 @@ async function seedDatabase() {
   }
 }
 
-// Run the seeder in the background without blocking the Node Vercel export
+// Run the seeder in the background
 seedDatabase();
 
 // 5. Local Dev Only: Vite & Express Listener
