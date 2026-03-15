@@ -250,6 +250,24 @@ function MainLayout() {
     setTrajectorySidebarOpen,
   } = useDualSidebar();
 
+  // Dynamic iOS theme-color synchronization
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+      // Sidebar grey (#f5f5f5 in light / sidebar-hsl in dark)
+      const sidebarColor = "#f9f9fb"; 
+      const dashboardColor = "#ffffff";
+
+      if (mainSidebarOpen || trajectorySidebarOpen) {
+        themeMeta.setAttribute("content", sidebarColor);
+      } else {
+        themeMeta.setAttribute("content", dashboardColor);
+      }
+    }
+  }, [mainSidebarOpen, trajectorySidebarOpen, isMobile]);
+
   const sidebarStyle = {
     "--sidebar-width": "20rem",
     "--sidebar-width-icon": "4rem",
@@ -284,22 +302,22 @@ function MainLayout() {
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full ring-0 focus:ring-0" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-[100dvh]! ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col min-h-full w-full bg-sidebar">
+                <div className="flex flex-col h-full w-full bg-sidebar">
                   <AppSidebar isMobileSheet />
                 </div>
               </SheetContent>
             </Sheet>
 
             <Sheet open={hasTrajectorySidebar && trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full ring-0 focus:ring-0" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-[100dvh]! ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col min-h-full w-full bg-sidebar">
+                <div className="flex flex-col h-full w-full bg-sidebar">
                   <LearningTrajectorySidebar isMobileSheet />
                 </div>
               </SheetContent>

@@ -11,6 +11,16 @@ html, body {
   background-color: hsl(var(--background)) !important;
 }
 
+/* Force Radix Portal transparency to prevent iOS bottom gaps */
+[data-radix-portal] {
+  background-color: transparent !important;
+  pointer-events: none;
+}
+
+[data-radix-portal] > * {
+  pointer-events: auto;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
