@@ -199,35 +199,37 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header className="flex items-center justify-between h-16 px-4 border-b bg-background sticky top-0 z-40 shrink-0">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleMainNavClick}
-          data-testid="button-sidebar-toggle"
-          className={mainSidebarOpen ? "bg-accent" : ""}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-
-        {hasTrajectorySidebar && (
+    <header className="border-b bg-background sticky top-0 z-40 shrink-0 pt-[env(safe-area-inset-top)]">
+      <div className="flex items-center justify-between h-16 px-4">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleTrajectoryClick}
-            data-testid="button-trajectory-toggle"
-            className={trajectorySidebarOpen ? "bg-accent" : ""}
+            onClick={handleMainNavClick}
+            data-testid="button-sidebar-toggle"
+            className={mainSidebarOpen ? "bg-accent" : ""}
           >
-            <BookOpen className="h-5 w-5" />
+            <Menu className="h-5 w-5" />
           </Button>
-        )}
-      </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          DojoOS
-        </span>
+          {hasTrajectorySidebar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleTrajectoryClick}
+              data-testid="button-trajectory-toggle"
+              className={trajectorySidebarOpen ? "bg-accent" : ""}
+            >
+              <BookOpen className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">
+            DojoOS
+          </span>
+        </div>
       </div>
     </header>
   );
@@ -263,9 +265,9 @@ function MainLayout() {
   if (isFullScreen) {
     return (
       <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
-        <div className="flex h-[100dvh] w-full overflow-hidden">
-          <FullScreenRouter />
-        </div>
+      <div className="flex min-h-[100dvh] w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
+        <FullScreenRouter />
+      </div>
       </SidebarProvider>
     );
   }
@@ -277,7 +279,7 @@ function MainLayout() {
       open={mainSidebarOpen}
       onOpenChange={setMainSidebarOpen}
     >
-      <div className="flex h-[100dvh] w-full overflow-hidden">
+      <div className="flex min-h-[100dvh] w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
