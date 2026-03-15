@@ -280,7 +280,7 @@ function MainLayout() {
       open={mainSidebarOpen}
       onOpenChange={setMainSidebarOpen}
     >
-      <div className="flex h-[100dvh] w-full overflow-hidden bg-background">
+      <div className="flex h-[100dvh] w-full overflow-hidden bg-background pb-[env(safe-area-inset-bottom)]">
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
@@ -315,7 +315,7 @@ function MainLayout() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <DualSidebarHeader />
-          <main className="flex-1 bg-background overflow-y-auto">
+          <main className="flex-1 bg-background overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <AuthenticatedRouter />
           </main>
         </div>
