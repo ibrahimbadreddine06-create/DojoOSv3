@@ -147,7 +147,7 @@ seedDatabase();
     try {
       serveStatic(app);
     } catch (e) {
-      console.warn("Static serving skipped on Vercel (likely handled by Vercel static builder):", e.message);
+      console.warn("Static serving skipped on Vercel:", (e as Error).message);
     }
   } else {
     // Local Development
