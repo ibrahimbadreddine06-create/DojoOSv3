@@ -382,6 +382,8 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
           <Plus className="h-4 w-4 mr-2" /> Add New Chapter
         </Button>
       </div>
+      {/* Structural spacer for home-indicator area */}
+      <div className="h-[env(safe-area-inset-bottom)] min-h-[env(safe-area-inset-bottom)] w-full" />
     </div>
   );
 }
