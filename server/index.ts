@@ -47,7 +47,7 @@ app.get("/api/health", (req, res) => {
     auth: !!process.env.SESSION_SECRET,
     google: {
       id: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.slice(0, 5)}...` : "MISSING",
-      callback: process.env.CALLBACK_URL || "NOT_SET"
+      callback: cb !== "NOT_SET" ? (cb.length > 20 ? `${cb.slice(0, 10)}...${cb.slice(-10)}` : cb) : "NOT_SET"
     }
   });
 });
