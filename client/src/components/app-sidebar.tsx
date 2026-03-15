@@ -32,6 +32,9 @@ import { UserSearchDialog } from "@/components/social/user-search-dialog";
 import { Link, useLocation } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { useTheme } from "@/contexts/theme-context";
 import { useQuery } from "@tanstack/react-query";
 
@@ -158,9 +161,9 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] md:pt-0">
-      <div className="flex flex-col gap-1.5 p-2 pt-1 md:pt-2">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 px-2 pb-0.5">
+    <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] md:pt-0 bg-sidebar">
+      <div className="flex flex-col gap-1.5 p-2 pt-0.5 md:pt-2">
+        <div className="text-xs font-black uppercase tracking-[0.25em] text-muted-foreground/80 px-2 pb-1">
           DojoOS
         </div>
         <div className="flex flex-col gap-0.5">
