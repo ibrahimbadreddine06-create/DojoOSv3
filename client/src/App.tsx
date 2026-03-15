@@ -199,7 +199,10 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header className="border-b bg-background sticky top-0 z-40 shrink-0 pt-[env(safe-area-inset-top)]">
+    <header 
+      className="border-b bg-background sticky top-0 z-40 shrink-0"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
       <div className="flex items-center justify-between h-16 px-4">
         <div className="flex items-center gap-2">
           <Button

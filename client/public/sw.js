@@ -31,15 +31,35 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+    const url = new URL(event.request.url);
+    
+    // Network-first for index.html and manifest to ensure we get new bundle hashes
+    if (event.request.mode === 'navigate' || url.pathname === '/index.html' || url.pathname === '/manifest.json') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    const clonedResponse = response.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, clonedResponse);
+                    });
+                    return response;
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                // Cache hit - return response
                 if (response) {
                     return response;
                 }
-                return fetch(event.request).catch(() => {
-                    // If both cache and network fail, fall back to index.html for SPA routing
+                return fetch(event.request).then(networkResponse => {
+                    // Don't cache API calls or large assets here, just return
+                    return networkResponse;
+                }).catch(() => {
+                    // Fallback to index.html for SPA routing if offline
                     if (event.request.mode === 'navigate') {
                         return caches.match('/index.html');
                     }
