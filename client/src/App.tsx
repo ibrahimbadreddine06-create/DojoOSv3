@@ -262,8 +262,10 @@ function MainLayout() {
 
       if (mainSidebarOpen || trajectorySidebarOpen) {
         themeMeta.setAttribute("content", sidebarColor);
+        document.documentElement.setAttribute("data-sidebar-open", "true");
       } else {
         themeMeta.setAttribute("content", dashboardColor);
+        document.documentElement.setAttribute("data-sidebar-open", "false");
       }
     }
   }, [mainSidebarOpen, trajectorySidebarOpen, isMobile]);
