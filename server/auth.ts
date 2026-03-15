@@ -11,8 +11,10 @@ import { storage } from "./storage";
 import { User as SelectUser } from "../shared/schema";
 import { db, pool } from "./db"; // Needed for session store pool
 
+import MemoryStore from "memorystore";
+
 const scryptAsync = promisify(scrypt);
-const pgSession = connectPgSimple(session);
+const MemoryStoreSession = MemoryStore(session);
 
 // Re-export User type to avoid confusion
 type User = SelectUser;
@@ -25,36 +27,44 @@ declare global {
 
 export function setupAuth(app: Express) {
     // Session Configuration
-    // "Fortress" Security: HttpOnly, Secure (in prod), SameSite Strict
     const sessionSettings: session.SessionOptions = {
         secret: process.env.SESSION_SECRET || "dojo_os_fortress_secret_key_change_me",
         resave: false,
         saveUninitialized: false,
         cookie: {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-            httpOnly: true, // Prevent XSS
-            sameSite: "strict", // Prevent CSRF
-            secure: process.env.NODE_ENV === "production", // HTTPS only in prod
+            httpOnly: true,
+            sameSite: "lax", // Better for OAuth redirects
+            secure: process.env.VERCEL === "1", // Use secure on Vercel
         },
     };
 
-    if (app.get("env") === "production") {
-        app.set("trust proxy", 1); // trust first proxy
+    if (process.env.VERCEL === "1") {
+        app.set("trust proxy", 1);
     }
 
-    if (pool) {
+    // Try Postgres Sample Store, fallback to Memory
+    let storeInitialized = false;
+    if (pool && process.env.NODE_ENV === "production") {
         try {
+            const pgSession = connectPgSimple(session);
             sessionSettings.store = new pgSession({
                 pool,
-                createTableIfMissing: process.env.NODE_ENV !== "production", // Better to manage table separately in prod
+                createTableIfMissing: true,
                 tableName: 'session'
             });
-            console.log("Session store initialized successfully with Postgres.");
+            console.log("Postgres session store initialized.");
+            storeInitialized = true;
         } catch (e) {
-            console.error("Critical: Failed to initialize Postgres session store:", e);
+            console.error("Postgres session store failure, falling back to MemoryStore:", e);
         }
-    } else {
-        console.warn("!!! DATABASE_URL missing. Authentication will fail or sessions will be temporary.");
+    }
+
+    if (!storeInitialized) {
+        sessionSettings.store = new MemoryStoreSession({
+            checkPeriod: 86400000 // prune expired entries every 24h
+        });
+        console.warn("Using MemoryStore for sessions.");
     }
 
     app.use(session(sessionSettings));

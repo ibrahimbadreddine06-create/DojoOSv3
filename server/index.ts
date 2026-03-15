@@ -36,6 +36,16 @@ if (process.env.VERCEL === "1") {
 const app = express();
 export default app; // Export immediately for Vercel
 
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    env: process.env.NODE_ENV,
+    vercel: process.env.VERCEL,
+    db: !!process.env.DATABASE_URL,
+    auth: !!process.env.SESSION_SECRET
+  });
+});
+
 declare module 'http' {
   interface IncomingMessage {
     rawBody: unknown
