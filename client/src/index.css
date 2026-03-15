@@ -8,14 +8,14 @@ html, body {
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  background-color: #ffffff !important;
+  background-color: hsl(var(--background)) !important;
   transition: background-color 0.2s ease-in-out;
 }
 
 /* Root Background Sync for iOS Bottom Bar */
 html[data-sidebar-open="true"],
 html[data-sidebar-open="true"] body {
-  background-color: #f9f9fb !important; /* Matches --sidebar / bg-sidebar */
+  background-color: hsl(var(--sidebar)) !important;
 }
 
 /* Force Radix Portal transparency to prevent iOS bottom gaps */
