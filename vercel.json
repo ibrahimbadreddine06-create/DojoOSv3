@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "vite build && esbuild server/index.ts --platform=node --bundle --format=cjs --outfile=api/server.js",
+  "buildCommand": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --packages=external --outfile=api/server.js",
   "outputDirectory": "dist/public",
   "functions": {
     "api/server.js": {
