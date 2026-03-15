@@ -43,10 +43,16 @@ export function setupAuth(app: Express) {
     }
 
     if (pool) {
-        sessionSettings.store = new pgSession({
-            pool,
-            createTableIfMissing: true,
-        });
+        try {
+            sessionSettings.store = new pgSession({
+                pool,
+                createTableIfMissing: process.env.NODE_ENV !== "production", // Better to manage table separately in prod
+                tableName: 'session'
+            });
+            console.log("Session store initialized successfully with Postgres.");
+        } catch (e) {
+            console.error("Critical: Failed to initialize Postgres session store:", e);
+        }
     } else {
         console.warn("!!! DATABASE_URL missing. Authentication will fail or sessions will be temporary.");
     }
@@ -93,17 +99,20 @@ export function setupAuth(app: Express) {
 
     // Google Strategy
     if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+        console.log("Initializing Google OAuth Strategy...");
         passport.use(
             new GoogleStrategy(
                 {
                     clientID: process.env.GOOGLE_CLIENT_ID,
                     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
                     callbackURL: "/api/auth/google/callback",
+                    proxy: true // Required for Vercel/proxies
                 },
                 async (accessToken, refreshToken, profile, done) => {
                     try {
                         const email = profile.emails?.[0]?.value;
                         if (!email) {
+                            console.error("Google Auth Error: No email in profile");
                             return done(new Error("No email found in Google profile"));
                         }
 
@@ -115,6 +124,7 @@ export function setupAuth(app: Express) {
                         }
 
                         if (!user) {
+                            console.log(`Auto-registering new user via Google: ${email}`);
                             // Auto-register user from Google
                             // Generate a dummy password since they use Google
                             const dummyPassword = await hashPassword(randomBytes(16).toString("hex"));
@@ -130,6 +140,7 @@ export function setupAuth(app: Express) {
 
                         return done(null, user);
                     } catch (err: any) {
+                        console.error("Critical Google Strategy Error:", err);
                         return done(err);
                     }
                 }
@@ -184,13 +195,22 @@ export function setupAuth(app: Express) {
     });
 
     app.post("/api/login", (req, res, next) => {
+        console.log(`Attempting login for user: ${req.body.username}`);
         passport.authenticate("local", (err: any, user: User, info: any) => {
-            if (err) return next(err);
+            if (err) {
+                console.error("Login Authentication Error:", err);
+                return next(err);
+            }
             if (!user) {
+                console.warn(`Login failed for ${req.body.username}: ${info?.message}`);
                 return res.status(401).json({ message: info?.message || "Authentication failed" });
             }
             req.login(user, (err) => {
-                if (err) return next(err);
+                if (err) {
+                    console.error("req.login Error:", err);
+                    return next(err);
+                }
+                console.log(`User ${user.username} logged in successfully.`);
                 const { password, ...safeUser } = user;
                 res.json(safeUser);
             });

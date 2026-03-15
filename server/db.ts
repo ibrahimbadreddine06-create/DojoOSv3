@@ -9,7 +9,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = process.env.DATABASE_URL 
-  ? new Pool({ connectionString: process.env.DATABASE_URL })
+  ? new Pool({ 
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 5000,
+      max: 10, // Limit connections in serverless
+    })
   : null;
 
 // Use HTTP driver for main DB queries - more stable on Vercel
