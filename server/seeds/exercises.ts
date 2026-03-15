@@ -1,5 +1,5 @@
-import { db } from "../db.js";
-import { exerciseLibrary } from "../../shared/schema.js";
+import { db } from "../db";
+import { exerciseLibrary } from "../../shared/schema";
 // import { eq } from "drizzle-orm"; // Can't easily check existence in bulk without unique constraint on name, but we'll try to just insert ignore or clean first.
 
 const EXERCISES_DATA = [

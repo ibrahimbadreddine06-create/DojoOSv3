@@ -7,9 +7,9 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage.js";
-import { User as SelectUser } from "../shared/schema.js";
-import { db, pool } from "./db.js"; // Needed for session store pool
+import { storage } from "./storage";
+import { User as SelectUser } from "../shared/schema";
+import { db, pool } from "./db"; // Needed for session store pool
 
 const scryptAsync = promisify(scrypt);
 const pgSession = connectPgSimple(session);

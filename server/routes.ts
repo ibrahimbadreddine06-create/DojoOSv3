@@ -13,7 +13,7 @@ import {
   insertCourseExerciseSchema, insertBusinessSchema, insertWorkProjectSchema, insertTaskSchema,
   insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema,
   insertDisciplineSchema, insertDisciplineLogSchema
-} from "../shared/schema.js";
+} from "../shared/schema";
 
 export function registerRoutes(app: Express): Server {
   // ===== TIME BLOCKS & PRESETS =====
@@ -340,7 +340,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/notes", async (req, res) => {
-    const { insertChapterNoteSchema } = await import("../shared/schema.js");
+    const { insertChapterNoteSchema } = await import("../shared/schema");
     const data = insertChapterNoteSchema.parse(req.body);
     const note = await storage.createNote(data);
     res.json(note);
@@ -442,7 +442,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/workout-presets", async (req, res) => {
-    const { insertWorkoutPresetSchema } = await import("../shared/schema.js");
+    const { insertWorkoutPresetSchema } = await import("../shared/schema");
     const data = insertWorkoutPresetSchema.parse(req.body);
     const preset = await storage.createWorkoutPreset(data);
     res.json(preset);

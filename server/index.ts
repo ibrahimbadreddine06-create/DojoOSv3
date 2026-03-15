@@ -1,10 +1,10 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js";
-import { setupVite, serveStatic, log } from "./vite.js";
-import { storage } from "./storage.js";
-import { setupAuth } from "./auth.js";
-import { EXERCISES_DATA } from "./seeds/exercises.js";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { EXERCISES_DATA } from "./seeds/exercises";
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("!!! Unhandled Rejection at:", promise, "reason:", reason);
