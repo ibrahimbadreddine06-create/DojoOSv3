@@ -1,7 +1,8 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+// NOTE: vite is NOT imported at the top level to avoid loading rollup on Vercel
+// It is dynamically imported only in local development
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { EXERCISES_DATA } from "./seeds/exercises";
@@ -58,6 +59,14 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+
+// Simple log function for production (avoids importing vite)
+function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -141,22 +150,16 @@ seedDatabase();
 // 5. Setup Serving and Listener
 (async () => {
   if (process.env.VERCEL === '1') {
-    // On Vercel, we just need the routes to be registered.
-    // Static serving is handled either by the Express app or Vercel's static builder.
-    // We'll let the Express app try to serve static files if they are available.
-    try {
-      serveStatic(app);
-    } catch (e) {
-      console.warn("Static serving skipped on Vercel:", (e as Error).message);
-    }
+    // On Vercel: static files served by Vercel CDN, no need for Express static serving
+    console.log("Running on Vercel - static files served by CDN");
   } else {
-    // Local Development
+    // Local Development: dynamically import vite to avoid bundling it
+    const { setupVite, serveStatic } = await import("./vite");
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
       serveStatic(app);
     }
-
     const port = parseInt(process.env.PORT || '5000', 10);
     server.listen({ port, host: "0.0.0.0" }, () => {
       log(`serving on port ${port}`);
