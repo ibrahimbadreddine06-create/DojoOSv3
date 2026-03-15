@@ -61,7 +61,7 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), "pt-[env(safe-area-inset-top)]", className)}
+      className={cn(sheetVariants({ side }), className, "pt-[env(safe-area-inset-top)]")}
       {...props}
     >
       {children}

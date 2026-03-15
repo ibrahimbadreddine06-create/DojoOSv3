@@ -1,5 +1,14 @@
 @import url('https://fonts.cdnfonts.com/css/amanojaku');
 
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -232,7 +241,7 @@
 }
 
 @layer base {
-  * {
+  :root {
     @apply border-border;
   }
 
