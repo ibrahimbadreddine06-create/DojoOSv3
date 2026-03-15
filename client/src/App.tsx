@@ -280,7 +280,7 @@ function MainLayout() {
       open={mainSidebarOpen}
       onOpenChange={setMainSidebarOpen}
     >
-      <div className="flex h-[100dvh] w-full overflow-hidden bg-background pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed inset-0 flex overflow-hidden bg-background">
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
