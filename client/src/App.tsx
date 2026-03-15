@@ -317,7 +317,9 @@ function MainLayout() {
         <div className="flex flex-col flex-1 overflow-hidden">
           <DualSidebarHeader />
           <main className="flex-1 bg-background overflow-y-auto">
-            <AuthenticatedRouter />
+            <div className="pb-[env(safe-area-inset-bottom)]">
+              <AuthenticatedRouter />
+            </div>
           </main>
         </div>
       </div>
