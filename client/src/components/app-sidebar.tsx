@@ -158,7 +158,7 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
   };
 
   const sidebarContent = (
-    <>
+    <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] md:pt-0">
       <div className="flex flex-col gap-2 p-2">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
           DojoOS
@@ -240,15 +240,13 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
           <ProfileMenuItemSimple />
         </div>
       </div>
-    </>
+    </div>
   );
 
   if (isMobileSheet) {
     return (
       <ScrollArea className="h-full bg-sidebar text-sidebar-foreground">
-        <div className="flex flex-col h-full">
-          {sidebarContent}
-        </div>
+        {sidebarContent}
       </ScrollArea>
     );
   }
@@ -357,16 +355,33 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
 
 function ProfileMenuItemSimple() {
   const [location] = useLocation();
-  // Simplified for mobile - just settings for now to avoid clutter, or could expand
+  const { data: user } = useQuery<any>({ queryKey: ["/api/user"] });
+
+  if (!user) return null;
+
   return (
-    <Link
-      href="/profile"
-      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location === "/profile" ? "bg-accent" : ""}`}
-      data-testid="link-profile"
-    >
-      <Settings className="h-4 w-4" />
-      <span>Settings</span>
-    </Link>
+    <div className="flex flex-col gap-1">
+      <Link
+        href="/profile"
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location === "/profile" ? "bg-accent" : ""}`}
+        data-testid="link-profile"
+      >
+        <Settings className="h-4 w-4 text-muted-foreground" />
+        <span>Settings</span>
+      </Link>
+      
+      <Link
+        href={`/social/${user.username}`}
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location.startsWith("/social/") ? "bg-accent" : ""}`}
+        data-testid="link-public-profile-mobile"
+      >
+        <Avatar className="h-5 w-5">
+          <AvatarImage src={user.profileImageUrl} />
+          <AvatarFallback className="text-xs">{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <span>Public Profile</span>
+      </Link>
+    </div>
   );
 }
 
