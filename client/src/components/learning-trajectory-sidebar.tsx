@@ -313,7 +313,7 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
 
   return (
     <div className="flex flex-col h-full bg-background" data-testid="sidebar-trajectory">
-      <div className="flex items-center justify-between px-4 h-16 border-b shrink-0">
+      <div className="flex items-center justify-between px-4 h-auto md:h-16 pt-[env(safe-area-inset-top)] md:pt-0 border-b shrink-0 min-h-[4rem]">
         <div className="min-w-0">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">Chapters</h2>
           <p className="text-sm font-medium truncate">{title}</p>

@@ -285,7 +285,7 @@ function MainLayout() {
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-[100dvh]! ring-0 focus:ring-0" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none fixed inset-y-0 bottom-0 !important ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
@@ -296,7 +296,7 @@ function MainLayout() {
             </Sheet>
 
             <Sheet open={hasTrajectorySidebar && trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-[100dvh]! ring-0 focus:ring-0" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none fixed inset-y-0 bottom-0 !important ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
