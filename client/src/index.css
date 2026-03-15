@@ -1,44 +1,15 @@
 @import url('https://fonts.cdnfonts.com/css/amanojaku');
 
 html, body {
-  height: 100% !important;
-  width: 100% !important;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
+  width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  background-color: hsl(var(--background)) !important;
-  transition: background-color 0.2s ease-in-out;
-  position: relative;
-}
-
-/* Absolute Over-Bleed to kill the white bar */
-html::after {
-  content: "";
-  position: fixed;
-  bottom: -100px;
-  left: 0;
-  right: 0;
-  height: 100px;
-  background-color: inherit;
-  z-index: -1;
-}
-
-/* Root Background Sync for iOS Bottom Bar */
-html[data-sidebar-open="true"],
-html[data-sidebar-open="true"] body {
-  background-color: hsl(var(--sidebar)) !important;
-}
-
-/* Force Radix Portal transparency to prevent iOS bottom gaps */
-[data-radix-portal] {
-  background-color: transparent !important;
-  pointer-events: none;
-}
-
-[data-radix-portal] > * {
-  pointer-events: auto;
+  background-color: hsl(var(--background));
 }
 
 @tailwind base;

@@ -250,33 +250,6 @@ function MainLayout() {
     setTrajectorySidebarOpen,
   } = useDualSidebar();
 
-  // Dynamic iOS/Android theme-color synchronization
-  useEffect(() => {
-    if (!isMobile) return;
-
-    let themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (!themeMeta) {
-      themeMeta = document.createElement('meta');
-      themeMeta.setAttribute('name', 'theme-color');
-      document.head.appendChild(themeMeta);
-    }
-
-    if (themeMeta) {
-      // Precise Sidebar Hex (#f4f4f5 matched to hsl(240, 5%, 96%))
-      const sidebarColor = "#f4f4f5"; 
-      const dashboardColor = "#ffffff";
-
-      // Only sync grey when the main sidebar (primary menu) is open. 
-      // Trajectory sidebar is typically white/background-matched.
-      if (mainSidebarOpen) {
-        themeMeta.setAttribute("content", sidebarColor);
-        document.documentElement.setAttribute("data-sidebar-open", "true");
-      } else {
-        themeMeta.setAttribute("content", dashboardColor);
-        document.documentElement.setAttribute("data-sidebar-open", "false");
-      }
-    }
-  }, [mainSidebarOpen, isMobile]);
 
   const sidebarStyle = {
     "--sidebar-width": "20rem",
@@ -308,7 +281,7 @@ function MainLayout() {
       open={mainSidebarOpen}
       onOpenChange={setMainSidebarOpen}
     >
-      <div className="fixed inset-0 flex overflow-hidden bg-background">
+      <div className="flex h-[100dvh] w-full overflow-hidden bg-background">
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
@@ -343,7 +316,7 @@ function MainLayout() {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <DualSidebarHeader />
-          <main className="flex-1 bg-background overflow-y-auto">
+          <main className="flex-1 bg-background overflow-y-auto pb-[env(safe-area-inset-bottom)]">
             <AuthenticatedRouter />
           </main>
         </div>
