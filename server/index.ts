@@ -128,9 +128,19 @@ async function seedDatabase() {
 // Run the seeder in the background
 seedDatabase();
 
-// 5. Local Dev Only: Vite & Express Listener
-if (process.env.VERCEL !== '1') {
-  (async () => {
+// 5. Setup Serving and Listener
+(async () => {
+  if (process.env.VERCEL === '1') {
+    // On Vercel, we just need the routes to be registered.
+    // Static serving is handled either by the Express app or Vercel's static builder.
+    // We'll let the Express app try to serve static files if they are available.
+    try {
+      serveStatic(app);
+    } catch (e) {
+      console.warn("Static serving skipped on Vercel (likely handled by Vercel static builder):", e.message);
+    }
+  } else {
+    // Local Development
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
@@ -141,5 +151,5 @@ if (process.env.VERCEL !== '1') {
     server.listen({ port, host: "0.0.0.0" }, () => {
       log(`serving on port ${port}`);
     });
-  })();
-}
+  }
+})();
