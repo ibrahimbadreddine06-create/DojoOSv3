@@ -256,8 +256,8 @@ function MainLayout() {
 
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) {
-      // Sidebar grey (#f5f5f5 in light / sidebar-hsl in dark)
-      const sidebarColor = "#f9f9fb"; 
+      // Precise Sidebar Hex (#f4f4f5 matched to hsl(240, 5%, 96%))
+      const sidebarColor = "#f4f4f5"; 
       const dashboardColor = "#ffffff";
 
       if (mainSidebarOpen || trajectorySidebarOpen) {

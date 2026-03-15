@@ -10,6 +10,19 @@ html, body {
   -webkit-overflow-scrolling: touch;
   background-color: hsl(var(--background)) !important;
   transition: background-color 0.2s ease-in-out;
+  position: relative;
+}
+
+/* Absolute Over-Bleed to kill the white bar */
+html::after {
+  content: "";
+  position: fixed;
+  bottom: -100px;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background-color: inherit;
+  z-index: -1;
 }
 
 /* Root Background Sync for iOS Bottom Bar */
