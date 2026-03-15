@@ -250,17 +250,25 @@ function MainLayout() {
     setTrajectorySidebarOpen,
   } = useDualSidebar();
 
-  // Dynamic iOS theme-color synchronization
+  // Dynamic iOS/Android theme-color synchronization
   useEffect(() => {
     if (!isMobile) return;
 
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    let themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeMeta) {
+      themeMeta = document.createElement('meta');
+      themeMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeMeta);
+    }
+
     if (themeMeta) {
       // Precise Sidebar Hex (#f4f4f5 matched to hsl(240, 5%, 96%))
       const sidebarColor = "#f4f4f5"; 
       const dashboardColor = "#ffffff";
 
-      if (mainSidebarOpen || trajectorySidebarOpen) {
+      // Only sync grey when the main sidebar (primary menu) is open. 
+      // Trajectory sidebar is typically white/background-matched.
+      if (mainSidebarOpen) {
         themeMeta.setAttribute("content", sidebarColor);
         document.documentElement.setAttribute("data-sidebar-open", "true");
       } else {
@@ -268,7 +276,7 @@ function MainLayout() {
         document.documentElement.setAttribute("data-sidebar-open", "false");
       }
     }
-  }, [mainSidebarOpen, trajectorySidebarOpen, isMobile]);
+  }, [mainSidebarOpen, isMobile]);
 
   const sidebarStyle = {
     "--sidebar-width": "20rem",
