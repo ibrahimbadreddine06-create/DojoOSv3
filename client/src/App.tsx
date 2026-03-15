@@ -201,14 +201,14 @@ function DualSidebarHeader() {
 
   return (
     <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-auto pt-[env(safe-area-inset-top)] md:pt-0 px-4">
-      <div className="flex items-center justify-between h-12 md:h-16">
+      <div className="flex items-center justify-between h-14 md:h-16">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={handleMainNavClick}
             data-testid="button-sidebar-toggle"
-            className={cn(mainSidebarOpen ? "bg-accent" : "", "h-10 w-10 md:h-10 md:w-10")}
+            className={cn(mainSidebarOpen ? "bg-accent" : "", "h-10 w-10")}
           >
             <Menu className="h-6 w-6" />
           </Button>
@@ -227,7 +227,7 @@ function DualSidebarHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-base font-bold tracking-tight text-foreground">
+          <span className="md:text-sm text-base font-medium text-muted-foreground">
             DojoOS
           </span>
         </div>
@@ -284,22 +284,22 @@ function MainLayout() {
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar">
+                <div className="flex flex-col min-h-full w-full bg-sidebar">
                   <AppSidebar isMobileSheet />
                 </div>
               </SheetContent>
             </Sheet>
 
             <Sheet open={hasTrajectorySidebar && trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none h-full ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar">
+                <div className="flex flex-col min-h-full w-full bg-sidebar">
                   <LearningTrajectorySidebar isMobileSheet />
                 </div>
               </SheetContent>
