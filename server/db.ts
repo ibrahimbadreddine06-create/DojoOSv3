@@ -1,6 +1,6 @@
 import { Pool, neon } from '@neondatabase/serverless';
 import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http';
-import * as schema from "../shared/schema";
+import * as schema from "../shared/schema.js";
 
 if (!process.env.DATABASE_URL) {
   console.warn(
