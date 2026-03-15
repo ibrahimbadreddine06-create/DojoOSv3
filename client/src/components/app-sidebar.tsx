@@ -158,9 +158,9 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full pt-[calc(env(safe-area-inset-top)+0.5rem)] md:pt-0">
-      <div className="flex flex-col gap-1.5 p-2">
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 px-2 pb-1">
+    <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] md:pt-0">
+      <div className="flex flex-col gap-1.5 p-2 pt-1 md:pt-2">
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/70 px-2 pb-0.5">
           DojoOS
         </div>
         <div className="flex flex-col gap-0.5">

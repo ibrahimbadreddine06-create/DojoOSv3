@@ -199,7 +199,7 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header className="border-b bg-background sticky top-0 z-40 shrink-0 h-[calc(3rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] px-4">
+    <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-[calc(2.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] md:pt-0 px-4">
       <div className="flex items-center justify-between h-14 md:h-16">
         <div className="flex items-center gap-2">
           <Button
@@ -283,7 +283,7 @@ function MainLayout() {
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
@@ -292,7 +292,7 @@ function MainLayout() {
             </Sheet>
 
             <Sheet open={hasTrajectorySidebar && trajectorySidebarOpen} onOpenChange={setTrajectorySidebarOpen}>
-              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none" aria-describedby={undefined}>
+              <SheetContent side="left" className="p-0 w-80 bg-sidebar border-none shadow-none ring-0 focus:ring-0" aria-describedby={undefined}>
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
