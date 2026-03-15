@@ -38,12 +38,17 @@ const app = express();
 export default app; // Export immediately for Vercel
 
 app.get("/api/health", (req, res) => {
+  const cb = process.env.CALLBACK_URL || "NOT_SET";
   res.json({ 
     status: "ok", 
     env: process.env.NODE_ENV,
     vercel: process.env.VERCEL,
     db: !!process.env.DATABASE_URL,
-    auth: !!process.env.SESSION_SECRET
+    auth: !!process.env.SESSION_SECRET,
+    google: {
+      id: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.slice(0, 5)}...` : "MISSING",
+      callback: cb !== "NOT_SET" ? (cb.length > 20 ? `${cb.slice(0, 10)}...${cb.slice(-10)}` : cb) : "NOT_SET"
+    }
   });
 });
 
