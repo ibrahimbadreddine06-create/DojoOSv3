@@ -34,8 +34,8 @@ export function setupAuth(app: Express) {
         cookie: {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             httpOnly: true,
-            sameSite: "lax", // Better for OAuth redirects
-            secure: process.env.VERCEL === "1", // Use secure on Vercel
+            sameSite: process.env.VERCEL === "1" ? "none" : "lax",
+            secure: process.env.VERCEL === "1",
         },
     };
 
@@ -115,8 +115,8 @@ export function setupAuth(app: Express) {
                 {
                     clientID: process.env.GOOGLE_CLIENT_ID,
                     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                    callbackURL: "/api/auth/google/callback",
-                    proxy: true // Required for Vercel/proxies
+                    callbackURL: process.env.CALLBACK_URL || "http://localhost:5000/auth/google/callback",
+                    proxy: true
                 },
                 async (accessToken, refreshToken, profile, done) => {
                     try {
