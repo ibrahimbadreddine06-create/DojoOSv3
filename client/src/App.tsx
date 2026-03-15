@@ -199,11 +199,8 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header 
-      className="border-b bg-background sticky top-0 z-40 shrink-0"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
-      <div className="flex items-center justify-between h-16 px-4">
+    <header className="border-b bg-background sticky top-0 z-40 shrink-0 pt-[env(safe-area-inset-top)]">
+      <div className="flex items-center justify-between h-14 md:h-16 px-4">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -268,9 +265,9 @@ function MainLayout() {
   if (isFullScreen) {
     return (
       <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
-      <div className="flex min-h-[100dvh] w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
-        <FullScreenRouter />
-      </div>
+        <div className="flex h-[100dvh] w-full overflow-hidden">
+          <FullScreenRouter />
+        </div>
       </SidebarProvider>
     );
   }
@@ -282,7 +279,7 @@ function MainLayout() {
       open={mainSidebarOpen}
       onOpenChange={setMainSidebarOpen}
     >
-      <div className="flex min-h-[100dvh] w-full overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)]">
+      <div className="flex h-[100dvh] w-full overflow-hidden">
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>
