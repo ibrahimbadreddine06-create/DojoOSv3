@@ -35,7 +35,7 @@ import {
   disciplines, disciplineLogs,
   type Follow, type InsertFollow, type PrivacySetting, type InsertPrivacySetting, type UpdatePrivacySetting,
   follows, privacySettings
-} from "@shared/schema";
+} from "../shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, ilike, or } from "drizzle-orm"; // Added sql import
 

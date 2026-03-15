@@ -8,7 +8,7 @@ import connectPgSimple from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { User as SelectUser } from "../shared/schema";
 import { db, pool } from "./db"; // Needed for session store pool
 
 const scryptAsync = promisify(scrypt);
@@ -231,9 +231,9 @@ export function setupAuth(app: Express) {
         "/api/auth/google",
         (req, res, next) => {
             if (!googleEnabled) {
-                return res.status(501).json({ 
-                    error: "Google OAuth not configured", 
-                    message: "Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel environment variables." 
+                return res.status(501).json({
+                    error: "Google OAuth not configured",
+                    message: "Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel environment variables."
                 });
             }
             next();

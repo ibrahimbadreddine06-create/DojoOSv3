@@ -14,6 +14,25 @@ process.on("uncaughtException", (err) => {
   console.error("!!! Uncaught Exception:", err);
 });
 
+// Environment Variable Validation for Production
+if (process.env.VERCEL === "1") {
+  const required = ["DATABASE_URL", "SESSION_SECRET"];
+  const missing = required.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error("\n\n#################################################");
+    console.error("CRITICAL ERROR: MISSING ENVIRONMENT VARIABLES");
+    console.error(`Please add the following variables in Vercel Dashboard:`);
+    missing.forEach(m => console.error(`- ${m}`));
+    console.error("#################################################\n\n");
+    // We don't exit(1) here to allow the logs to actually showing up in Vercel's dashboard before the function dies
+  }
+
+  if (process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_SECRET) {
+      console.warn("WARNING: GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is missing or empty.");
+  }
+}
+
 const app = express();
 export default app; // Export immediately for Vercel
 
