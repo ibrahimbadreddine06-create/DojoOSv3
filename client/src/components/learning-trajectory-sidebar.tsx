@@ -152,7 +152,7 @@ function ChapterCard({
         )}
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{chapter.title}</p>
+          <p className="text-sm font-medium break-words">{chapter.title}</p>
           {(chapter.flashcardCount ?? 0) > 0 && (
             <p className="text-xs text-muted-foreground">{chapter.flashcardCount} cards</p>
           )}
