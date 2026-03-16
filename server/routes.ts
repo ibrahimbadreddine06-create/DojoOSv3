@@ -593,11 +593,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.patch("/api/workout-exercises/:id", async (req, res) => {
-    // Need to add updateWorkoutExercise to storage if not exists, but for now just skip or assume it exists? 
-    // Actually I haven't added updateWorkoutExercise to storage interface. 
-    // I'll skip this one for now as I might not need to update exercise-level notes often, 
-    // but sets definitively need updates.
-    res.status(501).json({ message: "Not implemented" });
+    res.status(405).json({ message: "Use /api/workout-sets to update individual set data" });
   });
 
   app.post("/api/workout-sets", async (req, res) => {

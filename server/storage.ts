@@ -161,6 +161,7 @@ export interface IStorage {
   updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog>;
   stopFastingLog(id: string): Promise<FastingLog>;
   completeFastingLog(id: string): Promise<FastingLog>;
+  deleteFastingLog(id: string): Promise<void>;
   // Meal Presets
   getMealPresets(): Promise<MealPreset[]>;
   createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
@@ -1020,6 +1021,11 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deleteFastingLog(id: string): Promise<void> {
+    this.ensureDb();
+    await db.delete(fastingLogs).where(eq(fastingLogs.id, id));
+  }
+
   async getMealPresets(): Promise<MealPreset[]> {
     this.ensureDb();
     return await db.select().from(mealPresets).orderBy(asc(mealPresets.name));
@@ -1067,7 +1073,8 @@ export class DatabaseStorage implements IStorage {
       const [updated] = await db.update(dailyState).set({ ...data, updatedAt: new Date() }).where(eq(dailyState.id, existing.id)).returning();
       return updated;
     } else {
-      const [created] = await db.insert(dailyState).values({ ...data, userId, date, updatedAt: new Date() } as any).returning();
+      const insertValues = { ...data, userId, date, updatedAt: new Date() };
+      const [created] = await db.insert(dailyState).values(insertValues as typeof dailyState.$inferInsert).returning();
       return created;
     }
   }
@@ -2125,6 +2132,9 @@ export class MemStorage implements IStorage {
   }
   async completeFastingLog(id: string): Promise<FastingLog> {
     return this.updateFastingLog(id, { status: "completed", endTime: new Date() } as any);
+  }
+  async deleteFastingLog(id: string): Promise<void> {
+    this.fastingLogs.delete(id);
   }
   async getMealPresets(): Promise<MealPreset[]> {
     return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
