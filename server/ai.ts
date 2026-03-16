@@ -412,7 +412,13 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  let text = "";
+  try {
+    text = result.response.text();
+  } catch {
+    // Gemini may throw if the response was blocked or contains no text parts
+    text = "";
+  }
 
   let jsonStr = text.trim();
   const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -426,16 +432,21 @@ OUTPUT — return ONLY valid JSON array, no markdown:
     }
   }
 
-  let parsed: any[];
+  // Gemini sometimes returns an empty text body when it relies entirely on
+  // grounding metadata (no JSON array in the response text). For YouTube we
+  // can still recover from grounding chunks alone, so treat parse failures as
+  // an empty parsed array rather than a hard error.
+  let parsed: any[] = [];
   try {
-    parsed = JSON.parse(jsonStr);
-  } catch (e) {
-    console.error("Failed to parse AI material search response:", text.substring(0, 500));
-    throw new Error("AI returned an invalid response. Please try again.");
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("AI response was not an array of results.");
+    const attempt = JSON.parse(jsonStr);
+    if (Array.isArray(attempt)) parsed = attempt;
+  } catch {
+    if (params.materialType !== "youtube") {
+      console.error("Failed to parse AI material search response:", text.substring(0, 500));
+      throw new Error("AI returned an invalid response. Please try again.");
+    }
+    // For YouTube: proceed with empty parsed array; grounding chunks will provide candidates
+    console.warn("YouTube search: could not parse JSON from AI response, relying on grounding chunks only.");
   }
 
   if (params.materialType === "youtube") {
