@@ -63,12 +63,14 @@ STRUCTURE PREFERENCE: ${structureLabel}
 ${tocSection}
 
 RESEARCH REQUIREMENTS:
-- Search for and analyze major university syllabi (Harvard, MIT, Stanford, etc.)
-- Find well-known textbooks used for this subject and analyze their table of contents
-- Check official certification frameworks (CEFR for languages, ACM for CS, etc.)
-- Look at reputable online courses (Coursera, edX, Khan Academy, etc.)
-- For languages, consult official institutions (Goethe, Institut Français, etc.)
-- Reference actual curricula you find in your research
+- PRIORITY: Search for and analyze major university syllabi (Harvard, MIT, Stanford, Oxford, Cambridge, etc.)
+- Find official university course pages and lecture materials for this subject
+- Analyze well-known textbooks used in universities and provide their actual URLs
+- Check official certification frameworks (CEFR for languages, ACM for CS, IB curricula, etc.)
+- For languages, prioritize official institutions (Goethe Institute, Institut Français, British Council, etc.)
+- Include reputable academic sources: university presses, academic journals, educational institutions
+- Avoid generic websites — prioritize .edu, .org, and official academic domains
+- Reference only ACTUAL curricula and resources you find through research
 
 CRITICAL RULES:
 1. The trajectory MUST be COMPLETE — missing any essential topic is a failure
@@ -76,7 +78,8 @@ CRITICAL RULES:
 3. You CANNOT teach advanced concepts before foundational ones
 4. Aim for 4–8 main chapters, each with 3–8 subchapters
 5. Use sub-subchapters only when genuinely necessary (max 3 levels deep)
-6. List ALL sources you actually consulted with their real URLs
+6. List sources in order of importance: UNIVERSITY SOURCES FIRST, then textbooks, then official institutions, then courses
+7. Include ONLY sources you actually consulted — real URLs that are actually relevant
 
 OUTPUT FORMAT — return ONLY valid JSON, no markdown, no extra text:
 {
