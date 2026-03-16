@@ -497,42 +497,42 @@ export function AITrajectoryBuilder({
                   <Plus className="w-3 h-3" /> Add chapter
                 </button>
               </div>
-
-              {/* Sources */}
-              {sources.length > 0 && (
-                <div className="border-t px-4 py-3 bg-muted/30">
-                  <p className="text-xs text-muted-foreground mb-2.5 font-medium">Based on</p>
-                  <div className="flex flex-wrap gap-2">
-                    {sources.slice(0, 12).map((src, i) => {
-                      const favicon = `https://icons.duckduckgo.com/ip3/${new URL(src.url).hostname}.ico`;
-                      return (
-                        <a
-                          key={i}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={src.name}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[180px]"
-                          data-testid={`source-link-${i}`}
-                        >
-                          <img 
-                            src={favicon} 
-                            alt="" 
-                            className="w-3.5 h-3.5 rounded-sm flex-shrink-0" 
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                          <span className="truncate">{src.name}</span>
-                          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </ScrollArea>
+
+            {/* Sources — fixed at bottom, above buttons */}
+            {sources.length > 0 && (
+              <div className="border-t px-4 py-3 bg-muted/30 shrink-0">
+                <p className="text-xs text-muted-foreground mb-2.5 font-medium">Based on</p>
+                <div className="flex flex-wrap gap-2">
+                  {sources.slice(0, 12).map((src, i) => {
+                    const favicon = `https://icons.duckduckgo.com/ip3/${new URL(src.url).hostname}.ico`;
+                    return (
+                      <a
+                        key={i}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={src.name}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[180px]"
+                        data-testid={`source-link-${i}`}
+                      >
+                        <img 
+                          src={favicon} 
+                          alt="" 
+                          className="w-3.5 h-3.5 rounded-sm flex-shrink-0" 
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <span className="truncate">{src.name}</span>
+                        <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="px-6 py-4 border-t flex items-center justify-between shrink-0">
               <Button variant="ghost" onClick={handleClose} data-testid="button-discard-trajectory">Discard</Button>
