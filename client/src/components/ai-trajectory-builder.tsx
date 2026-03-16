@@ -140,7 +140,7 @@ function TreeNode({
             />
           ) : (
             <span
-              className={`text-sm block leading-snug ${
+              className={`text-sm block leading-snug truncate ${
                 depth === 0
                   ? "font-semibold"
                   : depth === 1
