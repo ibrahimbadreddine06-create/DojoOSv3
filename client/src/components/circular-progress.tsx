@@ -66,19 +66,7 @@ export function CircularProgress({
           />
         )}
 
-        {/* Checkmark for completed */}
-        {completed && (
-          <g>
-            <path
-              d={`M ${center - diameter * 0.15} ${center} L ${center - diameter * 0.05} ${center + diameter * 0.15} L ${center + diameter * 0.15} ${center - diameter * 0.1}`}
-              stroke={`hsl(var(${colorVar}))`}
-              strokeWidth={strokeWidth * 1.2}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </g>
-        )}
+
       </svg>
     </div>
   );

@@ -60,7 +60,9 @@ interface AddTimeBlockDialogProps {
     linkedModule?: string;
     linkedItemId?: string;
     linkedSubItemId?: string;
+    parentId?: string | null;
   }) => void;
+  existingBlocks?: any[];
 }
 
 export function AddTimeBlockDialog({
@@ -70,7 +72,8 @@ export function AddTimeBlockDialog({
   defaultStartTime = "09:00",
   defaultEndTime = "10:00",
   parentId,
-  onPresetSubmit
+  onPresetSubmit,
+  existingBlocks = []
 }: AddTimeBlockDialogProps) {
   const isPresetMode = !!onPresetSubmit;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -200,10 +203,34 @@ export function AddTimeBlockDialog({
                 linkedModule: data.linkedModule,
                 linkedItemId: data.linkedItemId,
                 linkedSubItemId: data.linkedSubItemId,
+                parentId: parentId || null,
               });
               setOpen(false);
               form.reset();
             } else {
+              // Client-side overlap validation
+              const hasOverlap = (existingBlocks as any[]).some((b) => {
+                if (b.parentId || b.id === parentId) return false;
+                // Use the internal timeToMinutes/checkOverlap logic or equivalent
+                const timeToMinutes = (time: string) => {
+                  const [h, m] = time.split(":").map(Number);
+                  return h * 60 + m;
+                };
+                const s1 = timeToMinutes(data.startTime);
+                const e1 = timeToMinutes(data.endTime);
+                const s2 = timeToMinutes(b.startTime);
+                const e2 = timeToMinutes(b.endTime);
+                return s1 < e2 && s2 < e1;
+              });
+
+              if (hasOverlap && !parentId) {
+                toast({
+                  title: "Overlapping time slots",
+                  description: "This time slot is already partially occupied.",
+                  variant: "destructive",
+                });
+                return;
+              }
               createMutation.mutate(data);
             }
           })} className="space-y-4">

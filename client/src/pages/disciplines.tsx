@@ -160,7 +160,7 @@ export default function Disciplines() {
             <CardDescription>Progression across your disciplines</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-80 w-full aspect-auto">
+            <ChartContainer config={chartConfig} className="h-96 w-full aspect-auto">
               <LineChart data={chartData} margin={{ top: 12, right: 0, bottom: 30, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis
@@ -200,6 +200,8 @@ export default function Disciplines() {
                   stroke="hsl(var(--primary) / 0.5)"
                   fill="transparent"
                   startIndex={Math.max(0, chartData.length - 14)}
+                  endIndex={chartData.length - 1}
+                  travellerWidth={0}
                 />
               </LineChart>
             </ChartContainer>

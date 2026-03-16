@@ -267,9 +267,9 @@ export default function HomePage() {
   // Dynamic max columns based on screen width
   useEffect(() => {
     const calculateCols = () => {
-      // Assuming minimum card width is around 300px
+      // Min card width ~160px allows 2 columns on phones (~375px screens)
       const availableWidth = Math.min(window.innerWidth - 32, 1600); // 32px padding, 1600px max container
-      const max = Math.max(1, Math.floor(availableWidth / 300));
+      const max = Math.min(5, Math.max(1, Math.floor(availableWidth / 160)));
       setMaxCols(max);
 
       // Auto-correct if config.columns is higher than max possible
@@ -332,7 +332,33 @@ export default function HomePage() {
   };
 
   const setColumns = (cols: number) => {
-    setConfig(prev => ({ ...prev, columns: cols }));
+    setConfig(prev => {
+      // When increasing columns, redistribute all items evenly across the new column count
+      if (cols > (prev.columns ?? 1)) {
+        const redistribute = (layout: Layout): Layout => {
+          // Sort items by Y then X to maintain their visual order when redistributing
+          const sorted = [...layout].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+          return sorted.map((item, idx) => ({
+            ...item,
+            w: 1, // Force width to 1 so they can fit side-by-side in more columns
+            x: idx % cols,
+            y: Math.floor(idx / cols),
+          }));
+        };
+        return {
+          ...prev,
+          columns: cols,
+          layouts: {
+            lg: redistribute(prev.layouts.lg),
+            md: redistribute(prev.layouts.md),
+            sm: redistribute(prev.layouts.sm),
+            xs: redistribute(prev.layouts.xs || []),
+            xxs: redistribute(prev.layouts.xxs || [])
+          },
+        };
+      }
+      return { ...prev, columns: cols };
+    });
   };
 
   // Render Widget Content
@@ -386,6 +412,7 @@ export default function HomePage() {
 
         <div className="transition-all duration-300">
           <ResponsiveGridLayout
+            key={config.columns}
             className={cn("layout", isEditing ? "bg-accent/10 rounded-xl border-dashed border-2 border-accent/50 min-h-[500px]" : "")}
             layouts={config.layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
