@@ -90,7 +90,7 @@ function ChapterCard({
   onDelete,
   animationDelay,
 }: ChapterCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = chapter.children.length > 0;
   const isSelected = selectedId === chapter.id;
   const completionPercent = chapter.completed ? 100 : 0;

@@ -54,7 +54,7 @@ function mapAIChapters(nodes: { title: string; children?: any[] }[]): ChapterNod
     id: tempId(),
     title: n.title,
     children: n.children?.length ? mapAIChapters(n.children) : [],
-    expanded: true,
+    expanded: false,
   }));
 }
 
@@ -296,7 +296,7 @@ export function AITrajectoryBuilder({
   function addChildById(nodes: ChapterNode[], parentId: string): ChapterNode[] {
     return nodes.map(n =>
       n.id === parentId
-        ? { ...n, expanded: true, children: [...n.children, { id: tempId(), title: "New subchapter", children: [], expanded: true }] }
+        ? { ...n, expanded: true, children: [...n.children, { id: tempId(), title: "New subchapter", children: [], expanded: false }] }
         : { ...n, children: addChildById(n.children, parentId) }
     );
   }
@@ -490,7 +490,7 @@ export function AITrajectoryBuilder({
                   />
                 ))}
                 <button
-                  onClick={() => setChapters(p => [...p, { id: tempId(), title: "New chapter", children: [], expanded: true }])}
+                  onClick={() => setChapters(p => [...p, { id: tempId(), title: "New chapter", children: [], expanded: false }])}
                   className="flex items-center gap-2 text-xs text-muted-foreground mt-2 px-2 py-1.5 rounded-md hover-elevate w-full"
                   data-testid="button-add-top-chapter"
                 >
