@@ -792,6 +792,11 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.delete("/api/fasting-logs/:id", async (req, res) => {
+    await storage.deleteFastingLog(req.params.id);
+    res.json({ success: true });
+  });
+
   // Meal Presets
   app.get("/api/meal-presets", async (req, res) => {
     const presets = await storage.getMealPresets();
