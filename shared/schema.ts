@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, date, decimal, pgEnum, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, date, decimal, pgEnum, index, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -458,10 +458,12 @@ export const hygieneRoutines = pgTable("hygiene_routines", {
 // ===== SUPPLEMENT LOGS =====
 export const supplementLogs = pgTable("supplement_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: timestamp("date").notNull(),
+  userId: varchar("user_id"),
+  date: date("date").notNull(),
   name: text("name").notNull(),
   amount: decimal("amount", { precision: 7, scale: 2 }),
   unit: text("unit"), // mg, mcg, g, IU, ml, capsule, tablet
+  timeTaken: text("time_taken"), // HH:MM time the supplement was taken
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -469,6 +471,7 @@ export const supplementLogs = pgTable("supplement_logs", {
 // ===== FASTING LOGS =====
 export const fastingLogs = pgTable("fasting_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   targetHours: decimal("target_hours", { precision: 4, scale: 1 }),
@@ -521,7 +524,8 @@ export const bodyProfile = pgTable("body_profile", {
 // ===== DAILY STATE (comprehensive per-day snapshot for SenseiOS) =====
 export const dailyState = pgTable("daily_state", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: date("date").notNull().unique(),
+  userId: varchar("user_id"),
+  date: date("date").notNull(),
   // Sleep
   sleepHours: decimal("sleep_hours", { precision: 4, scale: 2 }),
   sleepQuality: integer("sleep_quality"), // 1-5
@@ -547,7 +551,10 @@ export const dailyState = pgTable("daily_state", {
   // Goal events
   goalProgressEvents: jsonb("goal_progress_events").$type<{ goalId: string; event: string; timestamp: string }[]>().default([]),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+},
+(table) => [
+  unique("daily_state_user_date_unique").on(table.userId, table.date),
+]);
 
 export const workoutsRelations = relations(workouts, ({ many }) => ({
   workoutExercises: many(workoutExercises),
@@ -850,9 +857,7 @@ export const insertSleepLogSchema = createInsertSchema(sleepLogs, {
   endTime: z.coerce.date().optional().nullable(),
 }).omit({ id: true });
 export const insertHygieneRoutineSchema = createInsertSchema(hygieneRoutines).omit({ id: true, createdAt: true });
-export const insertSupplementLogSchema = createInsertSchema(supplementLogs, {
-  date: z.coerce.date(),
-}).omit({ id: true, createdAt: true });
+export const insertSupplementLogSchema = createInsertSchema(supplementLogs).omit({ id: true, createdAt: true });
 export const insertFastingLogSchema = createInsertSchema(fastingLogs, {
   startTime: z.coerce.date(),
   endTime: z.coerce.date().optional().nullable(),

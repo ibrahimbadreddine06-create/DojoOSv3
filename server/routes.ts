@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams } from "./ai";
+import { calculateRecoveryScore } from "./recovery";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -618,7 +619,17 @@ export function registerRoutes(app: Express): Server {
   // Muscle Stats
   app.get("/api/muscle-stats", async (req, res) => {
     const stats = await storage.getMuscleStats();
-    res.json(stats);
+    // Recompute recovery scores live based on lastTrained + volumeAccumulated
+    const enriched = stats.map(s => ({
+      ...s,
+      recoveryScore: calculateRecoveryScore({
+        muscleId: s.muscleId,
+        lastTrainedAt: s.lastTrained ? new Date(s.lastTrained) : null,
+        volumeAccumulated: Number(s.volumeAccumulated || 0),
+        rpe: null,
+      }),
+    }));
+    res.json(enriched);
   });
 
   app.post("/api/muscle-stats", async (req, res) => {
@@ -722,6 +733,15 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.patch("/api/supplement-logs/:id", async (req, res) => {
+    try {
+      const log = await storage.updateSupplementLog(req.params.id, req.body);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
   app.delete("/api/supplement-logs/:id", async (req, res) => {
     await storage.deleteSupplementLog(req.params.id);
     res.json({ success: true });
@@ -744,13 +764,32 @@ export function registerRoutes(app: Express): Server {
       const log = await storage.createFastingLog(data);
       res.json(log);
     } catch (e: any) {
-      res.status(400).json({ message: e.message });
+      res.status(409).json({ message: e.message });
     }
   });
 
   app.patch("/api/fasting-logs/:id", async (req, res) => {
     try {
       const log = await storage.updateFastingLog(req.params.id, req.body);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  // Fasting lifecycle actions
+  app.post("/api/fasting-logs/:id/stop", async (req, res) => {
+    try {
+      const log = await storage.stopFastingLog(req.params.id);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.post("/api/fasting-logs/:id/complete", async (req, res) => {
+    try {
+      const log = await storage.completeFastingLog(req.params.id);
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -789,6 +828,23 @@ export function registerRoutes(app: Express): Server {
       const data = insertBodyProfileSchema.parse(req.body);
       const profile = await storage.upsertBodyProfile(data);
       res.json(profile);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  // Daily State
+  app.get("/api/daily-state/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const state = await storage.getDailyState((req.user as any).id, req.params.date);
+    res.json(state || null);
+  });
+
+  app.post("/api/daily-state/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const state = await storage.upsertDailyState((req.user as any).id, req.params.date, req.body);
+      res.json(state);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }

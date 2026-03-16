@@ -3,7 +3,7 @@ import crypto from "crypto";
 import {
   users, timeBlocks, dayPresets, activityPresets, goals, knowledgeTopics, learnPlanItems,
   materials, flashcards, chapterNotes, workouts, exerciseLibrary, workoutExercises, workoutSets, muscleStats, intakeLogs, sleepLogs, hygieneRoutines,
-  supplementLogs, fastingLogs, mealPresets, bodyProfile,
+  supplementLogs, fastingLogs, mealPresets, bodyProfile, dailyState,
   workoutPresets,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, courseMetrics, businesses, workProjects, tasks,
@@ -25,6 +25,7 @@ import {
   type FastingLog, type InsertFastingLog,
   type MealPreset, type InsertMealPreset,
   type BodyProfile, type InsertBodyProfile,
+  type DailyState, type InsertDailyState,
   type SalahLog, type InsertSalahLog,
   type QuranLog, type InsertQuranLog, type DhikrLog, type InsertDhikrLog,
   type DuaLog, type InsertDuaLog, type Transaction, type InsertTransaction,
@@ -152,11 +153,14 @@ export interface IStorage {
   // Supplements & Fasting
   getSupplementLogs(date: string): Promise<SupplementLog[]>;
   createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog>;
+  updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog>;
   deleteSupplementLog(id: string): Promise<void>;
   getFastingLogs(): Promise<FastingLog[]>;
   getActiveFastingLog(): Promise<FastingLog | undefined>;
   createFastingLog(data: InsertFastingLog): Promise<FastingLog>;
   updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog>;
+  stopFastingLog(id: string): Promise<FastingLog>;
+  completeFastingLog(id: string): Promise<FastingLog>;
   // Meal Presets
   getMealPresets(): Promise<MealPreset[]>;
   createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
@@ -164,6 +168,9 @@ export interface IStorage {
   // Body Profile
   getBodyProfile(): Promise<BodyProfile | undefined>;
   upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile>;
+  // Daily State
+  getDailyState(userId: string, date: string): Promise<DailyState | undefined>;
+  upsertDailyState(userId: string, date: string, data: Partial<InsertDailyState>): Promise<DailyState>;
 
   // Worship
   getSalahLogs(date: string): Promise<SalahLog[]>;
@@ -947,13 +954,19 @@ export class DatabaseStorage implements IStorage {
 
   async getSupplementLogs(date: string): Promise<SupplementLog[]> {
     this.ensureDb();
-    return await db.select().from(supplementLogs).where(eq(supplementLogs.date, new Date(date)));
+    return await db.select().from(supplementLogs).where(eq(supplementLogs.date, date));
   }
 
   async createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog> {
     this.ensureDb();
     const [log] = await db.insert(supplementLogs).values(data).returning();
     return log;
+  }
+
+  async updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
+    this.ensureDb();
+    const [updated] = await db.update(supplementLogs).set(data).where(eq(supplementLogs.id, id)).returning();
+    return updated;
   }
 
   async deleteSupplementLog(id: string): Promise<void> {
@@ -974,13 +987,36 @@ export class DatabaseStorage implements IStorage {
 
   async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
     this.ensureDb();
-    const [log] = await db.insert(fastingLogs).values(data).returning();
+    // Enforce only one active fast at a time
+    const active = await this.getActiveFastingLog();
+    if (active) throw new Error("An active fast already exists. Stop or cancel it first.");
+    const [log] = await db.insert(fastingLogs).values({ ...data, status: "active" }).returning();
     return log;
   }
 
   async updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
     this.ensureDb();
     const [updated] = await db.update(fastingLogs).set(data).where(eq(fastingLogs.id, id)).returning();
+    return updated;
+  }
+
+  async stopFastingLog(id: string): Promise<FastingLog> {
+    this.ensureDb();
+    const [updated] = await db
+      .update(fastingLogs)
+      .set({ status: "cancelled", endTime: new Date() })
+      .where(eq(fastingLogs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async completeFastingLog(id: string): Promise<FastingLog> {
+    this.ensureDb();
+    const [updated] = await db
+      .update(fastingLogs)
+      .set({ status: "completed", endTime: new Date() })
+      .where(eq(fastingLogs.id, id))
+      .returning();
     return updated;
   }
 
@@ -1014,6 +1050,24 @@ export class DatabaseStorage implements IStorage {
       return updated;
     } else {
       const [created] = await db.insert(bodyProfile).values(data).returning();
+      return created;
+    }
+  }
+
+  async getDailyState(userId: string, date: string): Promise<DailyState | undefined> {
+    this.ensureDb();
+    const [row] = await db.select().from(dailyState).where(and(eq(dailyState.userId, userId), eq(dailyState.date, date)));
+    return row;
+  }
+
+  async upsertDailyState(userId: string, date: string, data: Partial<InsertDailyState>): Promise<DailyState> {
+    this.ensureDb();
+    const existing = await this.getDailyState(userId, date);
+    if (existing) {
+      const [updated] = await db.update(dailyState).set({ ...data, updatedAt: new Date() }).where(eq(dailyState.id, existing.id)).returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(dailyState).values({ ...data, userId, date, updatedAt: new Date() } as any).returning();
       return created;
     }
   }
@@ -1488,6 +1542,7 @@ export class MemStorage implements IStorage {
   private fastingLogs: Map<string, FastingLog>;
   private mealPresets: Map<string, MealPreset>;
   private bodyProfiles: Map<string, BodyProfile>;
+  private dailyStates: Map<string, DailyState>;
   private salahLogs: Map<string, SalahLog>;
   private quranLogs: Map<string, QuranLog>;
   private dhikrLogs: Map<string, DhikrLog>;
@@ -1535,6 +1590,7 @@ export class MemStorage implements IStorage {
     this.fastingLogs = new Map();
     this.mealPresets = new Map();
     this.bodyProfiles = new Map();
+    this.dailyStates = new Map();
     this.salahLogs = new Map();
     this.quranLogs = new Map();
     this.dhikrLogs = new Map();
@@ -2033,6 +2089,13 @@ export class MemStorage implements IStorage {
     this.supplementLogs.set(id, log);
     return log;
   }
+  async updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
+    const existing = this.supplementLogs.get(id);
+    if (!existing) throw new Error("Not found");
+    const updated = { ...existing, ...data } as SupplementLog;
+    this.supplementLogs.set(id, updated);
+    return updated;
+  }
   async deleteSupplementLog(id: string): Promise<void> {
     this.supplementLogs.delete(id);
   }
@@ -2043,8 +2106,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.fastingLogs.values()).find(l => l.status === "active");
   }
   async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
+    const active = await this.getActiveFastingLog();
+    if (active) throw new Error("An active fast already exists. Stop or cancel it first.");
     const id = this.generateId();
-    const log: FastingLog = { ...data, id, createdAt: new Date() } as any;
+    const log: FastingLog = { ...data, status: "active", id, createdAt: new Date() } as any;
     this.fastingLogs.set(id, log);
     return log;
   }
@@ -2054,6 +2119,12 @@ export class MemStorage implements IStorage {
     const updated = { ...existing, ...data } as FastingLog;
     this.fastingLogs.set(id, updated);
     return updated;
+  }
+  async stopFastingLog(id: string): Promise<FastingLog> {
+    return this.updateFastingLog(id, { status: "cancelled", endTime: new Date() } as any);
+  }
+  async completeFastingLog(id: string): Promise<FastingLog> {
+    return this.updateFastingLog(id, { status: "completed", endTime: new Date() } as any);
   }
   async getMealPresets(): Promise<MealPreset[]> {
     return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -2081,6 +2152,22 @@ export class MemStorage implements IStorage {
       const id = this.generateId();
       const created: BodyProfile = { ...data, id, updatedAt: new Date() } as any;
       this.bodyProfiles.set(id, created);
+      return created;
+    }
+  }
+  async getDailyState(userId: string, date: string): Promise<DailyState | undefined> {
+    return Array.from(this.dailyStates.values()).find(d => d.userId === userId && d.date === date);
+  }
+  async upsertDailyState(userId: string, date: string, data: Partial<InsertDailyState>): Promise<DailyState> {
+    const existing = await this.getDailyState(userId, date);
+    if (existing) {
+      const updated = { ...existing, ...data, updatedAt: new Date() } as DailyState;
+      this.dailyStates.set(existing.id, updated);
+      return updated;
+    } else {
+      const id = this.generateId();
+      const created = { ...data, userId, date, id, updatedAt: new Date() } as any as DailyState;
+      this.dailyStates.set(id, created);
       return created;
     }
   }
