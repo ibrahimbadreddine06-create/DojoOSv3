@@ -81,6 +81,7 @@ export interface IStorage {
   getKnowledgeTopics(type: string): Promise<KnowledgeTopic[]>;
   getKnowledgeTopic(id: string): Promise<KnowledgeTopic | undefined>;
   createKnowledgeTopic(data: InsertKnowledgeTopic): Promise<KnowledgeTopic>;
+  updateKnowledgeTopic(id: string, data: Partial<InsertKnowledgeTopic>): Promise<KnowledgeTopic>;
   getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]>;
   getCourseLearnPlanItems(courseId: string): Promise<LearnPlanItem[]>;
   createLearnPlanItem(data: InsertLearnPlanItem): Promise<LearnPlanItem>;
@@ -496,6 +497,12 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const [theme] = await db.insert(knowledgeTopics).values(data).returning();
     return theme;
+  }
+
+  async updateKnowledgeTopic(id: string, data: Partial<InsertKnowledgeTopic>): Promise<KnowledgeTopic> {
+    this.ensureDb();
+    const [topic] = await db.update(knowledgeTopics).set(data).where(eq(knowledgeTopics.id, id)).returning();
+    return topic;
   }
 
   async deleteKnowledgeTopic(id: string): Promise<void> {
@@ -1616,6 +1623,13 @@ export class MemStorage implements IStorage {
     const topic: KnowledgeTopic = { ...data, id, createdAt: new Date() } as any;
     this.knowledgeTopics.set(id, topic);
     return topic;
+  }
+  async updateKnowledgeTopic(id: string, data: Partial<InsertKnowledgeTopic>): Promise<KnowledgeTopic> {
+    const existing = this.knowledgeTopics.get(id);
+    if (!existing) throw new Error("Topic not found");
+    const updated = { ...existing, ...data };
+    this.knowledgeTopics.set(id, updated);
+    return updated;
   }
   async deleteKnowledgeTopic(id: string): Promise<void> { this.knowledgeTopics.delete(id); }
   async getLearnPlanItems(topicId: string): Promise<LearnPlanItem[]> {

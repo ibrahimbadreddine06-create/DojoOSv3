@@ -264,6 +264,7 @@ export default function ThemeDetail() {
             chapter={selectedChapter}
             topicId={topicId}
             childChapterIds={selectedChapterChildIds}
+            trajectoryContext={(theme as any)?.trajectoryContext ?? undefined}
           />
         </div>
       ) : (

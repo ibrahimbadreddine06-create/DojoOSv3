@@ -256,6 +256,13 @@ export function AITrajectoryBuilder({
         topicId: topicId || null,
         courseId: courseId || null,
         disciplineId: disciplineId || null,
+        trajectoryContext: {
+          goal,
+          context,
+          structure,
+          submoduleType,
+          submoduleName,
+        },
       });
       return res.json();
     },

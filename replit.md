@@ -22,7 +22,20 @@ A comprehensive personal productivity and life-management system — an all-in-o
   - Multi-step dialog: goal → optional ToC → AI thinking → review & edit tree → accept
   - Generates complete chapter hierarchies for Second Brain, Languages, Studies, and Disciplines
   - Bulk creates all chapters via `POST /api/learn-plan-items/bulk`
+  - Saves `trajectoryContext` (goal, context, structure, submoduleType, submoduleName) to parent entity
   - Accessible from the Learning Trajectory sidebar (header ✦ icon, empty state, footer)
+
+- **AI Material Finder** (`client/src/components/ai-material-finder.tsx`)
+  - 4 search types: YouTube videos (with thumbnails + coverage analysis), Websites, PDFs/Papers, Custom search
+  - Optional user prompt to refine each search
+  - Results shown as rich cards; user selects which to add; saved to DB as materials
+  - Powered by `POST /api/ai/find-materials` endpoint
+  - Accessible via sparkle (✦) button in the Materials section of every chapter
+  - Uses stored `trajectoryContext` to make searches learner-aware (goal + level + subject)
+
+### Important Database Note
+
+The app uses `NEON_DATABASE_URL` for runtime connections but `DATABASE_URL` for `drizzle-kit push`. If adding new schema columns, run `npm run db:push` first; if drizzle-kit reports "no changes," add the columns directly via the Neon connection.
 
 ## Key Files
 

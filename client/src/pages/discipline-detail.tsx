@@ -308,6 +308,7 @@ export default function DisciplineDetail() {
                         chapter={selectedChapter}
                         disciplineId={disciplineId}
                         childChapterIds={selectedChapterChildIds}
+                        trajectoryContext={(discipline as any)?.trajectoryContext ?? undefined}
                     />
                 </div>
             ) : (

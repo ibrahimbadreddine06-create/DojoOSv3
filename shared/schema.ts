@@ -167,6 +167,14 @@ export const knowledgeTopics = pgTable("knowledge_topics", {
   type: text("type").notNull(), // "second_brain", "language", "discipline"
   name: text("name").notNull(),
   description: text("description"),
+  trajectoryContext: jsonb("trajectory_context").$type<{
+    goal: string;
+    context: string;
+    structure: string;
+    submoduleType: string;
+    submoduleName: string;
+    createdAt: string;
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -194,6 +202,7 @@ export const materials = pgTable("materials", {
   title: text("title").notNull(),
   content: text("content"),
   url: text("url"),
+  thumbnailUrl: text("thumbnail_url"), // YouTube thumbnail or website preview
   fileName: text("file_name"), // Original file name for uploads
   fileData: text("file_data"), // Base64 encoded file data for uploads
   createdAt: timestamp("created_at").defaultNow(),
@@ -552,6 +561,14 @@ export const courses = pgTable("courses", {
   description: text("description"),
   semester: text("semester"), // e.g., "Fall 2024", "Spring 2025"
   archived: boolean("archived").notNull().default(false),
+  trajectoryContext: jsonb("trajectory_context").$type<{
+    goal: string;
+    context: string;
+    structure: string;
+    submoduleType: string;
+    submoduleName: string;
+    createdAt: string;
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -820,6 +837,14 @@ export const disciplines = pgTable("disciplines", {
   maxXp: integer("max_xp").default(100), // Scaling XP per level
   color: text("color").default("text-primary"), // Custom branding
   icon: text("icon").default("Zap"), // Lucide icon name
+  trajectoryContext: jsonb("trajectory_context").$type<{
+    goal: string;
+    context: string;
+    structure: string;
+    submoduleType: string;
+    submoduleName: string;
+    createdAt: string;
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateLearningTrajectory, type TrajectoryParams } from "./ai";
+import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams } from "./ai";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -273,7 +273,7 @@ export function registerRoutes(app: Express): Server {
   // Bulk create chapters from AI trajectory
   app.post("/api/learn-plan-items/bulk", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const { chapters, topicId, courseId, disciplineId } = req.body;
+    const { chapters, topicId, courseId, disciplineId, trajectoryContext } = req.body;
     if (!chapters || !Array.isArray(chapters)) {
       return res.status(400).json({ message: "chapters array required" });
     }
@@ -299,7 +299,35 @@ export function registerRoutes(app: Express): Server {
     }
 
     await createRecursively(chapters, null, 0);
+
+    // Save trajectory context so AI Material Finder can use it later
+    if (trajectoryContext) {
+      const ctx = { ...trajectoryContext, createdAt: new Date().toISOString() };
+      if (topicId) {
+        await storage.updateKnowledgeTopic(topicId, { trajectoryContext: ctx } as any);
+      } else if (courseId) {
+        await storage.updateCourse(courseId, { trajectoryContext: ctx } as any);
+      } else if (disciplineId) {
+        await storage.updateDiscipline(disciplineId, { trajectoryContext: ctx } as any);
+      }
+    }
+
     res.json({ success: true });
+  });
+
+  // AI: Find materials for a chapter
+  app.post("/api/ai/find-materials", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+    try {
+      const result = await findMaterialsForChapter(req.body as FindMaterialsParams);
+      res.json(result);
+    } catch (e: any) {
+      console.error("AI find-materials error:", e);
+      res.status(500).json({ message: e.message || "AI search failed" });
+    }
   });
 
   // AI: Generate learning trajectory

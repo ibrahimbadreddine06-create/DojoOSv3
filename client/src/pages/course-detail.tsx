@@ -257,6 +257,7 @@ export default function CourseDetail() {
             chapter={selectedChapter}
             courseId={courseId}
             childChapterIds={selectedChapterChildIds}
+            trajectoryContext={(course as any)?.trajectoryContext ?? undefined}
           />
         </div>
       ) : (
