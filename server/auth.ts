@@ -27,6 +27,7 @@ declare global {
 
 export function setupAuth(app: Express) {
     // Session Configuration
+    const isProduction = process.env.NODE_ENV === "production";
     const sessionSettings: session.SessionOptions = {
         secret: process.env.SESSION_SECRET || "dojo_os_fortress_secret_key_change_me",
         resave: false,
@@ -34,18 +35,18 @@ export function setupAuth(app: Express) {
         cookie: {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             httpOnly: true,
-            sameSite: process.env.VERCEL === "1" ? "none" : "lax",
-            secure: process.env.VERCEL === "1",
+            sameSite: isProduction ? "none" : "lax",
+            secure: isProduction,
         },
     };
 
-    if (process.env.VERCEL === "1") {
+    if (isProduction) {
         app.set("trust proxy", 1);
     }
 
-    // Try Postgres Sample Store, fallback to Memory
+    // Try Postgres Session Store, fallback to Memory
     let storeInitialized = false;
-    if (pool && process.env.NODE_ENV === "production") {
+    if (pool) {
         try {
             const pgSession = connectPgSimple(session);
             sessionSettings.store = new pgSession({
