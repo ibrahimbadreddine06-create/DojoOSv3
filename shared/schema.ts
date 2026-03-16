@@ -9,6 +9,8 @@ export const priorityEnum = pgEnum("priority", ["low", "medium", "high"]);
 export const salahStatusEnum = pgEnum("salah_status", ["on_time", "late", "makeup", "missed"]);
 export const laundryStatusEnum = pgEnum("laundry_status", ["clean", "second_wear", "dirty"]);
 export const intakeStatusEnum = pgEnum("intake_status", ["planned", "consumed"]);
+export const fastingStatusEnum = pgEnum("fasting_status", ["active", "completed", "cancelled"]);
+export const hygieneFrequencyEnum = pgEnum("hygiene_frequency", ["daily", "weekly", "monthly"]);
 export const moduleEnum = pgEnum("module", [
   "planner", "goals", "second_brain", "languages", "disciplines",
   "body", "body_workout", "body_intake", "body_sleep", "body_hygiene",
@@ -403,14 +405,27 @@ export const workoutPresets = pgTable("workout_presets", {
 
 export const intakeLogs = pgTable("intake_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  date: timestamp("date").notNull(), // Changed from date to timestamp for time tracking
+  date: timestamp("date").notNull(),
   mealName: text("meal_name"),
+  mealType: text("meal_type"), // breakfast, lunch, dinner, snack
   calories: decimal("calories", { precision: 7, scale: 2 }),
   protein: decimal("protein", { precision: 6, scale: 2 }),
   carbs: decimal("carbs", { precision: 6, scale: 2 }),
   fats: decimal("fats", { precision: 6, scale: 2 }),
+  // Micronutrients
+  fiber: decimal("fiber", { precision: 6, scale: 2 }),
+  sugar: decimal("sugar", { precision: 6, scale: 2 }),
+  sodium: decimal("sodium", { precision: 7, scale: 2 }), // mg
+  zinc: decimal("zinc", { precision: 6, scale: 2 }), // mg
+  magnesium: decimal("magnesium", { precision: 6, scale: 2 }), // mg
+  vitaminD: decimal("vitamin_d", { precision: 6, scale: 2 }), // mcg
+  vitaminC: decimal("vitamin_c", { precision: 6, scale: 2 }), // mg
+  iron: decimal("iron", { precision: 6, scale: 2 }), // mg
+  calcium: decimal("calcium", { precision: 7, scale: 2 }), // mg
+  potassium: decimal("potassium", { precision: 7, scale: 2 }), // mg
+  water: decimal("water", { precision: 6, scale: 2 }), // ml
   notes: text("notes"),
-  imageUrl: text("image_url"), // Added for food photos
+  imageUrl: text("image_url"),
   status: intakeStatusEnum("status").notNull().default("consumed"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -418,11 +433,12 @@ export const intakeLogs = pgTable("intake_logs", {
 export const sleepLogs = pgTable("sleep_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   date: date("date").notNull(),
-  startTime: timestamp("start_time"), // Added for precise tracking
-  endTime: timestamp("end_time"),     // Added for precise tracking
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
   plannedHours: decimal("planned_hours", { precision: 4, scale: 2 }),
   actualHours: decimal("actual_hours", { precision: 4, scale: 2 }),
   quality: integer("quality"), // 1-5
+  readinessScore: integer("readiness_score"), // 0-100, calculated from sleep data
   notes: text("notes"),
 });
 
@@ -431,6 +447,106 @@ export const hygieneRoutines = pgTable("hygiene_routines", {
   name: text("name").notNull(),
   completed: boolean("completed").notNull().default(false),
   date: date("date").notNull(),
+  frequency: hygieneFrequencyEnum("frequency").default("daily"),
+  streak: integer("streak").notNull().default(0),
+  bestStreak: integer("best_streak").notNull().default(0),
+  lastCompletedDate: date("last_completed_date"),
+  goalId: varchar("goal_id"), // Optional link to a goal for auto progress events
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== SUPPLEMENT LOGS =====
+export const supplementLogs = pgTable("supplement_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull(),
+  name: text("name").notNull(),
+  amount: decimal("amount", { precision: 7, scale: 2 }),
+  unit: text("unit"), // mg, mcg, g, IU, ml, capsule, tablet
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== FASTING LOGS =====
+export const fastingLogs = pgTable("fasting_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  targetHours: decimal("target_hours", { precision: 4, scale: 1 }),
+  status: fastingStatusEnum("status").notNull().default("active"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== MEAL PRESETS =====
+export const mealPresets = pgTable("meal_presets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  mealType: text("meal_type"),
+  calories: decimal("calories", { precision: 7, scale: 2 }),
+  protein: decimal("protein", { precision: 6, scale: 2 }),
+  carbs: decimal("carbs", { precision: 6, scale: 2 }),
+  fats: decimal("fats", { precision: 6, scale: 2 }),
+  fiber: decimal("fiber", { precision: 6, scale: 2 }),
+  sugar: decimal("sugar", { precision: 6, scale: 2 }),
+  sodium: decimal("sodium", { precision: 7, scale: 2 }),
+  zinc: decimal("zinc", { precision: 6, scale: 2 }),
+  magnesium: decimal("magnesium", { precision: 6, scale: 2 }),
+  vitaminD: decimal("vitamin_d", { precision: 6, scale: 2 }),
+  vitaminC: decimal("vitamin_c", { precision: 6, scale: 2 }),
+  iron: decimal("iron", { precision: 6, scale: 2 }),
+  calcium: decimal("calcium", { precision: 7, scale: 2 }),
+  potassium: decimal("potassium", { precision: 7, scale: 2 }),
+  water: decimal("water", { precision: 6, scale: 2 }),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ===== BODY PROFILE (for BMR / TDEE calculations) =====
+export const bodyProfile = pgTable("body_profile", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  heightCm: decimal("height_cm", { precision: 5, scale: 1 }),
+  weightKg: decimal("weight_kg", { precision: 5, scale: 1 }),
+  age: integer("age"),
+  sex: text("sex"), // male, female
+  activityLevel: text("activity_level"), // sedentary, light, moderate, active, very_active
+  bodyGoal: text("body_goal"), // lose, maintain, gain
+  dailyCalorieGoal: integer("daily_calorie_goal"), // computed or overridden
+  dailyProteinGoal: integer("daily_protein_goal"),
+  dailyCarbsGoal: integer("daily_carbs_goal"),
+  dailyFatsGoal: integer("daily_fats_goal"),
+  sleepGoalHours: decimal("sleep_goal_hours", { precision: 3, scale: 1 }).default("8.0"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ===== DAILY STATE (comprehensive per-day snapshot for SenseiOS) =====
+export const dailyState = pgTable("daily_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: date("date").notNull().unique(),
+  // Sleep
+  sleepHours: decimal("sleep_hours", { precision: 4, scale: 2 }),
+  sleepQuality: integer("sleep_quality"), // 1-5
+  readinessScore: integer("readiness_score"), // 0-100
+  // Workout
+  workoutCompleted: boolean("workout_completed").default(false),
+  musclesTrained: jsonb("muscles_trained").$type<string[]>().default([]),
+  workoutIntensity: decimal("workout_intensity", { precision: 3, scale: 1 }), // avg RPE
+  totalVolume: integer("total_volume"), // sum of sets * weight
+  workoutDurationMin: integer("workout_duration_min"),
+  // Nutrition
+  caloriesConsumed: integer("calories_consumed"),
+  calorieGoal: integer("calorie_goal"),
+  caloricBalance: integer("caloric_balance"), // consumed - goal
+  proteinConsumed: decimal("protein_consumed", { precision: 6, scale: 2 }),
+  carbsConsumed: decimal("carbs_consumed", { precision: 6, scale: 2 }),
+  fatsConsumed: decimal("fats_consumed", { precision: 6, scale: 2 }),
+  waterConsumed: decimal("water_consumed", { precision: 6, scale: 2 }), // ml
+  // Hygiene
+  hygieneCompletionRate: decimal("hygiene_completion_rate", { precision: 5, scale: 2 }), // 0-100
+  // Planner
+  plannerCompletion: decimal("planner_completion", { precision: 5, scale: 2 }), // 0-100
+  // Goal events
+  goalProgressEvents: jsonb("goal_progress_events").$type<{ goalId: string; event: string; timestamp: string }[]>().default([]),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const workoutsRelations = relations(workouts, ({ many }) => ({
