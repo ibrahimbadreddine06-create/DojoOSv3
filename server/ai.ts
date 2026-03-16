@@ -9,6 +9,7 @@ export interface YoutubeResult {
   channel: string;
   url: string;
   videoId: string;
+  thumbnailUrl: string;
   description: string;
   covers: string[];
   misses: string[];
@@ -230,6 +231,39 @@ function extractYoutubeId(url: string): string {
   }
 }
 
+// Validate a YouTube video ID via oEmbed — returns enriched data or null if fake
+async function validateYoutubeVideo(rawResult: any): Promise<YoutubeResult | null> {
+  const url = rawResult.url || "";
+  const videoId = extractYoutubeId(url);
+  if (!videoId) return null;
+
+  try {
+    const canonical = `https://www.youtube.com/watch?v=${videoId}`;
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`;
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null; // Video doesn't exist
+
+    const data = await res.json() as {
+      title: string;
+      author_name: string;
+      thumbnail_url: string;
+    };
+
+    return {
+      title: data.title || rawResult.title || "YouTube Video",
+      channel: data.author_name || rawResult.channel || "",
+      url: canonical,
+      videoId,
+      thumbnailUrl: data.thumbnail_url,
+      description: rawResult.description || "",
+      covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
+      misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
@@ -257,31 +291,29 @@ export async function findMaterialsForChapter(
   let prompt = "";
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator.
-Find 5 high-quality YouTube videos for this learning chapter.
+    prompt = `You are an expert educational resource curator. Search YouTube for real educational videos.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-Search YouTube for real, currently available videos on this topic. Prefer:
-- University lecture recordings (MIT OpenCourseWare, Stanford, etc.)
-- Well-known educators with clear explanations
-- Videos that are comprehensive yet accessible
-- Channels with educational focus
+TASK: Search YouTube.com and find 6 real, existing educational videos for this chapter.
+Prioritize channels like: MIT OpenCourseWare, Stanford, Khan Academy, 3Blue1Brown, Crash Course, freeCodeCamp, Sentdex, Computerphile, or other well-known educational channels.
 
-For each video, analyze what subtopics it COVERS and what it MISSES compared to the chapter.
+CRITICAL: Only include videos with REAL YouTube video IDs that you verified exist. The video IDs will be checked — fake IDs will be detected and discarded. It is better to return fewer real results than more fake ones.
 
-OUTPUT — return ONLY valid JSON array, no markdown:
+For each video describe: what subtopics it COVERS and what it MISSES from this chapter.
+
+OUTPUT — return ONLY a valid JSON array, no markdown, no extra text:
 [
   {
-    "title": "Exact YouTube video title",
+    "title": "Exact video title as it appears on YouTube",
     "channel": "Channel name",
-    "url": "https://www.youtube.com/watch?v=VIDEOID",
-    "description": "Why this video is valuable for this chapter (2-3 sentences)",
-    "covers": ["subtopic 1 it covers well", "subtopic 2"],
-    "misses": ["subtopic it skips or covers poorly"]
+    "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID",
+    "description": "Why this video helps with this chapter (2-3 sentences)",
+    "covers": ["subtopic it covers well"],
+    "misses": ["subtopic it skips"]
   }
 ]`;
   } else if (params.materialType === "website") {
@@ -385,16 +417,44 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   if (params.materialType === "youtube") {
-    const results: YoutubeResult[] = parsed.map((r: any) => ({
-      title: r.title || "Untitled",
-      channel: r.channel || "",
-      url: r.url || "",
-      videoId: extractYoutubeId(r.url || "") || r.videoId || "",
-      description: r.description || "",
-      covers: Array.isArray(r.covers) ? r.covers : [],
-      misses: Array.isArray(r.misses) ? r.misses : [],
-    }));
-    return { type: "youtube", results };
+    // ── Step 1: collect candidates (grounding chunks first, then parsed JSON) ──
+    const candidates: any[] = [];
+
+    // Real URLs from grounding metadata take priority
+    const groundingMeta = (result.response.candidates?.[0]?.groundingMetadata as any);
+    if (groundingMeta?.groundingChunks) {
+      for (const chunk of groundingMeta.groundingChunks) {
+        const uri = chunk.web?.uri || "";
+        if (uri.includes("youtube.com/watch") || uri.includes("youtu.be/")) {
+          // Find matching parsed result for description/covers/misses
+          const match = parsed.find(
+            (r: any) => extractYoutubeId(r.url || "") === extractYoutubeId(uri)
+          );
+          candidates.push({
+            url: uri,
+            title: chunk.web?.title || match?.title || "YouTube Video",
+            channel: match?.channel || "",
+            description: match?.description || "",
+            covers: match?.covers || [],
+            misses: match?.misses || [],
+          });
+        }
+      }
+    }
+
+    // Supplement with parsed JSON results not already in candidates
+    for (const r of parsed) {
+      const vid = extractYoutubeId(r.url || "");
+      if (vid && !candidates.some(c => extractYoutubeId(c.url || "") === vid)) {
+        candidates.push(r);
+      }
+    }
+
+    // ── Step 2: validate all candidates via YouTube oEmbed in parallel ──────
+    const validated = (await Promise.all(candidates.map(validateYoutubeVideo)))
+      .filter((r): r is YoutubeResult => r !== null);
+
+    return { type: "youtube", results: validated };
   } else if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
       title: r.title || "Untitled",

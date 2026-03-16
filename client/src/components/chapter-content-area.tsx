@@ -397,7 +397,13 @@ export function ChapterContentArea({
                 <div
                   key={material.id}
                   className="flex items-center gap-3 p-2.5 rounded-md bg-muted/30 hover-elevate cursor-pointer group"
-                  onClick={() => setSelectedMaterial(material)}
+                  onClick={() => {
+                    if (material.type === "video" && material.url) {
+                      window.open(material.url, "_blank");
+                    } else {
+                      setSelectedMaterial(material);
+                    }
+                  }}
                   data-testid={`material-item-${material.id}`}
                 >
                   <MaterialThumbnail material={material} />
@@ -419,9 +425,11 @@ export function ChapterContentArea({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedMaterial(material); }}>
-                          <ExternalLink className="h-4 w-4 mr-2" /> Open Viewer
-                        </DropdownMenuItem>
+                        {material.type !== "video" && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedMaterial(material); }}>
+                            <ExternalLink className="h-4 w-4 mr-2" /> Open Viewer
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
                           if (hasUploadedFile) {
@@ -434,7 +442,7 @@ export function ChapterContentArea({
                           }
                         }}>
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          {hasUploadedFile ? "Download" : "Open in New Tab"}
+                          {hasUploadedFile ? "Download" : material.type === "video" ? "Open in YouTube" : "Open in New Tab"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => { e.stopPropagation(); deleteMaterialMutation.mutate(material.id); }}

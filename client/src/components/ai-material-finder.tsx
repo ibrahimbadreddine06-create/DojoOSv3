@@ -22,6 +22,7 @@ interface YoutubeResult {
   channel: string;
   url: string;
   videoId: string;
+  thumbnailUrl: string;
   description: string;
   covers: string[];
   misses: string[];
@@ -142,7 +143,6 @@ function isCustomResult(r: SearchResult, type: MaterialSearchType): r is CustomR
 // ─── Result Cards ─────────────────────────────────────────────────────────────
 
 function YoutubeCard({ result, selected, onToggle }: { result: YoutubeResult; selected: boolean; onToggle: () => void }) {
-  const thumb = getYoutubeThumbnail(result.videoId);
   return (
     <div
       className={`relative rounded-md border cursor-pointer transition-all ${selected ? "border-primary ring-1 ring-primary" : "border-border"}`}
@@ -154,9 +154,9 @@ function YoutubeCard({ result, selected, onToggle }: { result: YoutubeResult; se
           <Check className="w-3 h-3 text-primary-foreground" />
         </div>
       )}
-      {thumb ? (
+      {result.thumbnailUrl ? (
         <div className="w-full aspect-video rounded-t-md overflow-hidden bg-muted">
-          <img src={thumb} alt={result.title} className="w-full h-full object-cover" />
+          <img src={result.thumbnailUrl} alt={result.title} className="w-full h-full object-cover" />
         </div>
       ) : (
         <div className="w-full aspect-video rounded-t-md bg-muted flex items-center justify-center">
@@ -331,7 +331,7 @@ export function AIMaterialFinder({
         if (currentType === "youtube") {
           const r = result as YoutubeResult;
           type = "video";
-          thumbnailUrl = getYoutubeThumbnail(r.videoId);
+          thumbnailUrl = r.thumbnailUrl || getYoutubeThumbnail(r.videoId);
         } else if (currentType === "website") {
           type = "link";
         } else if (currentType === "pdf") {
