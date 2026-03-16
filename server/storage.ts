@@ -3,6 +3,7 @@ import crypto from "crypto";
 import {
   users, timeBlocks, dayPresets, activityPresets, goals, knowledgeTopics, learnPlanItems,
   materials, flashcards, chapterNotes, workouts, exerciseLibrary, workoutExercises, workoutSets, muscleStats, intakeLogs, sleepLogs, hygieneRoutines,
+  supplementLogs, fastingLogs, mealPresets, bodyProfile,
   workoutPresets,
   salahLogs, quranLogs, dhikrLogs, duaLogs, transactions, masterpieces, masterpieceSections,
   possessions, outfits, courses, lessons, courseExercises, courseMetrics, businesses, workProjects, tasks,
@@ -19,7 +20,12 @@ import {
   type WorkoutSet, type InsertWorkoutSet,
   type MuscleStat, type InsertMuscleStat,
   type IntakeLog, type InsertIntakeLog, type SleepLog, type InsertSleepLog,
-  type HygieneRoutine, type InsertHygieneRoutine, type SalahLog, type InsertSalahLog,
+  type HygieneRoutine, type InsertHygieneRoutine,
+  type SupplementLog, type InsertSupplementLog,
+  type FastingLog, type InsertFastingLog,
+  type MealPreset, type InsertMealPreset,
+  type BodyProfile, type InsertBodyProfile,
+  type SalahLog, type InsertSalahLog,
   type QuranLog, type InsertQuranLog, type DhikrLog, type InsertDhikrLog,
   type DuaLog, type InsertDuaLog, type Transaction, type InsertTransaction,
   type Masterpiece, type InsertMasterpiece, type MasterpieceSection, type InsertMasterpieceSection,
@@ -125,17 +131,39 @@ export interface IStorage {
   getWorkoutExercises(workoutId: string): Promise<(WorkoutExercise & { exercise: ExerciseLibraryItem | null, sets: WorkoutSet[] })[]>;
   createWorkoutExercise(data: InsertWorkoutExercise): Promise<WorkoutExercise>;
   createWorkoutSet(data: InsertWorkoutSet): Promise<WorkoutSet>;
-  updateWorkoutSet(id: string, data: Partial<InsertWorkoutSet>): Promise<WorkoutSet>; // Added update
+  updateWorkoutSet(id: string, data: Partial<InsertWorkoutSet>): Promise<WorkoutSet>;
+  getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]>;
 
   getMuscleStats(): Promise<MuscleStat[]>;
   upsertMuscleStat(muscleId: string, recoveryScore: number): Promise<MuscleStat>;
 
   getIntakeLogs(date: string): Promise<IntakeLog[]>;
   createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
+  updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
+  deleteIntakeLog(id: string): Promise<void>;
   getSleepLogs(date: string): Promise<SleepLog[]>;
+  getAllSleepLogs(): Promise<SleepLog[]>;
   createSleepLog(data: InsertSleepLog): Promise<SleepLog>;
-  getHygieneRoutines(date: string): Promise<HygieneRoutine[]>;
+  // Hygiene — global templates, not date-specific
+  getHygieneRoutines(): Promise<HygieneRoutine[]>;
   createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine>;
+  updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine>;
+  deleteHygieneRoutine(id: string): Promise<void>;
+  // Supplements & Fasting
+  getSupplementLogs(date: string): Promise<SupplementLog[]>;
+  createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog>;
+  deleteSupplementLog(id: string): Promise<void>;
+  getFastingLogs(): Promise<FastingLog[]>;
+  getActiveFastingLog(): Promise<FastingLog | undefined>;
+  createFastingLog(data: InsertFastingLog): Promise<FastingLog>;
+  updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog>;
+  // Meal Presets
+  getMealPresets(): Promise<MealPreset[]>;
+  createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
+  deleteMealPreset(id: string): Promise<void>;
+  // Body Profile
+  getBodyProfile(): Promise<BodyProfile | undefined>;
+  upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile>;
 
   // Worship
   getSalahLogs(date: string): Promise<SalahLog[]>;
@@ -182,8 +210,6 @@ export interface IStorage {
   createCourseExercise(data: InsertCourseExercise): Promise<CourseExercise>;
   deleteCourse(id: string): Promise<void>;
   deleteKnowledgeTopic(id: string): Promise<void>;
-  updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
-  deleteIntakeLog(id: string): Promise<void>;
 
   // Business & Work
   getBusinesses(): Promise<Business[]>;
@@ -825,6 +851,34 @@ export class DatabaseStorage implements IStorage {
     return set;
   }
 
+  async getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
+    this.ensureDb();
+    const rows = await db
+      .select({
+        date: workouts.date,
+        weight: workoutSets.weight,
+        reps: workoutSets.reps,
+      })
+      .from(workoutSets)
+      .innerJoin(workoutExercises, eq(workoutSets.workoutExerciseId, workoutExercises.id))
+      .innerJoin(workouts, eq(workoutExercises.workoutId, workouts.id))
+      .where(eq(workoutExercises.exerciseId, exerciseId))
+      .orderBy(asc(workouts.date));
+
+    const byDate = new Map<string, { maxWeight: number; totalVolume: number }>();
+    for (const r of rows) {
+      const d = r.date?.toString().slice(0, 10) || "";
+      const w = Number(r.weight || 0);
+      const reps = Number(r.reps || 0);
+      const existing = byDate.get(d) || { maxWeight: 0, totalVolume: 0 };
+      byDate.set(d, {
+        maxWeight: Math.max(existing.maxWeight, w),
+        totalVolume: existing.totalVolume + w * reps,
+      });
+    }
+    return Array.from(byDate.entries()).map(([date, v]) => ({ date, ...v }));
+  }
+
   async getMuscleStats(): Promise<MuscleStat[]> {
     this.ensureDb();
     return await db.select().from(muscleStats);
@@ -858,21 +912,110 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(sleepLogs).where(eq(sleepLogs.date, date));
   }
 
+  async getAllSleepLogs(): Promise<SleepLog[]> {
+    this.ensureDb();
+    return await db.select().from(sleepLogs).orderBy(desc(sleepLogs.date));
+  }
+
   async createSleepLog(data: InsertSleepLog): Promise<SleepLog> {
     this.ensureDb();
     const [log] = await db.insert(sleepLogs).values(data).returning();
     return log;
   }
 
-  async getHygieneRoutines(date: string): Promise<HygieneRoutine[]> {
+  async getHygieneRoutines(): Promise<HygieneRoutine[]> {
     this.ensureDb();
-    return await db.select().from(hygieneRoutines).where(eq(hygieneRoutines.date, date));
+    return await db.select().from(hygieneRoutines).orderBy(asc(hygieneRoutines.name));
   }
 
   async createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine> {
     this.ensureDb();
     const [routine] = await db.insert(hygieneRoutines).values(data).returning();
     return routine;
+  }
+
+  async updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
+    this.ensureDb();
+    const [updated] = await db.update(hygieneRoutines).set(data).where(eq(hygieneRoutines.id, id)).returning();
+    return updated;
+  }
+
+  async deleteHygieneRoutine(id: string): Promise<void> {
+    this.ensureDb();
+    await db.delete(hygieneRoutines).where(eq(hygieneRoutines.id, id));
+  }
+
+  async getSupplementLogs(date: string): Promise<SupplementLog[]> {
+    this.ensureDb();
+    return await db.select().from(supplementLogs).where(eq(supplementLogs.date, new Date(date)));
+  }
+
+  async createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog> {
+    this.ensureDb();
+    const [log] = await db.insert(supplementLogs).values(data).returning();
+    return log;
+  }
+
+  async deleteSupplementLog(id: string): Promise<void> {
+    this.ensureDb();
+    await db.delete(supplementLogs).where(eq(supplementLogs.id, id));
+  }
+
+  async getFastingLogs(): Promise<FastingLog[]> {
+    this.ensureDb();
+    return await db.select().from(fastingLogs).orderBy(desc(fastingLogs.startTime));
+  }
+
+  async getActiveFastingLog(): Promise<FastingLog | undefined> {
+    this.ensureDb();
+    const [log] = await db.select().from(fastingLogs).where(eq(fastingLogs.status, "active"));
+    return log;
+  }
+
+  async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
+    this.ensureDb();
+    const [log] = await db.insert(fastingLogs).values(data).returning();
+    return log;
+  }
+
+  async updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
+    this.ensureDb();
+    const [updated] = await db.update(fastingLogs).set(data).where(eq(fastingLogs.id, id)).returning();
+    return updated;
+  }
+
+  async getMealPresets(): Promise<MealPreset[]> {
+    this.ensureDb();
+    return await db.select().from(mealPresets).orderBy(asc(mealPresets.name));
+  }
+
+  async createMealPreset(data: InsertMealPreset): Promise<MealPreset> {
+    this.ensureDb();
+    const [preset] = await db.insert(mealPresets).values(data).returning();
+    return preset;
+  }
+
+  async deleteMealPreset(id: string): Promise<void> {
+    this.ensureDb();
+    await db.delete(mealPresets).where(eq(mealPresets.id, id));
+  }
+
+  async getBodyProfile(): Promise<BodyProfile | undefined> {
+    this.ensureDb();
+    const [profile] = await db.select().from(bodyProfile);
+    return profile;
+  }
+
+  async upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile> {
+    this.ensureDb();
+    const existing = await this.getBodyProfile();
+    if (existing) {
+      const [updated] = await db.update(bodyProfile).set({ ...data, updatedAt: new Date() }).where(eq(bodyProfile.id, existing.id)).returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(bodyProfile).values(data).returning();
+      return created;
+    }
   }
 
   // Worship
@@ -1341,6 +1484,10 @@ export class MemStorage implements IStorage {
   private intakeLogs: Map<string, IntakeLog>;
   private sleepLogs: Map<string, SleepLog>;
   private hygieneRoutines: Map<string, HygieneRoutine>;
+  private supplementLogs: Map<string, SupplementLog>;
+  private fastingLogs: Map<string, FastingLog>;
+  private mealPresets: Map<string, MealPreset>;
+  private bodyProfiles: Map<string, BodyProfile>;
   private salahLogs: Map<string, SalahLog>;
   private quranLogs: Map<string, QuranLog>;
   private dhikrLogs: Map<string, DhikrLog>;
@@ -1384,6 +1531,10 @@ export class MemStorage implements IStorage {
     this.intakeLogs = new Map();
     this.sleepLogs = new Map();
     this.hygieneRoutines = new Map();
+    this.supplementLogs = new Map();
+    this.fastingLogs = new Map();
+    this.mealPresets = new Map();
+    this.bodyProfiles = new Map();
     this.salahLogs = new Map();
     this.quranLogs = new Map();
     this.dhikrLogs = new Map();
@@ -1810,6 +1961,10 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
+    return [];
+  }
+
   async getMuscleStats(): Promise<MuscleStat[]> {
     return Array.from(this.muscleStats.values());
   }
@@ -1844,14 +1999,90 @@ export class MemStorage implements IStorage {
     this.sleepLogs.set(id, log);
     return log;
   }
-  async getHygieneRoutines(date: string): Promise<HygieneRoutine[]> {
-    return Array.from(this.hygieneRoutines.values()).filter(r => r.date === date);
+  async getAllSleepLogs(): Promise<SleepLog[]> {
+    return Array.from(this.sleepLogs.values()).sort((a, b) => b.date.localeCompare(a.date));
+  }
+  async getHygieneRoutines(): Promise<HygieneRoutine[]> {
+    return Array.from(this.hygieneRoutines.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
   async createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine> {
     const id = this.generateId();
     const routine: HygieneRoutine = { ...data, id, createdAt: new Date() } as any;
     this.hygieneRoutines.set(id, routine);
     return routine;
+  }
+  async updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
+    const existing = this.hygieneRoutines.get(id);
+    if (!existing) throw new Error("Not found");
+    const updated = { ...existing, ...data } as HygieneRoutine;
+    this.hygieneRoutines.set(id, updated);
+    return updated;
+  }
+  async deleteHygieneRoutine(id: string): Promise<void> {
+    this.hygieneRoutines.delete(id);
+  }
+  async getSupplementLogs(date: string): Promise<SupplementLog[]> {
+    return Array.from(this.supplementLogs.values()).filter(l => {
+      const d = l.date instanceof Date ? l.date : new Date(l.date);
+      return d.toISOString().split('T')[0] === date;
+    });
+  }
+  async createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog> {
+    const id = this.generateId();
+    const log: SupplementLog = { ...data, id, createdAt: new Date() } as any;
+    this.supplementLogs.set(id, log);
+    return log;
+  }
+  async deleteSupplementLog(id: string): Promise<void> {
+    this.supplementLogs.delete(id);
+  }
+  async getFastingLogs(): Promise<FastingLog[]> {
+    return Array.from(this.fastingLogs.values()).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  }
+  async getActiveFastingLog(): Promise<FastingLog | undefined> {
+    return Array.from(this.fastingLogs.values()).find(l => l.status === "active");
+  }
+  async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
+    const id = this.generateId();
+    const log: FastingLog = { ...data, id, createdAt: new Date() } as any;
+    this.fastingLogs.set(id, log);
+    return log;
+  }
+  async updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
+    const existing = this.fastingLogs.get(id);
+    if (!existing) throw new Error("Not found");
+    const updated = { ...existing, ...data } as FastingLog;
+    this.fastingLogs.set(id, updated);
+    return updated;
+  }
+  async getMealPresets(): Promise<MealPreset[]> {
+    return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async createMealPreset(data: InsertMealPreset): Promise<MealPreset> {
+    const id = this.generateId();
+    const preset: MealPreset = { ...data, id, createdAt: new Date() } as any;
+    this.mealPresets.set(id, preset);
+    return preset;
+  }
+  async deleteMealPreset(id: string): Promise<void> {
+    this.mealPresets.delete(id);
+  }
+  async getBodyProfile(): Promise<BodyProfile | undefined> {
+    const profiles = Array.from(this.bodyProfiles.values());
+    return profiles[0];
+  }
+  async upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile> {
+    const existing = await this.getBodyProfile();
+    if (existing) {
+      const updated = { ...existing, ...data, updatedAt: new Date() } as BodyProfile;
+      this.bodyProfiles.set(existing.id, updated);
+      return updated;
+    } else {
+      const id = this.generateId();
+      const created: BodyProfile = { ...data, id, updatedAt: new Date() } as any;
+      this.bodyProfiles.set(id, created);
+      return created;
+    }
   }
 
   // Worship

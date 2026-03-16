@@ -1,19 +1,20 @@
-import { Dumbbell, Moon, Sparkles, Utensils, ChevronRight, Activity, Flame, Droplets, HeartPulse } from "lucide-react";
+import { Dumbbell, Moon, Sparkles, Utensils, ChevronRight, Activity, Flame, HeartPulse, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Workout, IntakeLog, SleepLog, HygieneRoutine } from "@shared/schema";
-import { isAfter, subDays } from "date-fns";
+import { Workout, IntakeLog, SleepLog } from "@shared/schema";
+import { format, isAfter, subDays } from "date-fns";
+
+const TODAY = format(new Date(), "yyyy-MM-dd");
 
 export function BodyHub() {
     const [, setLocation] = useLocation();
 
-    // Fetch real metrics to replace static placeholders
     const { data: workouts } = useQuery<Workout[]>({ queryKey: ["/api/workouts"] });
-    const { data: sleepLogs } = useQuery<SleepLog[]>({ queryKey: ["/api/sleep-logs"] });
-    const { data: intakeLogs } = useQuery<IntakeLog[]>({ queryKey: ["/api/intake-logs"] });
+    const { data: sleepLogs } = useQuery<SleepLog[]>({ queryKey: ["/api/sleep-logs/all"] });
+    const { data: intakeLogs } = useQuery<IntakeLog[]>({ queryKey: ["/api/intake-logs", TODAY] });
+    const { data: hygieneRoutines } = useQuery<any[]>({ queryKey: ["/api/hygiene-routines"] });
 
-    // Calculate dynamic KPIs for the last 7 days
     const sevenDaysAgo = subDays(new Date(), 7);
 
     // Workouts KPI
@@ -30,52 +31,83 @@ export function BodyHub() {
     const restDesc = `${avgSleep}h avg past 7 days`;
 
     // Intake KPI
-    const recentIntake = intakeLogs?.filter(i => i.date && isAfter(new Date(i.date), sevenDaysAgo)) || [];
-    const avgCalories = recentIntake.length > 0
-        ? Math.round(recentIntake.reduce((acc, i) => acc + Number(i.calories || 0), 0) / recentIntake.length)
-        : 0;
-    const nutritionLevel = avgCalories > 0 ? "Tracked" : "Unmonitored";
-    const nutritionDesc = avgCalories > 0 ? `${avgCalories} kcal avg` : "Awaiting data";
+    const todayIntake = intakeLogs?.filter(l => l.status === "consumed" || !l.status) || [];
+    const todayCalories = todayIntake.reduce((acc, i) => acc + Number(i.calories || 0), 0);
+    const nutritionLevel = todayCalories > 0 ? "Tracked" : "Unmonitored";
+    const nutritionDesc = todayCalories > 0 ? `${Math.round(todayCalories)} kcal today` : "Awaiting data";
+
+    // Hygiene KPI
+    const totalRoutines = hygieneRoutines?.length || 0;
+    const completedToday = hygieneRoutines?.filter(r => r.lastCompletedDate === TODAY).length || 0;
+    const hygienePct = totalRoutines > 0 ? Math.round((completedToday / totalRoutines) * 100) : 0;
+    const hygieneLabel = totalRoutines === 0 ? "No routines" : hygienePct === 100 ? "Complete" : `${hygienePct}%`;
+    const hygieneDesc = totalRoutines > 0 ? `${completedToday}/${totalRoutines} done today` : "Set up routines";
+
+    // Body Readiness Score (composite)
+    const activityScore = Math.min(100, recentWorkouts.length * 15);
+    const sleepScore = Math.min(100, (Number(avgSleep) / 8) * 100);
+    const hygieneScore = hygienePct;
+    const nutritionScore = todayCalories > 0 ? Math.min(100, (todayCalories / 2000) * 100) : 0;
+    const readinessScore = Math.round((activityScore + sleepScore + hygieneScore + nutritionScore) / 4);
 
     return (
         <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold tracking-tight">Body</h1>
                     <p className="text-muted-foreground">Manage your physical and mental well-being</p>
                 </div>
+                <div className="text-center">
+                    <div
+                        className={`text-4xl font-black font-mono ${readinessScore >= 70 ? "text-green-500" : readinessScore >= 40 ? "text-yellow-500" : "text-muted-foreground"}`}
+                        data-testid="text-body-readiness"
+                    >
+                        {readinessScore}
+                    </div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Body Score</p>
+                </div>
             </div>
 
             {/* Overarching Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Activity Level</CardTitle>
-                        <Activity className="h-4 w-4 text-red-500" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
+                        <CardTitle className="text-sm font-medium">Activity</CardTitle>
+                        <Activity className="h-4 w-4 text-red-500 shrink-0" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{activityLevel}</div>
+                        <div className="text-2xl font-bold" data-testid="text-activity-level">{activityLevel}</div>
                         <p className="text-xs text-muted-foreground">{activityDesc}</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Rest Quality</CardTitle>
-                        <HeartPulse className="h-4 w-4 text-indigo-500" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
+                        <CardTitle className="text-sm font-medium">Rest</CardTitle>
+                        <HeartPulse className="h-4 w-4 text-indigo-500 shrink-0" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{restQuality}</div>
+                        <div className="text-2xl font-bold" data-testid="text-rest-quality">{restQuality}</div>
                         <p className="text-xs text-muted-foreground">{restDesc}</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
                         <CardTitle className="text-sm font-medium">Nutrition</CardTitle>
-                        <Flame className="h-4 w-4 text-orange-500" />
+                        <Flame className="h-4 w-4 text-orange-500 shrink-0" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{nutritionLevel}</div>
+                        <div className="text-2xl font-bold" data-testid="text-nutrition-level">{nutritionLevel}</div>
                         <p className="text-xs text-muted-foreground">{nutritionDesc}</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
+                        <CardTitle className="text-sm font-medium">Hygiene</CardTitle>
+                        <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold" data-testid="text-hygiene-level">{hygieneLabel}</div>
+                        <p className="text-xs text-muted-foreground">{hygieneDesc}</p>
                     </CardContent>
                 </Card>
             </div>

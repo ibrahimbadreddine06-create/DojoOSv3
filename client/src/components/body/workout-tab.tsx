@@ -62,15 +62,14 @@ export function WorkoutTab() {
     return muscle?.name || id;
   };
 
-  const workoutsBySelectMuscle = workouts?.filter(w => {
-    // In a real app, we'd join tables to see if workout included this muscle
-    // For now, we'll mock based on if any exercise in the workout targets it
-    // This requires fetching full workout details which we might not have here
-    // Simplifying expectation: Assume we can filter eventually.
-    // For visual prototype: return random subset if ID is selected
-    if (!selectedMuscleId) return false;
-    return Math.random() > 0.5;
-  }) || [];
+  const { data: muscleStats } = useQuery<any[]>({
+    queryKey: ["/api/muscle-stats"],
+  });
+
+  const { data: exerciseProgress } = useQuery<{ date: string; maxWeight: number; totalVolume: number }[]>({
+    queryKey: ["/api/exercises", selectedExerciseId, "progress"],
+    enabled: !!selectedExerciseId,
+  });
 
   // --- Mutations ---
 
@@ -322,32 +321,33 @@ export function WorkoutTab() {
                   <div className="h-full flex flex-col">
                     <div className="mb-6">
                       <h3 className="text-2xl font-bold">{exercises?.find(e => e.id === selectedExerciseId)?.name}</h3>
-                      <div className="flex gap-2 mt-2">
-                        <Badge variant="secondary">Chest</Badge>
-                        <Badge variant="outline">Compound</Badge>
-                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wide">Max weight over time (kg)</p>
                     </div>
 
                     <div className="flex-1 min-h-0">
-                      <div className="h-full w-full">
+                      {exerciseProgress && exerciseProgress.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={[
-                            { date: 'Jan 1', weight: 60 },
-                            { date: 'Jan 8', weight: 62.5 },
-                            { date: 'Jan 15', weight: 62.5 },
-                            { date: 'Jan 22', weight: 65 },
-                            { date: 'Jan 29', weight: 70 },
-                          ]}>
+                          <LineChart data={exerciseProgress.map(p => ({
+                            date: p.date.slice(5),
+                            weight: p.maxWeight,
+                          }))}>
                             <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                             <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} domain={['dataMin - 5', 'dataMax + 5']} unit="kg" />
                             <Tooltip
                               contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}
+                              formatter={(v: number) => [`${v} kg`, "Max Weight"]}
                             />
                             <Line type="monotone" dataKey="weight" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
                           </LineChart>
                         </ResponsiveContainer>
-                      </div>
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                          <TrendingUp className="w-10 h-10 opacity-20" />
+                          <p className="text-sm font-medium">No sessions logged yet</p>
+                          <p className="text-xs opacity-70">Complete a workout with this exercise to track progress</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -376,57 +376,11 @@ export function WorkoutTab() {
               {/* Right: Data & History */}
               <div className="md:col-span-8 border rounded-2xl p-6 bg-card/50 backdrop-blur-sm">
                 {selectedMuscleId ? (
-                  <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                    <div className="flex items-center justify-between border-b pb-4">
-                      <div>
-                        <h3 className="text-3xl font-black uppercase italic tracking-tighter">{getMuscleName(selectedMuscleId)}</h3>
-                        <p className="text-muted-foreground text-sm font-mono">MUSCLE GROUP</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-green-500">100%</p>
-                        <p className="text-[10px] uppercase text-muted-foreground">Recovery Score</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground uppercase mb-1">Weekly Volume</div>
-                          <div className="text-2xl font-bold">4,250 <span className="text-sm font-normal text-muted-foreground">kg</span></div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="text-xs text-muted-foreground uppercase mb-1">Frequency</div>
-                          <div className="text-2xl font-bold">2.4 <span className="text-sm font-normal text-muted-foreground">/wk</span></div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    <div>
-                      <h4 className="font-bold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <History className="w-4 h-4" />
-                        Recent History
-                      </h4>
-                      <div className="space-y-2">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
-                            <div className="flex items-center gap-3">
-                              <div className="w-1 h-8 bg-primary/20 rounded-full" />
-                              <div>
-                                <p className="font-medium text-sm">Chest & Back Alpha</p>
-                                <p className="text-xs text-muted-foreground">2 days ago</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs font-mono">8 sets</p>
-                              <p className="text-xs text-muted-foreground">Targeting {getMuscleName(selectedMuscleId)}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <MuscleDetail
+                    muscleId={selectedMuscleId}
+                    muscleName={getMuscleName(selectedMuscleId)}
+                    muscleStats={muscleStats}
+                  />
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4 min-h-[300px]">
                     <User className="w-16 h-16 opacity-10" />
@@ -442,6 +396,64 @@ export function WorkoutTab() {
         </Tabs>
       </section>
 
+    </div>
+  );
+}
+
+function MuscleDetail({ muscleId, muscleName, muscleStats }: { muscleId: string; muscleName: string; muscleStats: any[] | undefined }) {
+  const stat = muscleStats?.find(s => s.muscleId === muscleId);
+  const recovery = stat ? Math.round(Number(stat.recoveryScore)) : null;
+  const volume = stat?.volumeAccumulated ? parseFloat(stat.volumeAccumulated).toFixed(0) : null;
+  const recoveryColor = recovery === null ? "text-muted-foreground"
+    : recovery >= 80 ? "text-green-500" : recovery >= 50 ? "text-yellow-500" : "text-red-500";
+
+  return (
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+      <div className="flex items-center justify-between border-b pb-4">
+        <div>
+          <h3 className="text-3xl font-black uppercase italic tracking-tighter">{muscleName}</h3>
+          <p className="text-muted-foreground text-sm font-mono">MUSCLE GROUP</p>
+        </div>
+        <div className="text-right">
+          <p className={`text-2xl font-bold ${recoveryColor}`} data-testid="text-muscle-recovery">
+            {recovery !== null ? `${recovery}%` : "—"}
+          </p>
+          <p className="text-[10px] uppercase text-muted-foreground">Recovery Score</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground uppercase mb-1">Volume Accumulated</div>
+            <div className="text-2xl font-bold">
+              {volume
+                ? <>{volume} <span className="text-sm font-normal text-muted-foreground">kg</span></>
+                : <span className="text-muted-foreground text-lg">—</span>
+              }
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground uppercase mb-1">Last Trained</div>
+            <div className="text-lg font-bold">
+              {stat?.lastTrained
+                ? format(new Date(stat.lastTrained), "MMM d")
+                : <span className="text-muted-foreground">—</span>
+              }
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {!stat && (
+        <div className="text-center py-6 border rounded-lg border-dashed text-muted-foreground">
+          <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No data yet for {muscleName}</p>
+          <p className="text-xs mt-1">Complete workouts targeting this muscle to see stats</p>
+        </div>
+      )}
     </div>
   );
 }

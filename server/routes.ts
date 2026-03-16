@@ -8,6 +8,7 @@ import {
   insertMaterialSchema, insertFlashcardSchema, insertWorkoutSchema,
   insertExerciseLibrarySchema, insertWorkoutExerciseSchema, insertWorkoutSetSchema,
   insertIntakeLogSchema, insertSleepLogSchema, insertHygieneRoutineSchema,
+  insertSupplementLogSchema, insertFastingLogSchema, insertMealPresetSchema, insertBodyProfileSchema,
   insertSalahLogSchema, insertQuranLogSchema, insertDhikrLogSchema, insertDuaLogSchema,
   insertTransactionSchema, insertMasterpieceSchema, insertMasterpieceSectionSchema,
   insertPossessionSchema, insertOutfitSchema, insertCourseSchema, insertLessonSchema,
@@ -605,9 +606,13 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.patch("/api/workout-sets/:id", async (req, res) => {
-    // Need updateWorkoutSet in storage
     const set = await storage.updateWorkoutSet(req.params.id, req.body);
     res.json(set);
+  });
+
+  app.get("/api/exercises/:id/progress", async (req, res) => {
+    const progress = await storage.getExerciseProgress(req.params.id);
+    res.json(progress);
   });
 
   // Muscle Stats
@@ -628,9 +633,32 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/intake-logs", async (req, res) => {
-    const data = insertIntakeLogSchema.parse(req.body);
-    const log = await storage.createIntakeLog(data);
-    res.json(log);
+    try {
+      const data = insertIntakeLogSchema.parse(req.body);
+      const log = await storage.createIntakeLog(data);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.patch("/api/intake-logs/:id", async (req, res) => {
+    try {
+      const log = await storage.updateIntakeLog(req.params.id, req.body);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.delete("/api/intake-logs/:id", async (req, res) => {
+    await storage.deleteIntakeLog(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/sleep-logs/all", async (req, res) => {
+    const logs = await storage.getAllSleepLogs();
+    res.json(logs);
   });
 
   app.get("/api/sleep-logs/:date", async (req, res) => {
@@ -639,20 +667,131 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/sleep-logs", async (req, res) => {
-    const data = insertSleepLogSchema.parse(req.body);
-    const log = await storage.createSleepLog(data);
-    res.json(log);
+    try {
+      const data = insertSleepLogSchema.parse(req.body);
+      const log = await storage.createSleepLog(data);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
-  app.get("/api/hygiene-routines/:date", async (req, res) => {
-    const routines = await storage.getHygieneRoutines(req.params.date);
+  // Hygiene — global recurring templates (no date param)
+  app.get("/api/hygiene-routines", async (req, res) => {
+    const routines = await storage.getHygieneRoutines();
     res.json(routines);
   });
 
   app.post("/api/hygiene-routines", async (req, res) => {
-    const data = insertHygieneRoutineSchema.parse(req.body);
-    const routine = await storage.createHygieneRoutine(data);
-    res.json(routine);
+    try {
+      const data = insertHygieneRoutineSchema.parse(req.body);
+      const routine = await storage.createHygieneRoutine(data);
+      res.json(routine);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.patch("/api/hygiene-routines/:id", async (req, res) => {
+    try {
+      const routine = await storage.updateHygieneRoutine(req.params.id, req.body);
+      res.json(routine);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.delete("/api/hygiene-routines/:id", async (req, res) => {
+    await storage.deleteHygieneRoutine(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Supplement Logs
+  app.get("/api/supplement-logs/:date", async (req, res) => {
+    const logs = await storage.getSupplementLogs(req.params.date);
+    res.json(logs);
+  });
+
+  app.post("/api/supplement-logs", async (req, res) => {
+    try {
+      const data = insertSupplementLogSchema.parse(req.body);
+      const log = await storage.createSupplementLog(data);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.delete("/api/supplement-logs/:id", async (req, res) => {
+    await storage.deleteSupplementLog(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Fasting Logs
+  app.get("/api/fasting-logs", async (req, res) => {
+    const logs = await storage.getFastingLogs();
+    res.json(logs);
+  });
+
+  app.get("/api/fasting-logs/active", async (req, res) => {
+    const log = await storage.getActiveFastingLog();
+    res.json(log || null);
+  });
+
+  app.post("/api/fasting-logs", async (req, res) => {
+    try {
+      const data = insertFastingLogSchema.parse(req.body);
+      const log = await storage.createFastingLog(data);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.patch("/api/fasting-logs/:id", async (req, res) => {
+    try {
+      const log = await storage.updateFastingLog(req.params.id, req.body);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  // Meal Presets
+  app.get("/api/meal-presets", async (req, res) => {
+    const presets = await storage.getMealPresets();
+    res.json(presets);
+  });
+
+  app.post("/api/meal-presets", async (req, res) => {
+    try {
+      const data = insertMealPresetSchema.parse(req.body);
+      const preset = await storage.createMealPreset(data);
+      res.json(preset);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.delete("/api/meal-presets/:id", async (req, res) => {
+    await storage.deleteMealPreset(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Body Profile
+  app.get("/api/body-profile", async (req, res) => {
+    const profile = await storage.getBodyProfile();
+    res.json(profile || null);
+  });
+
+  app.post("/api/body-profile", async (req, res) => {
+    try {
+      const data = insertBodyProfileSchema.parse(req.body);
+      const profile = await storage.upsertBodyProfile(data);
+      res.json(profile);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
   // ===== WORSHIP =====

@@ -832,15 +832,34 @@ export const insertLearnPlanItemSchema = createInsertSchema(learnPlanItems).omit
 export const insertMaterialSchema = createInsertSchema(materials).omit({ id: true, createdAt: true });
 export const insertChapterNoteSchema = createInsertSchema(chapterNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFlashcardSchema = createInsertSchema(flashcards).omit({ id: true, createdAt: true });
-export const insertWorkoutSchema = createInsertSchema(workouts).omit({ id: true, createdAt: true });
+export const insertWorkoutSchema = createInsertSchema(workouts, {
+  date: z.coerce.date(),
+  startTime: z.coerce.date().optional().nullable(),
+  endTime: z.coerce.date().optional().nullable(),
+}).omit({ id: true, createdAt: true });
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true, createdAt: true });
 export const insertWorkoutExerciseSchema = createInsertSchema(workoutExercises).omit({ id: true });
 export const insertWorkoutSetSchema = createInsertSchema(workoutSets).omit({ id: true });
 export const insertMuscleStatSchema = createInsertSchema(muscleStats).omit({ id: true, updatedAt: true });
 
-export const insertIntakeLogSchema = createInsertSchema(intakeLogs).omit({ id: true, createdAt: true });
-export const insertSleepLogSchema = createInsertSchema(sleepLogs).omit({ id: true });
-export const insertHygieneRoutineSchema = createInsertSchema(hygieneRoutines).omit({ id: true });
+export const insertIntakeLogSchema = createInsertSchema(intakeLogs, {
+  date: z.coerce.date(),
+}).omit({ id: true, createdAt: true });
+export const insertSleepLogSchema = createInsertSchema(sleepLogs, {
+  startTime: z.coerce.date().optional().nullable(),
+  endTime: z.coerce.date().optional().nullable(),
+}).omit({ id: true });
+export const insertHygieneRoutineSchema = createInsertSchema(hygieneRoutines).omit({ id: true, createdAt: true });
+export const insertSupplementLogSchema = createInsertSchema(supplementLogs, {
+  date: z.coerce.date(),
+}).omit({ id: true, createdAt: true });
+export const insertFastingLogSchema = createInsertSchema(fastingLogs, {
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date().optional().nullable(),
+}).omit({ id: true, createdAt: true });
+export const insertMealPresetSchema = createInsertSchema(mealPresets).omit({ id: true, createdAt: true });
+export const insertBodyProfileSchema = createInsertSchema(bodyProfile).omit({ id: true, updatedAt: true });
+export const insertDailyStateSchema = createInsertSchema(dailyState).omit({ id: true, updatedAt: true });
 export const insertSalahLogSchema = createInsertSchema(salahLogs).omit({ id: true, createdAt: true });
 export const insertQuranLogSchema = createInsertSchema(quranLogs).omit({ id: true, createdAt: true });
 export const insertDhikrLogSchema = createInsertSchema(dhikrLogs).omit({ id: true, createdAt: true });
@@ -898,6 +917,16 @@ export type SleepLog = typeof sleepLogs.$inferSelect;
 export type InsertSleepLog = z.infer<typeof insertSleepLogSchema>;
 export type HygieneRoutine = typeof hygieneRoutines.$inferSelect;
 export type InsertHygieneRoutine = z.infer<typeof insertHygieneRoutineSchema>;
+export type SupplementLog = typeof supplementLogs.$inferSelect;
+export type InsertSupplementLog = z.infer<typeof insertSupplementLogSchema>;
+export type FastingLog = typeof fastingLogs.$inferSelect;
+export type InsertFastingLog = z.infer<typeof insertFastingLogSchema>;
+export type MealPreset = typeof mealPresets.$inferSelect;
+export type InsertMealPreset = z.infer<typeof insertMealPresetSchema>;
+export type BodyProfile = typeof bodyProfile.$inferSelect;
+export type InsertBodyProfile = z.infer<typeof insertBodyProfileSchema>;
+export type DailyState = typeof dailyState.$inferSelect;
+export type InsertDailyState = z.infer<typeof insertDailyStateSchema>;
 export type SalahLog = typeof salahLogs.$inferSelect;
 export type InsertSalahLog = z.infer<typeof insertSalahLogSchema>;
 export type QuranLog = typeof quranLogs.$inferSelect;
