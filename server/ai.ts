@@ -231,8 +231,10 @@ function extractYoutubeId(url: string): string {
   }
 }
 
-// Enrich a YouTube result via oEmbed — always returns a result (soft enrichment, never filters)
-async function enrichYoutubeVideo(rawResult: any): Promise<YoutubeResult> {
+// Enrich a YouTube result via oEmbed.
+// mustVerify=true → returns null if oEmbed fails (hard filter for AI-fabricated IDs).
+// mustVerify=false → returns soft fallback if oEmbed fails (trusted grounding URLs).
+async function enrichYoutubeVideo(rawResult: any, mustVerify: boolean): Promise<YoutubeResult | null> {
   const url = rawResult.url || "";
   const videoId = extractYoutubeId(url);
 
@@ -254,10 +256,13 @@ async function enrichYoutubeVideo(rawResult: any): Promise<YoutubeResult> {
           misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
         };
       }
-    } catch { /* fall through to unverified fallback */ }
+    } catch { /* fall through */ }
   }
 
-  // Fallback: return unverified but with a constructed thumbnail URL
+  // oEmbed failed — if this result needs verification, discard it (it's fake)
+  if (mustVerify) return null;
+
+  // Grounding-sourced URLs: keep with soft fallback (real Google Search result)
   return {
     title: rawResult.title || "YouTube Video",
     channel: rawResult.channel || "",
@@ -434,45 +439,62 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   if (params.materialType === "youtube") {
-    // ── Step 1: collect candidates (grounding chunks first, then parsed JSON) ──
-    const candidates: any[] = [];
+    // ── Step 1: collect candidates ──────────────────────────────────────────
+    // Grounding chunks = real URLs from Google Search (trusted, soft fallback)
+    // Parsed JSON = AI-generated (untrusted, hard-filter via oEmbed)
+    const groundingIds = new Set<string>();
+    const groundingCandidates: any[] = [];
+    const parsedCandidates: any[] = [];
 
-    // Real URLs from grounding metadata take priority
     const groundingMeta = (result.response.candidates?.[0]?.groundingMetadata as any);
     if (groundingMeta?.groundingChunks) {
       for (const chunk of groundingMeta.groundingChunks) {
         const uri = chunk.web?.uri || "";
         if (uri.includes("youtube.com/watch") || uri.includes("youtu.be/")) {
-          // Find matching parsed result for description/covers/misses
-          const match = parsed.find(
-            (r: any) => extractYoutubeId(r.url || "") === extractYoutubeId(uri)
-          );
-          candidates.push({
-            url: uri,
-            title: chunk.web?.title || match?.title || "YouTube Video",
-            channel: match?.channel || "",
-            description: match?.description || "",
-            covers: match?.covers || [],
-            misses: match?.misses || [],
-          });
+          const vid = extractYoutubeId(uri);
+          if (vid && !groundingIds.has(vid)) {
+            groundingIds.add(vid);
+            const match = parsed.find(
+              (r: any) => extractYoutubeId(r.url || "") === vid
+            );
+            groundingCandidates.push({
+              url: uri,
+              title: chunk.web?.title || match?.title || "YouTube Video",
+              channel: match?.channel || "",
+              description: match?.description || "",
+              covers: match?.covers || [],
+              misses: match?.misses || [],
+            });
+          }
         }
       }
     }
 
-    // Supplement with parsed JSON results not already in candidates
+    // Parsed JSON results not already covered by grounding
     for (const r of parsed) {
       const vid = extractYoutubeId(r.url || "");
-      if (vid && !candidates.some(c => extractYoutubeId(c.url || "") === vid)) {
-        candidates.push(r);
+      if (vid && !groundingIds.has(vid)) {
+        parsedCandidates.push(r);
       }
     }
 
-    // ── Step 2: enrich all candidates via oEmbed (always returns results) ──
-    const enriched = await Promise.all(candidates.map(enrichYoutubeVideo));
-    // Deduplicate by videoId, keep non-empty results first
+    // ── Step 2: enrich with oEmbed ───────────────────────────────────────────
+    // Grounding: mustVerify=false (soft fallback — real Google Search URLs)
+    // Parsed JSON: mustVerify=true (drop if oEmbed 404 — likely fabricated)
+    const [groundingEnriched, parsedEnriched] = await Promise.all([
+      Promise.all(groundingCandidates.map(c => enrichYoutubeVideo(c, false))),
+      Promise.all(parsedCandidates.map(c => enrichYoutubeVideo(c, true))),
+    ]);
+
+    const allEnriched = [
+      ...groundingEnriched.filter((r): r is YoutubeResult => r !== null),
+      ...parsedEnriched.filter((r): r is YoutubeResult => r !== null),
+    ];
+
+    // Deduplicate by videoId
     const seen = new Set<string>();
-    const deduped = enriched.filter(r => {
-      if (!r.videoId) return true;
+    const deduped = allEnriched.filter(r => {
+      if (!r.videoId) return false;
       if (seen.has(r.videoId)) return false;
       seen.add(r.videoId);
       return true;
