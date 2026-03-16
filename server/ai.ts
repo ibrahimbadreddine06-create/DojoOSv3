@@ -231,37 +231,43 @@ function extractYoutubeId(url: string): string {
   }
 }
 
-// Validate a YouTube video ID via oEmbed — returns enriched data or null if fake
-async function validateYoutubeVideo(rawResult: any): Promise<YoutubeResult | null> {
+// Enrich a YouTube result via oEmbed — always returns a result (soft enrichment, never filters)
+async function enrichYoutubeVideo(rawResult: any): Promise<YoutubeResult> {
   const url = rawResult.url || "";
   const videoId = extractYoutubeId(url);
-  if (!videoId) return null;
 
-  try {
-    const canonical = `https://www.youtube.com/watch?v=${videoId}`;
-    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`;
-    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return null; // Video doesn't exist
-
-    const data = await res.json() as {
-      title: string;
-      author_name: string;
-      thumbnail_url: string;
-    };
-
-    return {
-      title: data.title || rawResult.title || "YouTube Video",
-      channel: data.author_name || rawResult.channel || "",
-      url: canonical,
-      videoId,
-      thumbnailUrl: data.thumbnail_url,
-      description: rawResult.description || "",
-      covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
-      misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
-    };
-  } catch {
-    return null;
+  if (videoId) {
+    try {
+      const canonical = `https://www.youtube.com/watch?v=${videoId}`;
+      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`;
+      const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = await res.json() as { title: string; author_name: string; thumbnail_url: string };
+        return {
+          title: data.title || rawResult.title || "YouTube Video",
+          channel: data.author_name || rawResult.channel || "",
+          url: canonical,
+          videoId,
+          thumbnailUrl: data.thumbnail_url,
+          description: rawResult.description || "",
+          covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
+          misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
+        };
+      }
+    } catch { /* fall through to unverified fallback */ }
   }
+
+  // Fallback: return unverified but with a constructed thumbnail URL
+  return {
+    title: rawResult.title || "YouTube Video",
+    channel: rawResult.channel || "",
+    url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : url,
+    videoId: videoId || "",
+    thumbnailUrl: videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : "",
+    description: rawResult.description || "",
+    covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
+    misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
+  };
 }
 
 export async function findMaterialsForChapter(
@@ -291,29 +297,40 @@ export async function findMaterialsForChapter(
   let prompt = "";
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator. Search YouTube for real educational videos.
+    prompt = `You are an expert educational resource curator. Use Google Search to find real YouTube educational videos.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Search YouTube.com and find 6 real, existing educational videos for this chapter.
-Prioritize channels like: MIT OpenCourseWare, Stanford, Khan Academy, 3Blue1Brown, Crash Course, freeCodeCamp, Sentdex, Computerphile, or other well-known educational channels.
+TASK: Search on YouTube (site:youtube.com) and find 5 to 6 real, existing educational videos that are perfect study resources for this chapter. 
 
-CRITICAL: Only include videos with REAL YouTube video IDs that you verified exist. The video IDs will be checked — fake IDs will be detected and discarded. It is better to return fewer real results than more fake ones.
+Search queries to use (search all of them):
+- site:youtube.com "${params.chapterTitle}" tutorial
+- site:youtube.com "${params.chapterTitle}" explained
+- site:youtube.com "${params.chapterTitle}" lecture
+- site:youtube.com "${params.chapterTitle}" course
 
-For each video describe: what subtopics it COVERS and what it MISSES from this chapter.
+Prioritize results from well-known educational channels: MIT OpenCourseWare, Stanford, Yale Open Courses, Khan Academy, 3Blue1Brown, Crash Course, Kurzgesagt, Numberphile, Computerphile, freeCodeCamp, Traversy Media, The Coding Train, Sentdex, or similar reputable channels.
 
-OUTPUT — return ONLY a valid JSON array, no markdown, no extra text:
+CRITICAL RULES:
+- Every URL you return MUST be a real YouTube video URL you found via Google Search
+- The video ID in the URL must match a real video that actually exists
+- Include the full watch URL format: https://www.youtube.com/watch?v=VIDEO_ID
+- If you cannot find enough videos, return what you find — 2-3 real videos is better than 6 fake ones
+
+For each video, analyze what subtopics it COVERS and what it MISSES from this chapter.
+
+OUTPUT — return ONLY a valid JSON array (no markdown, no code fences, no extra text):
 [
   {
-    "title": "Exact video title as it appears on YouTube",
+    "title": "Exact video title as shown on YouTube",
     "channel": "Channel name",
     "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID",
-    "description": "Why this video helps with this chapter (2-3 sentences)",
-    "covers": ["subtopic it covers well"],
-    "misses": ["subtopic it skips"]
+    "description": "Why this video is valuable for this chapter (2-3 sentences)",
+    "covers": ["subtopic A", "subtopic B"],
+    "misses": ["subtopic C"]
   }
 ]`;
   } else if (params.materialType === "website") {
@@ -450,11 +467,18 @@ OUTPUT — return ONLY valid JSON array, no markdown:
       }
     }
 
-    // ── Step 2: validate all candidates via YouTube oEmbed in parallel ──────
-    const validated = (await Promise.all(candidates.map(validateYoutubeVideo)))
-      .filter((r): r is YoutubeResult => r !== null);
+    // ── Step 2: enrich all candidates via oEmbed (always returns results) ──
+    const enriched = await Promise.all(candidates.map(enrichYoutubeVideo));
+    // Deduplicate by videoId, keep non-empty results first
+    const seen = new Set<string>();
+    const deduped = enriched.filter(r => {
+      if (!r.videoId) return true;
+      if (seen.has(r.videoId)) return false;
+      seen.add(r.videoId);
+      return true;
+    });
 
-    return { type: "youtube", results: validated };
+    return { type: "youtube", results: deduped.slice(0, 6) };
   } else if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
       title: r.title || "Untitled",
@@ -478,5 +502,245 @@ OUTPUT — return ONLY valid JSON array, no markdown:
       suggestedType: (["video", "link", "pdf"].includes(r.suggestedType) ? r.suggestedType : "link") as "video" | "link" | "pdf",
     }));
     return { type: "custom", results };
+  }
+}
+
+// ─── Types for AI Notes ───────────────────────────────────────────────────────
+
+export interface GenerateNotesParams {
+  chapterTitle: string;
+  chapterContext: string;
+  materials: { title: string; url?: string; type?: string }[];
+  userPrompt?: string;
+  trajectoryContext?: {
+    goal: string;
+    context: string;
+    submoduleName: string;
+    submoduleType: string;
+  };
+}
+
+export interface GeneratedNote {
+  title: string;
+  content: string;
+}
+
+// ─── AI Notes Generation ──────────────────────────────────────────────────────
+
+export async function generateNotes(params: GenerateNotesParams): Promise<GeneratedNote> {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+  });
+
+  const contextBlock = params.trajectoryContext
+    ? `LEARNER CONTEXT:
+- Subject: ${params.trajectoryContext.submoduleName}
+- Learner goal: ${params.trajectoryContext.goal}
+- Background: ${params.trajectoryContext.context}
+- Module type: ${params.trajectoryContext.submoduleType}`
+    : "";
+
+  const materialsBlock = params.materials.length > 0
+    ? `SELECTED MATERIALS TO ANALYZE:\n${params.materials.map((m, i) =>
+        `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
+      ).join("\n")}`
+    : "";
+
+  const subtopicsBlock = params.chapterContext
+    ? `CHAPTER SUBTOPICS:\n${params.chapterContext}`
+    : "";
+
+  const userPromptBlock = params.userPrompt
+    ? `SPECIFIC INSTRUCTION FROM LEARNER:\n${params.userPrompt}`
+    : "Produce comprehensive structured notes that summarize and explain the chapter clearly.";
+
+  const prompt = `You are an expert learning coach and educator. Your task is to generate high-quality, structured study notes for a learner.
+
+CHAPTER: "${params.chapterTitle}"
+${subtopicsBlock}
+${contextBlock}
+${materialsBlock}
+${userPromptBlock}
+
+TASK: Create detailed, well-organized study notes for this chapter.
+${params.materials.length > 0 ? "Use the selected materials as your primary sources — access and analyze their content via web search if possible." : "Draw on your knowledge of this topic."}
+
+REQUIREMENTS FOR THE NOTES:
+- Start with a concise chapter overview (2-3 sentences)
+- Organize content with clear headings and subheadings
+- Include key concepts, definitions, and explanations
+- Add concrete examples and analogies where helpful
+- Highlight key takeaways or insights
+- End with a brief summary of the most important points
+- Write for the learner's level and goal
+
+OUTPUT FORMAT: Return a JSON object with "title" and "content" fields.
+- "title": A descriptive title for these notes (e.g., "Notes on X: Key Concepts & Insights")
+- "content": The notes as HTML (use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags for rich formatting)
+
+Return ONLY the JSON object, no markdown fences:
+{"title": "...", "content": "<h2>...</h2><p>...</p>..."}`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+
+  let jsonStr = text;
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenceMatch) jsonStr = fenceMatch[1];
+  const objStart = jsonStr.indexOf("{");
+  const objEnd = jsonStr.lastIndexOf("}");
+  if (objStart !== -1 && objEnd !== -1) jsonStr = jsonStr.substring(objStart, objEnd + 1);
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return {
+      title: parsed.title || `Notes: ${params.chapterTitle}`,
+      content: parsed.content || text,
+    };
+  } catch {
+    return {
+      title: `Notes: ${params.chapterTitle}`,
+      content: `<p>${text}</p>`,
+    };
+  }
+}
+
+// ─── Types for AI Flashcards ──────────────────────────────────────────────────
+
+export type FlashcardStyle = "basic" | "cloze" | "concept" | "feynman" | "scenario" | "custom";
+
+export interface GenerateFlashcardsParams {
+  chapterTitle: string;
+  chapterContext: string;
+  materials: { title: string; url?: string; type?: string }[];
+  userPrompt?: string;
+  style: FlashcardStyle;
+  customStyle?: string;
+  trajectoryContext?: {
+    goal: string;
+    context: string;
+    submoduleName: string;
+    submoduleType: string;
+  };
+  previousCards?: { front: string; back: string }[];
+  feedback?: string;
+}
+
+export interface GeneratedFlashcard {
+  front: string;
+  back: string;
+}
+
+// ─── AI Flashcard Generation ──────────────────────────────────────────────────
+
+const STYLE_DESCRIPTIONS: Record<FlashcardStyle, string> = {
+  basic: "Basic Q&A: Ask a direct question on the front, give a clear answer on the back. Example front: 'What is X?' | back: 'X is...'",
+  cloze: "Cloze deletion: Front shows a sentence with a key term blanked out (use ___ for the blank). Back shows the missing term plus a brief explanation. Example front: '___ is the process of...' | back: 'Osmosis — ...'",
+  concept: "Concept flashcards: Front shows a concept/term. Back gives a precise definition + one concrete example. Example front: 'Neural Network' | back: 'Definition: ... | Example: ...'",
+  feynman: "Feynman technique: Front asks 'Explain X as if I have no background in it.' Back gives a simple, analogy-rich explanation that a curious teenager could understand.",
+  scenario: "Scenario-based: Front describes a realistic situation/problem. Back explains what approach/concept applies and why. Focuses on application, not just memorization.",
+  custom: "Custom style as specified by the learner.",
+};
+
+export async function generateFlashcards(params: GenerateFlashcardsParams): Promise<GeneratedFlashcard[]> {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+  });
+
+  const contextBlock = params.trajectoryContext
+    ? `LEARNER CONTEXT:
+- Subject: ${params.trajectoryContext.submoduleName}
+- Goal: ${params.trajectoryContext.goal}
+- Background: ${params.trajectoryContext.context}`
+    : "";
+
+  const materialsBlock = params.materials.length > 0
+    ? `SELECTED MATERIALS TO BASE FLASHCARDS ON:\n${params.materials.map((m, i) =>
+        `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
+      ).join("\n")}`
+    : "";
+
+  const subtopicsBlock = params.chapterContext
+    ? `CHAPTER SUBTOPICS:\n${params.chapterContext}`
+    : "";
+
+  const styleInstruction = params.style === "custom"
+    ? `FLASHCARD STYLE (custom, as requested by learner): ${params.customStyle || "Mixed styles, learner's preference"}`
+    : `FLASHCARD STYLE: ${STYLE_DESCRIPTIONS[params.style]}`;
+
+  const userPromptBlock = params.userPrompt ? `ADDITIONAL INSTRUCTIONS: ${params.userPrompt}` : "";
+
+  let prompt = "";
+
+  if (params.previousCards && params.previousCards.length > 0 && params.feedback) {
+    // Regeneration mode — improve based on feedback
+    const prevCardsJson = JSON.stringify(params.previousCards, null, 2);
+    prompt = `You are an expert flashcard creator. Improve the following flashcard set based on the learner's feedback.
+
+CHAPTER: "${params.chapterTitle}"
+${subtopicsBlock}
+${contextBlock}
+${materialsBlock}
+
+${styleInstruction}
+${userPromptBlock}
+
+PREVIOUS FLASHCARDS (to improve upon):
+${prevCardsJson}
+
+LEARNER FEEDBACK (what was wrong / what to change):
+${params.feedback}
+
+TASK: Rewrite and improve the full flashcard set addressing every point in the feedback. Keep what was good, fix what was wrong. Maintain comprehensive coverage of the chapter.
+
+OUTPUT — return ONLY a valid JSON array (no markdown, no extra text):
+[{"front": "question or prompt", "back": "answer or explanation"}, ...]`;
+  } else {
+    // Initial generation mode
+    prompt = `You are an expert flashcard creator. Create a comprehensive flashcard set for a learning chapter.
+
+CHAPTER: "${params.chapterTitle}"
+${subtopicsBlock}
+${contextBlock}
+${materialsBlock}
+${userPromptBlock}
+
+${styleInstruction}
+
+TASK: Create 12-18 flashcards that comprehensively cover all key concepts of this chapter.
+${params.materials.length > 0 ? "Access and analyze the listed materials via web search to base your flashcards on their actual content." : "Draw on your knowledge of this topic."}
+
+REQUIREMENTS:
+- Cover all important concepts, terms, and ideas from the chapter
+- Make each flashcard focused on ONE clear concept (no info overload per card)
+- Vary the difficulty: include foundational, intermediate, and advanced cards
+- Ensure full coverage — every major subtopic should have at least one card
+- Follow the specified flashcard style consistently throughout
+
+OUTPUT — return ONLY a valid JSON array (no markdown, no extra text):
+[{"front": "question or prompt", "back": "answer or explanation"}, ...]`;
+  }
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+
+  let jsonStr = text;
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenceMatch) jsonStr = fenceMatch[1];
+  const arrStart = jsonStr.indexOf("[");
+  const arrEnd = jsonStr.lastIndexOf("]");
+  if (arrStart !== -1 && arrEnd !== -1) jsonStr = jsonStr.substring(arrStart, arrEnd + 1);
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (!Array.isArray(parsed)) throw new Error("not array");
+    return parsed.map((c: any) => ({
+      front: String(c.front || c.question || c.front_text || ""),
+      back: String(c.back || c.answer || c.back_text || ""),
+    })).filter(c => c.front && c.back);
+  } catch {
+    throw new Error("AI returned an invalid flashcard response. Please try again.");
   }
 }

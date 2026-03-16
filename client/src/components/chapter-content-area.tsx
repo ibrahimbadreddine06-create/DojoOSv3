@@ -17,6 +17,7 @@ import { NotesList } from "@/components/note-editor";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import { MaterialViewerDialog } from "@/components/dialogs/material-viewer-dialog";
 import { AIMaterialFinder } from "@/components/ai-material-finder";
+import { AIFlashcardGenerator } from "@/components/ai-flashcard-generator";
 import type { LearnPlanItem, Material, Flashcard } from "@shared/schema";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -212,6 +213,7 @@ export function ChapterContentArea({
   const [, navigate] = useLocation();
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [aiFinderOpen, setAiFinderOpen] = useState(false);
+  const [aiFlashcardOpen, setAiFlashcardOpen] = useState(false);
 
   const currentPath = window.location.pathname;
   const buildReturnUrl = () => currentPath + window.location.search;
@@ -314,9 +316,20 @@ export function ChapterContentArea({
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm">Flashcards</h3>
-            <Button size="icon" variant="ghost" onClick={handleAddFlashcard} data-testid="button-add-flashcard">
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setAiFlashcardOpen(true)}
+                title="Generate flashcards with AI"
+                data-testid="button-ai-generate-flashcards"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={handleAddFlashcard} data-testid="button-add-flashcard">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           {flashcardsLoading ? (
             <div className="flex justify-center py-4">
@@ -467,6 +480,10 @@ export function ChapterContentArea({
           topicId={topicId}
           courseId={courseId}
           childChapterIds={childChapterIds}
+          materials={materials}
+          chapterTitle={chapter.title}
+          chapterContext={chapter.notes || ""}
+          trajectoryContext={trajectoryContext}
         />
       </Card>
 
@@ -487,6 +504,21 @@ export function ChapterContentArea({
         trajectoryContext={trajectoryContext}
         onMaterialsAdded={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/materials/chapter", chapter.id] });
+        }}
+      />
+
+      <AIFlashcardGenerator
+        open={aiFlashcardOpen}
+        onClose={() => setAiFlashcardOpen(false)}
+        chapter={{ id: chapter.id, title: chapter.title }}
+        topicId={topicId}
+        courseId={courseId}
+        disciplineId={disciplineId}
+        trajectoryContext={trajectoryContext}
+        materials={materials}
+        chapterContext={chapter.notes || ""}
+        onFlashcardsAdded={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/flashcards/chapter", chapter.id] });
         }}
       />
     </div>

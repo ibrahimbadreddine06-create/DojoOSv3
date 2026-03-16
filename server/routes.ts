@@ -330,6 +330,36 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/ai/generate-notes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+    try {
+      const { generateNotes } = await import("./ai");
+      const result = await generateNotes(req.body);
+      res.json(result);
+    } catch (e: any) {
+      console.error("AI generate-notes error:", e);
+      res.status(500).json({ message: e.message || "Note generation failed" });
+    }
+  });
+
+  app.post("/api/ai/generate-flashcards", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+    try {
+      const { generateFlashcards } = await import("./ai");
+      const result = await generateFlashcards(req.body);
+      res.json(result);
+    } catch (e: any) {
+      console.error("AI generate-flashcards error:", e);
+      res.status(500).json({ message: e.message || "Flashcard generation failed" });
+    }
+  });
+
   // AI: Generate learning trajectory
   app.post("/api/ai/generate-trajectory", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
