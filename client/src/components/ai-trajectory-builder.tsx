@@ -9,10 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles, ChevronRight, ChevronDown, Trash2, Plus,
   GraduationCap, BookOpen, LayoutList, Pencil, Check,
-  ExternalLink, RotateCcw, Loader2, FileText,
+  ExternalLink, RotateCcw, Loader2, FileText, HelpCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,14 +59,6 @@ function mapAIChapters(nodes: { title: string; children?: any[] }[]): ChapterNod
   }));
 }
 
-function getFavicon(url: string) {
-  try {
-    const domain = new URL(url).hostname;
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-  } catch {
-    return null;
-  }
-}
 
 const LOADING_MESSAGES = [
   "Analyzing your goals...",
@@ -472,9 +465,16 @@ export function AITrajectoryBuilder({
               <p className="text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">{countNodes(chapters)}</span> chapters — double-click any title to rename
               </p>
-              <Button size="sm" variant="ghost" onClick={() => setStep("form")} data-testid="button-regenerate">
-                <RotateCcw className="w-3 h-3 mr-1.5" /> Regenerate
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="ghost" onClick={() => setStep("form")} data-testid="button-regenerate">
+                    <RotateCcw className="w-3 h-3 mr-1.5" /> Regenerate
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="text-xs">
+                  Go back and modify your goal, context, or structure to generate a new trajectory
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <ScrollArea className="flex-1 min-h-0">
@@ -500,29 +500,24 @@ export function AITrajectoryBuilder({
 
               {/* Sources */}
               {sources.length > 0 && (
-                <div className="px-4 pb-4 pt-1 border-t mx-4 mt-2">
-                  <p className="text-xs text-muted-foreground mb-2 font-medium">Based on</p>
-                  <div className="flex flex-wrap gap-2">
-                    {sources.slice(0, 12).map((src, i) => {
-                      const favicon = getFavicon(src.url);
-                      return (
-                        <a
-                          key={i}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={src.name}
-                          className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[160px]"
-                          data-testid={`source-link-${i}`}
-                        >
-                          {favicon
-                            ? <img src={favicon} alt="" className="w-3.5 h-3.5 rounded-sm flex-shrink-0" />
-                            : <BookOpen className="w-3 h-3 flex-shrink-0" />}
-                          <span className="truncate">{src.name}</span>
-                          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-                        </a>
-                      );
-                    })}
+                <div className="border-t px-4 py-3 bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-2.5 font-medium">Based on</p>
+                  <div className="space-y-2">
+                    {sources.slice(0, 8).map((src, i) => (
+                      <a
+                        key={i}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={src.name}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs text-muted-foreground hover-elevate break-words"
+                        data-testid={`source-link-${i}`}
+                      >
+                        <BookOpen className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span className="flex-1 min-w-0">{src.name}</span>
+                        <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
