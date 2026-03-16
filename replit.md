@@ -15,6 +15,15 @@ A comprehensive personal productivity and life-management system — an all-in-o
 - `server/` — Express backend (routes, auth, storage, db)
 - `shared/` — Shared TypeScript schemas (Drizzle + Zod)
 
+## AI Features
+
+- **AI Learning Trajectory Builder** (`server/ai.ts`, `client/src/components/ai-trajectory-builder.tsx`)
+  - Uses `gemini-2.5-flash` with Google Search grounding
+  - Multi-step dialog: goal → optional ToC → AI thinking → review & edit tree → accept
+  - Generates complete chapter hierarchies for Second Brain, Languages, Studies, and Disciplines
+  - Bulk creates all chapters via `POST /api/learn-plan-items/bulk`
+  - Accessible from the Learning Trajectory sidebar (header ✦ icon, empty state, footer)
+
 ## Key Files
 
 - `server/index.ts` — App entry point, wires everything together
@@ -22,6 +31,7 @@ A comprehensive personal productivity and life-management system — an all-in-o
 - `server/auth.ts` — Passport local + Google OAuth strategies
 - `server/db.ts` — PostgreSQL connection pool and Drizzle instance
 - `server/storage.ts` — Database operations (IStorage interface)
+- `server/ai.ts` — Gemini AI service (trajectory generation)
 - `shared/schema.ts` — Database schema (30+ tables) and Zod validation
 
 ## Environment Variables / Secrets

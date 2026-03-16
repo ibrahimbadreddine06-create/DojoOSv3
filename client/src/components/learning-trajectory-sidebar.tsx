@@ -10,7 +10,9 @@ import {
   MoreHorizontal,
   LayoutDashboard,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
+import { AITrajectoryBuilder } from "@/components/ai-trajectory-builder";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -218,6 +220,7 @@ interface LearningTrajectorySidebarProps {
 
 export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTrajectorySidebarProps) {
   const [, navigate] = useLocation();
+  const [aiBuilderOpen, setAiBuilderOpen] = useState(false);
   const {
     subModuleInfo,
     isMobile,
@@ -314,10 +317,19 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
   return (
     <div className="flex flex-col h-full bg-background" data-testid="sidebar-trajectory">
       <div className="flex items-center justify-between px-4 h-auto md:h-16 pt-[env(safe-area-inset-top)] md:pt-0 border-b shrink-0 min-h-[4rem]">
-        <div className="min-w-0">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">Chapters</h2>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">Learning Trajectory</h2>
           <p className="text-sm font-medium truncate">{title}</p>
         </div>
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={() => setAiBuilderOpen(true)}
+          title="Build with AI"
+          data-testid="button-ai-trajectory-header"
+        >
+          <Sparkles className="w-4 h-4 text-primary" />
+        </Button>
       </div>
 
       <div className="p-2">
@@ -344,13 +356,23 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
             <div className="text-center py-8 px-4">
               <BookOpen className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-4">No chapters yet</p>
-              <Button
-                size="sm"
-                onClick={() => handleAddChapter(null)}
-                data-testid="button-add-first-chapter"
-              >
-                <Plus className="h-4 w-4 mr-2" /> Add First Chapter
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setAiBuilderOpen(true)}
+                  data-testid="button-ai-build-empty"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" /> Build with AI
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAddChapter(null)}
+                  data-testid="button-add-first-chapter"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Manually
+                </Button>
+              </div>
             </div>
           ) : (
             <div>
@@ -372,16 +394,35 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
         </div>
       </ScrollArea>
 
-      <div className="p-3 border-t">
+      <div className="p-3 border-t flex flex-col gap-2">
+        <Button
+          variant="default"
+          className="w-full"
+          onClick={() => setAiBuilderOpen(true)}
+          data-testid="button-ai-build-footer"
+        >
+          <Sparkles className="h-4 w-4 mr-2" /> Build with AI
+        </Button>
         <Button
           variant="outline"
           className="w-full"
           onClick={() => handleAddChapter(null)}
           data-testid="button-add-chapter"
         >
-          <Plus className="h-4 w-4 mr-2" /> Add New Chapter
+          <Plus className="h-4 w-4 mr-2" /> Add Chapter
         </Button>
       </div>
+
+      <AITrajectoryBuilder
+        open={aiBuilderOpen}
+        onClose={() => setAiBuilderOpen(false)}
+        submoduleType={(subModuleInfo?.type ?? "second_brain") as any}
+        submoduleName={title}
+        topicId={topicId}
+        courseId={courseId}
+        disciplineId={disciplineId}
+        onCreated={() => setAiBuilderOpen(false)}
+      />
     </div>
   );
 }

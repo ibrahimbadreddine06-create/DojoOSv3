@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { generateLearningTrajectory, type TrajectoryParams } from "./ai";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -267,6 +268,54 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/learn-plan-items/:id", async (req, res) => {
     await storage.deleteLearnPlanItem(req.params.id);
     res.json({ success: true });
+  });
+
+  // Bulk create chapters from AI trajectory
+  app.post("/api/learn-plan-items/bulk", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { chapters, topicId, courseId, disciplineId } = req.body;
+    if (!chapters || !Array.isArray(chapters)) {
+      return res.status(400).json({ message: "chapters array required" });
+    }
+
+    interface ChapterNode { title: string; children: ChapterNode[]; }
+    async function createRecursively(nodes: ChapterNode[], parentId: string | null, startOrder: number) {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const item = await storage.createLearnPlanItem({
+          title: node.title,
+          topicId: topicId || null,
+          courseId: courseId || null,
+          disciplineId: disciplineId || null,
+          parentId: parentId || null,
+          order: startOrder + i,
+          importance: 3,
+          completed: false,
+        });
+        if (node.children?.length > 0) {
+          await createRecursively(node.children, item.id, 0);
+        }
+      }
+    }
+
+    await createRecursively(chapters, null, 0);
+    res.json({ success: true });
+  });
+
+  // AI: Generate learning trajectory
+  app.post("/api/ai/generate-trajectory", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+    try {
+      const params = req.body as TrajectoryParams;
+      const result = await generateLearningTrajectory(params);
+      res.json(result);
+    } catch (e: any) {
+      console.error("AI trajectory error:", e);
+      res.status(500).json({ message: e.message || "AI generation failed" });
+    }
   });
 
   app.get("/api/learn-plan-items/discipline/:disciplineId", async (req, res) => {
