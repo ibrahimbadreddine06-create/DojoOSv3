@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles, ChevronRight, ChevronDown, Trash2, Plus,
-  GraduationCap, BookOpen, LayoutList, Pencil, Check, X,
-  ExternalLink, RotateCcw, Loader2,
+  GraduationCap, BookOpen, LayoutList, Pencil, Check,
+  ExternalLink, RotateCcw, Loader2, FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChapterNode {
-  id: string; // client-side temp id
+  id: string;
   title: string;
   children: ChapterNode[];
   expanded: boolean;
@@ -32,7 +31,7 @@ interface Source {
 
 type SubmoduleType = "second_brain" | "languages" | "studies" | "disciplines";
 type StructurePreference = "academic" | "thematic";
-type Step = "form" | "toc" | "loading" | "review";
+type Step = "form" | "loading" | "review";
 
 interface Props {
   open: boolean;
@@ -79,14 +78,7 @@ const LOADING_MESSAGES = [
   "Finalizing your trajectory...",
 ];
 
-const SUBMODULE_LABELS: Record<SubmoduleType, string> = {
-  second_brain: "knowledge topic",
-  languages: "language",
-  studies: "course",
-  disciplines: "discipline",
-};
-
-// ─── Recursive tree node ──────────────────────────────────────────────────────
+// ─── Tree node ────────────────────────────────────────────────────────────────
 
 function TreeNode({
   node, depth, onUpdate, onDelete, onAddChild,
@@ -112,7 +104,7 @@ function TreeNode({
   };
 
   const hasChildren = node.children.length > 0;
-  const indent = depth * 20;
+  const indent = depth * 18;
 
   return (
     <div>
@@ -121,9 +113,8 @@ function TreeNode({
         style={{ paddingLeft: `${8 + indent}px` }}
         data-testid={`trajectory-node-${node.id}`}
       >
-        {/* Expand / collapse */}
         <button
-          className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground"
+          className="flex-shrink-0 w-4 h-4 flex items-center justify-center text-muted-foreground"
           onClick={() => onUpdate(node.id, { expanded: !node.expanded })}
         >
           {hasChildren
@@ -133,7 +124,6 @@ function TreeNode({
             : <span className="w-3 h-3 inline-block" />}
         </button>
 
-        {/* Title */}
         <div className="flex-1 min-w-0">
           {editing ? (
             <input
@@ -142,12 +132,21 @@ function TreeNode({
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onBlur={commitEdit}
-              onKeyDown={e => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
+              onKeyDown={e => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") setEditing(false);
+              }}
               data-testid={`input-chapter-title-${node.id}`}
             />
           ) : (
             <span
-              className={`text-sm truncate block ${depth === 0 ? "font-semibold" : depth === 1 ? "font-medium" : "font-normal text-muted-foreground"}`}
+              className={`text-sm block leading-snug ${
+                depth === 0
+                  ? "font-semibold"
+                  : depth === 1
+                    ? "font-medium"
+                    : "font-normal text-muted-foreground"
+              }`}
               onDoubleClick={startEdit}
             >
               {node.title}
@@ -155,16 +154,15 @@ function TreeNode({
           )}
         </div>
 
-        {/* Actions — visible on hover */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={startEdit} data-testid={`button-edit-chapter-${node.id}`}>
-            <Pencil className="w-3 h-3" />
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 flex-shrink-0">
+          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={startEdit} data-testid={`button-edit-${node.id}`}>
+            <Pencil className="w-2.5 h-2.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onAddChild(node.id)} data-testid={`button-add-sub-${node.id}`}>
-            <Plus className="w-3 h-3" />
+          <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => onAddChild(node.id)} data-testid={`button-add-sub-${node.id}`}>
+            <Plus className="w-2.5 h-2.5" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDelete(node.id)} data-testid={`button-delete-chapter-${node.id}`}>
-            <Trash2 className="w-3 h-3" />
+          <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => onDelete(node.id)} data-testid={`button-delete-${node.id}`}>
+            <Trash2 className="w-2.5 h-2.5" />
           </Button>
         </div>
       </div>
@@ -175,7 +173,7 @@ function TreeNode({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.12 }}
           >
             {node.children.map(child => (
               <TreeNode
@@ -206,6 +204,7 @@ export function AITrajectoryBuilder({
   const [goal, setGoal] = useState("");
   const [context, setContext] = useState("");
   const [structure, setStructure] = useState<StructurePreference>("academic");
+  const [tocOpen, setTocOpen] = useState(false);
   const [toc, setToc] = useState("");
 
   // Steps
@@ -213,33 +212,26 @@ export function AITrajectoryBuilder({
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const loadingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Generated data
+  // Generated
   const [chapters, setChapters] = useState<ChapterNode[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
 
-  // Reset when closed
   const handleClose = () => {
     setStep("form");
-    setGoal("");
-    setContext("");
-    setStructure("academic");
-    setToc("");
-    setChapters([]);
-    setSources([]);
+    setGoal(""); setContext(""); setStructure("academic");
+    setToc(""); setTocOpen(false);
+    setChapters([]); setSources([]);
     if (loadingInterval.current) clearInterval(loadingInterval.current);
     onClose();
   };
 
-  // AI generate mutation
+  // AI generate
   const generateMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/ai/generate-trajectory", {
-        submoduleType,
-        submoduleName,
-        goal,
-        context,
+        submoduleType, submoduleName, goal, context,
         structurePreference: structure,
-        tableOfContents: toc || undefined,
+        tableOfContents: toc.trim() || undefined,
       });
       return res.json();
     },
@@ -263,7 +255,7 @@ export function AITrajectoryBuilder({
     },
   });
 
-  // Bulk create mutation
+  // Bulk create
   const createMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/learn-plan-items/bulk", {
@@ -281,7 +273,7 @@ export function AITrajectoryBuilder({
           ? ["/api/learn-plan-items/discipline", disciplineId]
           : ["/api/learn-plan-items", topicId];
       queryClient.invalidateQueries({ queryKey: qk });
-      toast({ title: "Learning trajectory created!", description: `${countNodes(chapters)} chapters added.` });
+      toast({ title: "Trajectory created!", description: `${countNodes(chapters)} chapters added.` });
       onCreated?.();
       handleClose();
     },
@@ -290,7 +282,7 @@ export function AITrajectoryBuilder({
     },
   });
 
-  // Tree update helpers
+  // Tree helpers
   function updateNodeById(nodes: ChapterNode[], id: string, updates: Partial<ChapterNode>): ChapterNode[] {
     return nodes.map(n =>
       n.id === id
@@ -298,13 +290,9 @@ export function AITrajectoryBuilder({
         : { ...n, children: updateNodeById(n.children, id, updates) }
     );
   }
-
   function deleteNodeById(nodes: ChapterNode[], id: string): ChapterNode[] {
-    return nodes
-      .filter(n => n.id !== id)
-      .map(n => ({ ...n, children: deleteNodeById(n.children, id) }));
+    return nodes.filter(n => n.id !== id).map(n => ({ ...n, children: deleteNodeById(n.children, id) }));
   }
-
   function addChildById(nodes: ChapterNode[], parentId: string): ChapterNode[] {
     return nodes.map(n =>
       n.id === parentId
@@ -312,48 +300,31 @@ export function AITrajectoryBuilder({
         : { ...n, children: addChildById(n.children, parentId) }
     );
   }
-
   function stripExpanded(nodes: ChapterNode[]): any[] {
     return nodes.map(({ title, children }) => ({ title, children: stripExpanded(children) }));
   }
-
   function countNodes(nodes: ChapterNode[]): number {
     return nodes.reduce((acc, n) => acc + 1 + countNodes(n.children), 0);
   }
 
-  const handleUpdate = useCallback((id: string, updates: Partial<ChapterNode>) => {
-    setChapters(prev => updateNodeById(prev, id, updates));
-  }, []);
-
-  const handleDelete = useCallback((id: string) => {
-    setChapters(prev => deleteNodeById(prev, id));
-  }, []);
-
-  const handleAddChild = useCallback((parentId: string) => {
-    setChapters(prev => addChildById(prev, parentId));
-  }, []);
-
-  const addTopLevel = () => {
-    setChapters(prev => [...prev, { id: tempId(), title: "New chapter", children: [], expanded: true }]);
-  };
-
-  // ─── Render steps ──────────────────────────────────────────────────────────
+  const handleUpdate = useCallback((id: string, u: Partial<ChapterNode>) => setChapters(p => updateNodeById(p, id, u)), []);
+  const handleDelete = useCallback((id: string) => setChapters(p => deleteNodeById(p, id)), []);
+  const handleAddChild = useCallback((pid: string) => setChapters(p => addChildById(p, pid)), []);
 
   return (
-    <Dialog open={open} onOpenChange={open => !open && handleClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+    <Dialog open={open} onOpenChange={o => !o && handleClose()}>
+      <DialogContent className="max-w-2xl h-[88vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="w-4 h-4 text-primary" />
             AI Learning Trajectory — {submoduleName}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col">
-
-          {/* ── Step: Form ── */}
-          {step === "form" && (
-            <ScrollArea className="flex-1">
+        {/* ── Step: Form ─────────────────────────────────────────────── */}
+        {step === "form" && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="px-6 py-5 space-y-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="ai-goal">What is your goal?</Label>
@@ -372,7 +343,7 @@ export function AITrajectoryBuilder({
                   <Label htmlFor="ai-context">Your current level / context</Label>
                   <Textarea
                     id="ai-context"
-                    placeholder={`e.g. "Complete beginner, never studied this before" or "I have the course slides but no textbook"`}
+                    placeholder={`e.g. "Complete beginner" or "I have the course slides but no textbook"`}
                     className="resize-none"
                     rows={2}
                     value={context}
@@ -386,7 +357,7 @@ export function AITrajectoryBuilder({
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      className={`flex flex-col gap-1.5 p-4 rounded-md border text-left transition-all ${structure === "academic" ? "border-primary bg-accent" : "border-border hover-elevate"}`}
+                      className={`flex flex-col gap-1.5 p-4 rounded-md border text-left ${structure === "academic" ? "border-primary bg-accent" : "border-border hover-elevate"}`}
                       onClick={() => setStructure("academic")}
                       data-testid="button-structure-academic"
                     >
@@ -395,11 +366,11 @@ export function AITrajectoryBuilder({
                         <span className="text-sm font-medium">Academic</span>
                         {structure === "academic" && <Check className="w-3 h-3 text-primary ml-auto" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">Levels or numbered chapters: A1 → A2 → B1, Chapter 1 → 2 → 3</p>
+                      <p className="text-xs text-muted-foreground">Levels or numbered: A1 → A2 → B1, Chapter 1 → 2 → 3</p>
                     </button>
                     <button
                       type="button"
-                      className={`flex flex-col gap-1.5 p-4 rounded-md border text-left transition-all ${structure === "thematic" ? "border-primary bg-accent" : "border-border hover-elevate"}`}
+                      className={`flex flex-col gap-1.5 p-4 rounded-md border text-left ${structure === "thematic" ? "border-primary bg-accent" : "border-border hover-elevate"}`}
                       onClick={() => setStructure("thematic")}
                       data-testid="button-structure-thematic"
                     >
@@ -408,163 +379,156 @@ export function AITrajectoryBuilder({
                         <span className="text-sm font-medium">Thematic</span>
                         {structure === "thematic" && <Check className="w-3 h-3 text-primary ml-auto" />}
                       </div>
-                      <p className="text-xs text-muted-foreground">Topic clusters: Grammar, Vocabulary, Listening — grouped by subject</p>
+                      <p className="text-xs text-muted-foreground">Topic clusters: Grammar, Vocabulary, Listening</p>
                     </button>
                   </div>
                 </div>
-              </div>
-            </ScrollArea>
-          )}
 
-          {/* ── Step: Table of contents ── */}
-          {step === "toc" && (
-            <ScrollArea className="flex-1">
-              <div className="px-6 py-5 space-y-4">
-                <div>
-                  <p className="text-sm font-medium mb-1">Do you have a table of contents?</p>
-                  <p className="text-xs text-muted-foreground">
-                    If you have a syllabus, textbook index, or course outline, paste it here. The AI will use it as the base structure instead of generating one from scratch.
-                  </p>
-                </div>
-                <Textarea
-                  placeholder={"Paste your table of contents here...\n\nExample:\n1. Introduction\n   1.1 What is...\n2. Core Concepts\n   2.1 ..."}
-                  className="resize-none font-mono text-xs"
-                  rows={14}
-                  value={toc}
-                  onChange={e => setToc(e.target.value)}
-                  data-testid="textarea-ai-toc"
-                />
-              </div>
-            </ScrollArea>
-          )}
-
-          {/* ── Step: Loading ── */}
-          {step === "loading" && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-8 py-12 text-center">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-muted flex items-center justify-center">
-                  <Sparkles className="w-7 h-7 text-primary animate-pulse" />
-                </div>
-                <Loader2 className="w-16 h-16 absolute inset-0 text-primary animate-spin opacity-30" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">AI is researching your trajectory</p>
-                <motion.p
-                  key={loadingMsgIdx}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  className="text-sm text-muted-foreground"
-                >
-                  {LOADING_MESSAGES[loadingMsgIdx]}
-                </motion.p>
-              </div>
-              <p className="text-xs text-muted-foreground max-w-xs">
-                The AI is consulting curricula, textbooks, and certification frameworks to build a complete trajectory. This may take up to a minute.
-              </p>
-            </div>
-          )}
-
-          {/* ── Step: Review ── */}
-          {step === "review" && (
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="px-4 py-2 border-b flex items-center justify-between shrink-0">
-                <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{countNodes(chapters)}</span> chapters generated — double-click any title to rename
-                </p>
-                <Button size="sm" variant="ghost" onClick={() => setStep("form")} data-testid="button-regenerate">
-                  <RotateCcw className="w-3 h-3 mr-1.5" /> Regenerate
-                </Button>
-              </div>
-
-              <ScrollArea className="flex-1">
-                <div className="px-4 py-3">
-                  {chapters.map(chapter => (
-                    <TreeNode
-                      key={chapter.id}
-                      node={chapter}
-                      depth={0}
-                      onUpdate={handleUpdate}
-                      onDelete={handleDelete}
-                      onAddChild={handleAddChild}
-                    />
-                  ))}
+                {/* Optional ToC */}
+                <div className="border rounded-md overflow-hidden">
                   <button
-                    onClick={addTopLevel}
-                    className="flex items-center gap-2 text-xs text-muted-foreground mt-2 px-2 py-1.5 rounded-md hover-elevate w-full"
-                    data-testid="button-add-top-chapter"
+                    type="button"
+                    className="w-full flex items-center gap-2 px-4 py-3 text-left hover-elevate"
+                    onClick={() => setTocOpen(o => !o)}
+                    data-testid="button-toggle-toc"
                   >
-                    <Plus className="w-3 h-3" /> Add chapter
-                  </button>
-                </div>
-
-                {/* Sources */}
-                {sources.length > 0 && (
-                  <div className="px-4 pb-4 pt-1 border-t mt-2">
-                    <p className="text-xs text-muted-foreground mb-2 font-medium">Based on</p>
-                    <div className="flex flex-wrap gap-2">
-                      {sources.slice(0, 12).map((src, i) => {
-                        const favicon = getFavicon(src.url);
-                        return (
-                          <a
-                            key={i}
-                            href={src.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={src.name}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[160px]"
-                            data-testid={`source-link-${i}`}
-                          >
-                            {favicon
-                              ? <img src={favicon} alt="" className="w-3.5 h-3.5 rounded-sm flex-shrink-0" />
-                              : <BookOpen className="w-3 h-3 flex-shrink-0" />}
-                            <span className="truncate">{src.name}</span>
-                            <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-                          </a>
-                        );
-                      })}
+                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">I already have a table of contents</p>
+                      <p className="text-xs text-muted-foreground">Paste your syllabus or book index — AI will use it as the base</p>
                     </div>
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
-          )}
-        </div>
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform ${tocOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence>
+                    {tocOpen && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        exit={{ height: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1">
+                          <Textarea
+                            placeholder={"Paste your table of contents here...\n\n1. Introduction\n   1.1 What is...\n2. Core Concepts\n   2.1 ..."}
+                            className="resize-none font-mono text-xs"
+                            rows={10}
+                            value={toc}
+                            onChange={e => setToc(e.target.value)}
+                            data-testid="textarea-ai-toc"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </ScrollArea>
 
-        {/* ── Footer ── */}
-        <div className="px-6 py-4 border-t flex items-center justify-between shrink-0">
-          {step === "form" && (
-            <>
+            <div className="px-6 py-4 border-t flex items-center justify-between shrink-0">
               <Button variant="ghost" onClick={handleClose} data-testid="button-cancel-trajectory">Cancel</Button>
               <Button
-                onClick={() => setStep("toc")}
+                onClick={() => generateMutation.mutate()}
                 disabled={!goal.trim() || !context.trim()}
-                data-testid="button-next-to-toc"
+                data-testid="button-generate-trajectory"
               >
-                Next <ChevronRight className="w-4 h-4 ml-1" />
+                <Sparkles className="w-4 h-4 mr-1.5" /> Generate Trajectory
               </Button>
-            </>
-          )}
-          {step === "toc" && (
-            <>
-              <Button variant="ghost" onClick={() => setStep("form")} data-testid="button-back-to-form">Back</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => generateMutation.mutate()} data-testid="button-skip-toc">
-                  Skip & Generate
-                </Button>
-                <Button onClick={() => generateMutation.mutate()} data-testid="button-generate-trajectory">
-                  <Sparkles className="w-4 h-4 mr-1.5" /> Generate Trajectory
-                </Button>
-              </div>
-            </>
-          )}
-          {step === "loading" && (
-            <div className="w-full text-center">
-              <p className="text-xs text-muted-foreground">Please wait — this takes up to 60 seconds</p>
             </div>
-          )}
-          {step === "review" && (
-            <>
+          </div>
+        )}
+
+        {/* ── Step: Loading ───────────────────────────────────────────── */}
+        {step === "loading" && (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6 px-8 py-12 text-center">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-4 border-muted flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-primary animate-pulse" />
+              </div>
+              <Loader2 className="w-16 h-16 absolute inset-0 text-primary animate-spin opacity-30" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">AI is researching your trajectory</p>
+              <motion.p
+                key={loadingMsgIdx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                className="text-sm text-muted-foreground"
+              >
+                {LOADING_MESSAGES[loadingMsgIdx]}
+              </motion.p>
+            </div>
+            <p className="text-xs text-muted-foreground max-w-xs">
+              Consulting curricula, textbooks, and certification frameworks. This may take up to a minute.
+            </p>
+          </div>
+        )}
+
+        {/* ── Step: Review ────────────────────────────────────────────── */}
+        {step === "review" && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="px-4 py-2 border-b flex items-center justify-between shrink-0">
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{countNodes(chapters)}</span> chapters — double-click any title to rename
+              </p>
+              <Button size="sm" variant="ghost" onClick={() => setStep("form")} data-testid="button-regenerate">
+                <RotateCcw className="w-3 h-3 mr-1.5" /> Regenerate
+              </Button>
+            </div>
+
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="px-4 py-3">
+                {chapters.map(chapter => (
+                  <TreeNode
+                    key={chapter.id}
+                    node={chapter}
+                    depth={0}
+                    onUpdate={handleUpdate}
+                    onDelete={handleDelete}
+                    onAddChild={handleAddChild}
+                  />
+                ))}
+                <button
+                  onClick={() => setChapters(p => [...p, { id: tempId(), title: "New chapter", children: [], expanded: true }])}
+                  className="flex items-center gap-2 text-xs text-muted-foreground mt-2 px-2 py-1.5 rounded-md hover-elevate w-full"
+                  data-testid="button-add-top-chapter"
+                >
+                  <Plus className="w-3 h-3" /> Add chapter
+                </button>
+              </div>
+
+              {/* Sources */}
+              {sources.length > 0 && (
+                <div className="px-4 pb-4 pt-1 border-t mx-4 mt-2">
+                  <p className="text-xs text-muted-foreground mb-2 font-medium">Based on</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sources.slice(0, 12).map((src, i) => {
+                      const favicon = getFavicon(src.url);
+                      return (
+                        <a
+                          key={i}
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={src.name}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[160px]"
+                          data-testid={`source-link-${i}`}
+                        >
+                          {favicon
+                            ? <img src={favicon} alt="" className="w-3.5 h-3.5 rounded-sm flex-shrink-0" />
+                            : <BookOpen className="w-3 h-3 flex-shrink-0" />}
+                          <span className="truncate">{src.name}</span>
+                          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+
+            <div className="px-6 py-4 border-t flex items-center justify-between shrink-0">
               <Button variant="ghost" onClick={handleClose} data-testid="button-discard-trajectory">Discard</Button>
               <Button
                 onClick={() => createMutation.mutate()}
@@ -575,9 +539,9 @@ export function AITrajectoryBuilder({
                   ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Creating...</>
                   : <><Check className="w-4 h-4 mr-1.5" /> Accept & Create</>}
               </Button>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

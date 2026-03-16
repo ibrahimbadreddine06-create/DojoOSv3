@@ -310,7 +310,11 @@ function MainLayout() {
           <>
             {/* Always render AppSidebar on desktop to allow CSS transitions */}
             <AppSidebar />
-            {desktopShowTrajectory && <LearningTrajectorySidebar />}
+            {desktopShowTrajectory && (
+              <div className="w-72 shrink-0 border-r h-full overflow-hidden">
+                <LearningTrajectorySidebar />
+              </div>
+            )}
           </>
         )}
 
