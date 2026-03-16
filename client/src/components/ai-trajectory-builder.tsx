@@ -507,27 +507,28 @@ export function AITrajectoryBuilder({
                   {sources.slice(0, 12).map((src, i) => {
                     const favicon = `https://icons.duckduckgo.com/ip3/${new URL(src.url).hostname}.ico`;
                     return (
-                      <a
-                        key={i}
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={src.name}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs text-muted-foreground hover-elevate max-w-[180px]"
-                        data-testid={`source-link-${i}`}
-                      >
-                        <img 
-                          src={favicon} 
-                          alt="" 
-                          className="w-3.5 h-3.5 rounded-sm flex-shrink-0" 
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                        <span className="truncate">{src.name}</span>
-                        <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-                      </a>
+                      <Tooltip key={i}>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={src.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center p-1.5 rounded-md border hover-elevate"
+                            data-testid={`source-link-${i}`}
+                          >
+                            <img 
+                              src={favicon} 
+                              alt="" 
+                              className="w-4 h-4 rounded-sm" 
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+                              }}
+                            />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">{src.name}</TooltipContent>
+                      </Tooltip>
                     );
                   })}
                 </div>
