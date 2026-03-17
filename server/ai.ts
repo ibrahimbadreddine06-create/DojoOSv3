@@ -301,82 +301,96 @@ export async function findMaterialsForChapter(
   let prompt = "";
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator. You have broad knowledge of YouTube educational content.
+    prompt = `You are an expert educational resource curator. Use your deep knowledge to find YouTube videos that match this specific learning need.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: List 5-6 real, well-known YouTube educational videos that would help someone learn about this chapter. Return only videos you're confident actually exist on YouTube from popular educational creators.
+TASK: Search your knowledge for 5-6 YouTube educational videos that would DIRECTLY HELP someone learn exactly this chapter with these specific subtopics and learning goals. 
 
-Prefer videos from channels like: Khan Academy, 3Blue1Brown, Crash Course, freeCodeCamp, Kurzgesagt, MIT OpenCourseWare, Computerphile, Numberphile, Traversy Media, The Coding Train, Stanford, or similar reputable educational sources.
+Use your knowledge of educational YouTube content to find videos that:
+1. Directly teach the subtopics listed
+2. Match the learner's level and goals
+3. Come from trustworthy educational creators (Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, etc.)
 
-RULES:
-- ONLY include real, well-known videos that definitely exist
-- Format each URL as: https://www.youtube.com/watch?v=VIDEO_ID
-- If you're not sure a video exists, don't include it
-- Return 2-5 videos if you can confidently name them (real videos are better than guesses)
+SEARCH STRATEGY:
+- Think about what topics/concepts are in this chapter
+- Match them to videos you know teach these exact things
+- Find the BEST fit for THIS learner's context
+- Return videos that would actually help them master this
 
-OUTPUT — return ONLY valid JSON array, no other text:
+OUTPUT — return ONLY valid JSON array:
 [
   {
-    "title": "Exact video title",
+    "title": "Video title",
     "channel": "Channel name",
-    "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID",
-    "description": "Why this video helps (2 sentences)",
-    "covers": ["subtopic 1"],
-    "misses": ["subtopic not covered"]
+    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+    "description": "How this helps (2-3 sentences)",
+    "covers": ["subtopic covered"],
+    "misses": ["subtopic not in video"]
   }
 ]`;
   } else if (params.materialType === "website") {
-    prompt = `You are an expert educational resource curator. List real websites and articles for learning.
+    prompt = `You are an expert educational resource curator. Search your knowledge for websites that match this learning goal.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Suggest 3-5 real, well-known websites or articles that teach about this topic. Include only resources you're confident actually exist.
+TASK: Use your knowledge to find 3-5 websites, articles, or documentation pages that would DIRECTLY HELP someone learn exactly this chapter with these subtopics and goals.
 
-Prefer: Wikipedia articles, Khan Academy pages, MDN docs, University resources (MIT OpenCourseWare, Stanford), official documentation, or popular educational blogs.
+Match this learning need to:
+- Wikipedia articles on the exact topics
+- Khan Academy pages matching these subtopics
+- Official documentation and tutorials
+- University education materials (MIT OpenCourseWare, Stanford, etc.)
+- Technical blogs and guides from experts
 
-RULES:
-- Only suggest resources you're sure actually exist
-- Include full, valid URLs
-- Return 2-5 items (real resources are better than guesses)
+SEARCH STRATEGY:
+- Think about the key concepts and topics in this chapter
+- Find resources that teach exactly these things at this level
+- Return resources that would help master these specific subtopics
 
 OUTPUT — ONLY valid JSON array:
 [
   {
     "title": "Article/page title",
     "url": "https://example.com/page",
-    "description": "Why it helps (2 sentences)"
+    "description": "How it helps (2-3 sentences)"
   }
 ]`;
   } else if (params.materialType === "pdf") {
-    prompt = `You are an expert educational resource curator. List real, free PDF resources for learning.
+    prompt = `You are an expert educational resource curator. Search your knowledge for PDFs that match this learning goal.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Suggest 3-5 real, freely accessible PDFs or documents about this topic. Include only resources you're confident actually exist and are freely available.
+TASK: Use your knowledge to find 3-5 free PDFs, papers, or lecture notes that would DIRECTLY HELP someone master this chapter's subtopics and goals.
 
-Prefer: MIT OpenCourseWare lecture notes, Stanford materials, ArXiv papers, OpenTextbook chapters, official specs, or academic resources.
+Match this learning need to:
+- MIT OpenCourseWare lecture notes
+- Stanford course materials
+- ArXiv technical papers
+- Open textbook chapters
+- Official specifications and standards
+- Academic resources on these exact topics
 
-RULES:
-- Only suggest resources that are genuinely free (no paywall)
-- Only suggest resources you're confident exist
-- Return 2-5 items (real PDFs are better than guesses)
+SEARCH STRATEGY:
+- Think about what free academic resources teach these exact concepts
+- Find papers and notes that directly cover these subtopics
+- Return resources that match this learner's goals and level
 
 OUTPUT — ONLY valid JSON array:
 [
   {
     "title": "PDF/document title",
     "url": "https://example.com/file.pdf",
-    "description": "Why it helps (2 sentences)",
+    "description": "How it helps (2-3 sentences)",
     "author": "Author or institution (optional)"
   }
 ]`;
