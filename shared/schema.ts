@@ -524,7 +524,7 @@ export const bodyProfile = pgTable("body_profile", {
 // ===== DAILY STATE (comprehensive per-day snapshot for SenseiOS) =====
 export const dailyState = pgTable("daily_state", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id"),
+  userId: varchar("user_id").notNull(),
   date: date("date").notNull(),
   // Sleep
   sleepHours: decimal("sleep_hours", { precision: 4, scale: 2 }),

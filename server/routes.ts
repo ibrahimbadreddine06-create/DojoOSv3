@@ -15,7 +15,7 @@ import {
   insertPossessionSchema, insertOutfitSchema, insertCourseSchema, insertLessonSchema,
   insertCourseExerciseSchema, insertBusinessSchema, insertWorkProjectSchema, insertTaskSchema,
   insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema,
-  insertDisciplineSchema, insertDisciplineLogSchema
+  insertDisciplineSchema, insertDisciplineLogSchema, insertDailyStateSchema
 } from "../shared/schema";
 
 export function registerRoutes(app: Express): Server {
@@ -844,7 +844,8 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/daily-state/:date", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     try {
-      const state = await storage.upsertDailyState((req.user as any).id, req.params.date, req.body);
+      const data = insertDailyStateSchema.partial().parse(req.body);
+      const state = await storage.upsertDailyState((req.user as any).id, req.params.date, data);
       res.json(state);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
