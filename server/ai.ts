@@ -475,7 +475,10 @@ OUTPUT — return ONLY valid JSON array, no markdown:
     
     if (groundingMeta?.groundingChunks) {
       for (const chunk of groundingMeta.groundingChunks) {
-        const uri = chunk.web?.uri || "";
+        // Try multiple ways to access the URI (API structure can vary)
+        const uri = chunk.web?.uri || chunk.uri || chunk.url || "";
+        const title = chunk.web?.title || chunk.title || "";
+        
         if (uri.includes("youtube.com/watch") || uri.includes("youtu.be/")) {
           const vid = extractYoutubeId(uri);
           if (vid && !groundingIds.has(vid)) {
@@ -485,16 +488,16 @@ OUTPUT — return ONLY valid JSON array, no markdown:
             );
             groundingCandidates.push({
               url: uri,
-              title: chunk.web?.title || match?.title || "YouTube Video",
+              title: title || match?.title || "YouTube Video",
               channel: match?.channel || "",
-              description: match?.description || "",
+              description: match?.description || title || "",
               covers: match?.covers || [],
               misses: match?.misses || [],
             });
           }
         }
       }
-      console.log(`Extracted ${groundingCandidates.length} YouTube videos from grounding chunks`);
+      console.log(`Extracted ${groundingCandidates.length} YouTube videos from ${chunkCount} grounding chunks`);
     }
 
     // Parsed JSON results not already covered by grounding
