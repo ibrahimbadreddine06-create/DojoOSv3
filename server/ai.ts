@@ -280,7 +280,6 @@ export async function findMaterialsForChapter(
 ): Promise<FindMaterialsResult> {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
-    tools: [{ googleSearch: {} } as any],
   });
 
   const contextBlock = params.trajectoryContext
@@ -302,88 +301,82 @@ export async function findMaterialsForChapter(
   let prompt = "";
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator. Use Google Search to find real YouTube educational videos.
+    prompt = `You are an expert educational resource curator. You have broad knowledge of YouTube educational content.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Search on YouTube (site:youtube.com) and find 5 to 6 real, existing educational videos that are perfect study resources for this chapter. 
+TASK: List 5-6 real, well-known YouTube educational videos that would help someone learn about this chapter. Return only videos you're confident actually exist on YouTube from popular educational creators.
 
-Search queries to use (search all of them):
-- site:youtube.com "${params.chapterTitle}" tutorial
-- site:youtube.com "${params.chapterTitle}" explained
-- site:youtube.com "${params.chapterTitle}" lecture
-- site:youtube.com "${params.chapterTitle}" course
+Prefer videos from channels like: Khan Academy, 3Blue1Brown, Crash Course, freeCodeCamp, Kurzgesagt, MIT OpenCourseWare, Computerphile, Numberphile, Traversy Media, The Coding Train, Stanford, or similar reputable educational sources.
 
-Prioritize results from well-known educational channels: MIT OpenCourseWare, Stanford, Yale Open Courses, Khan Academy, 3Blue1Brown, Crash Course, Kurzgesagt, Numberphile, Computerphile, freeCodeCamp, Traversy Media, The Coding Train, Sentdex, or similar reputable channels.
+RULES:
+- ONLY include real, well-known videos that definitely exist
+- Format each URL as: https://www.youtube.com/watch?v=VIDEO_ID
+- If you're not sure a video exists, don't include it
+- Return 2-5 videos if you can confidently name them (real videos are better than guesses)
 
-CRITICAL RULES:
-- Every URL you return MUST be a real YouTube video URL you found via Google Search
-- The video ID in the URL must match a real video that actually exists
-- Include the full watch URL format: https://www.youtube.com/watch?v=VIDEO_ID
-- If you cannot find enough videos, return what you find — 2-3 real videos is better than 6 fake ones
-
-For each video, analyze what subtopics it COVERS and what it MISSES from this chapter.
-
-OUTPUT — return ONLY a valid JSON array (no markdown, no code fences, no extra text):
+OUTPUT — return ONLY valid JSON array, no other text:
 [
   {
-    "title": "Exact video title as shown on YouTube",
+    "title": "Exact video title",
     "channel": "Channel name",
     "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID",
-    "description": "Why this video is valuable for this chapter (2-3 sentences)",
-    "covers": ["subtopic A", "subtopic B"],
-    "misses": ["subtopic C"]
+    "description": "Why this video helps (2 sentences)",
+    "covers": ["subtopic 1"],
+    "misses": ["subtopic not covered"]
   }
 ]`;
   } else if (params.materialType === "website") {
-    prompt = `You are an expert educational resource curator.
-Find 5 high-quality explanatory websites, articles, or tutorials for this learning chapter.
+    prompt = `You are an expert educational resource curator. List real websites and articles for learning.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-Search for real, currently accessible resources. Prefer:
-- University pages, academic wikis, official documentation
-- Well-structured tutorials (MDN, Khan Academy, Coursera articles, etc.)
-- Comprehensive guides from reputable sources
-- Interactive or visual resources where relevant
+TASK: Suggest 3-5 real, well-known websites or articles that teach about this topic. Include only resources you're confident actually exist.
 
-OUTPUT — return ONLY valid JSON array, no markdown:
+Prefer: Wikipedia articles, Khan Academy pages, MDN docs, University resources (MIT OpenCourseWare, Stanford), official documentation, or popular educational blogs.
+
+RULES:
+- Only suggest resources you're sure actually exist
+- Include full, valid URLs
+- Return 2-5 items (real resources are better than guesses)
+
+OUTPUT — ONLY valid JSON array:
 [
   {
-    "title": "Page/article title",
-    "url": "https://exact-url.com/page",
-    "description": "Why this resource is excellent for this chapter (2-3 sentences)"
+    "title": "Article/page title",
+    "url": "https://example.com/page",
+    "description": "Why it helps (2 sentences)"
   }
 ]`;
   } else if (params.materialType === "pdf") {
-    prompt = `You are an expert educational resource curator.
-Find 5 high-quality free PDFs, papers, or textbook chapters for this learning chapter.
+    prompt = `You are an expert educational resource curator. List real, free PDF resources for learning.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-Search for real, freely accessible PDFs. Prefer:
-- University lecture notes (MIT OCW, Stanford, etc.)
-- ArXiv preprints for technical topics
-- Freely available textbook chapters (Open Textbook Library, etc.)
-- Official standards documents, specifications, or reference manuals
+TASK: Suggest 3-5 real, freely accessible PDFs or documents about this topic. Include only resources you're confident actually exist and are freely available.
 
-Only include PDFs that are genuinely free to download (no paywall).
+Prefer: MIT OpenCourseWare lecture notes, Stanford materials, ArXiv papers, OpenTextbook chapters, official specs, or academic resources.
 
-OUTPUT — return ONLY valid JSON array, no markdown:
+RULES:
+- Only suggest resources that are genuinely free (no paywall)
+- Only suggest resources you're confident exist
+- Return 2-5 items (real PDFs are better than guesses)
+
+OUTPUT — ONLY valid JSON array:
 [
   {
     "title": "PDF/document title",
-    "url": "https://exact-url.com/file.pdf",
-    "description": "Why this document is valuable (2-3 sentences)",
+    "url": "https://example.com/file.pdf",
+    "description": "Why it helps (2 sentences)",
     "author": "Author or institution (optional)"
   }
 ]`;
@@ -462,74 +455,28 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   if (params.materialType === "youtube") {
-    // ── Step 1: collect candidates ──────────────────────────────────────────
-    // Grounding chunks = real URLs from Google Search (trusted, soft fallback)
-    // Parsed JSON = AI-generated (untrusted, hard-filter via oEmbed)
-    const groundingIds = new Set<string>();
-    const groundingCandidates: any[] = [];
-    const parsedCandidates: any[] = [];
-
-    const groundingMeta = (result.response.candidates?.[0]?.groundingMetadata as any);
-    const chunkCount = groundingMeta?.groundingChunks?.length || 0;
-    console.log(`YouTube search: ${chunkCount} grounding chunks found, ${parsed.length} parsed results`);
+    // ── Step 1: enrich with oEmbed ───────────────────────────────────────────
+    // Parse results from Gemini's JSON output
+    console.log(`YouTube search: ${parsed.length} videos found from AI response`);
     
-    if (groundingMeta?.groundingChunks) {
-      for (const chunk of groundingMeta.groundingChunks) {
-        // Try multiple ways to access the URI (API structure can vary)
-        const uri = chunk.web?.uri || chunk.uri || chunk.url || "";
-        const title = chunk.web?.title || chunk.title || "";
-        
-        if (uri.includes("youtube.com/watch") || uri.includes("youtu.be/")) {
-          const vid = extractYoutubeId(uri);
-          if (vid && !groundingIds.has(vid)) {
-            groundingIds.add(vid);
-            const match = parsed.find(
-              (r: any) => extractYoutubeId(r.url || "") === vid
-            );
-            groundingCandidates.push({
-              url: uri,
-              title: title || match?.title || "YouTube Video",
-              channel: match?.channel || "",
-              description: match?.description || title || "",
-              covers: match?.covers || [],
-              misses: match?.misses || [],
-            });
-          }
-        }
-      }
-      console.log(`Extracted ${groundingCandidates.length} YouTube videos from ${chunkCount} grounding chunks`);
-    }
+    // Enrich each parsed video with oEmbed verification (all must verify since these are AI-suggested)
+    const enriched = await Promise.all(
+      parsed.map(c => enrichYoutubeVideo(c, true))
+    );
 
-    // Parsed JSON results not already covered by grounding
-    for (const r of parsed) {
-      const vid = extractYoutubeId(r.url || "");
-      if (vid && !groundingIds.has(vid)) {
-        parsedCandidates.push(r);
-      }
-    }
-
-    // ── Step 2: enrich with oEmbed ───────────────────────────────────────────
-    // Grounding: mustVerify=false (soft fallback — real Google Search URLs)
-    // Parsed JSON: mustVerify=true (drop if oEmbed 404 — likely fabricated)
-    const [groundingEnriched, parsedEnriched] = await Promise.all([
-      Promise.all(groundingCandidates.map(c => enrichYoutubeVideo(c, false))),
-      Promise.all(parsedCandidates.map(c => enrichYoutubeVideo(c, true))),
-    ]);
-
-    const allEnriched = [
-      ...groundingEnriched.filter((r): r is YoutubeResult => r !== null),
-      ...parsedEnriched.filter((r): r is YoutubeResult => r !== null),
-    ];
+    // Keep only videos that verified via oEmbed
+    const verified = enriched.filter((r): r is YoutubeResult => r !== null);
 
     // Deduplicate by videoId
     const seen = new Set<string>();
-    const deduped = allEnriched.filter(r => {
+    const deduped = verified.filter(r => {
       if (!r.videoId) return false;
       if (seen.has(r.videoId)) return false;
       seen.add(r.videoId);
       return true;
     });
 
+    console.log(`YouTube search: ${deduped.length} videos verified via oEmbed`);
     return { type: "youtube", results: deduped.slice(0, 6) };
   } else if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
