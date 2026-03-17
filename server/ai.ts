@@ -411,24 +411,17 @@ OUTPUT — return ONLY valid JSON array, no markdown:
 ]`;
   }
 
-  // Add timeout to prevent hanging on high-load Gemini
   let result;
   try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Gemini API timeout")), 30000)
-    );
-    result = await Promise.race([model.generateContent(prompt), timeoutPromise]);
+    result = await model.generateContent(prompt);
   } catch (err: any) {
-    // If Gemini fails or times out, return empty with a recoverable error
-    console.error("AI find-materials error (with timeout):", err.message);
-    if (params.materialType === "youtube") {
-      return { type: "youtube", results: [] };
-    } else if (params.materialType === "website") {
-      return { type: "website", results: [] };
-    } else if (params.materialType === "pdf") {
-      return { type: "pdf", results: [] };
+    console.error("AI find-materials error:", err.message);
+    // For non-YouTube, Gemini failure = can't get results
+    if (params.materialType !== "youtube") {
+      return { type: params.materialType, results: [] };
     }
-    return { type: params.materialType, results: [] };
+    // YouTube: if Gemini fails, return empty (no grounding without response)
+    return { type: "youtube", results: [] };
   }
 
   let text = "";
@@ -477,6 +470,9 @@ OUTPUT — return ONLY valid JSON array, no markdown:
     const parsedCandidates: any[] = [];
 
     const groundingMeta = (result.response.candidates?.[0]?.groundingMetadata as any);
+    const chunkCount = groundingMeta?.groundingChunks?.length || 0;
+    console.log(`YouTube search: ${chunkCount} grounding chunks found, ${parsed.length} parsed results`);
+    
     if (groundingMeta?.groundingChunks) {
       for (const chunk of groundingMeta.groundingChunks) {
         const uri = chunk.web?.uri || "";
@@ -498,6 +494,7 @@ OUTPUT — return ONLY valid JSON array, no markdown:
           }
         }
       }
+      console.log(`Extracted ${groundingCandidates.length} YouTube videos from grounding chunks`);
     }
 
     // Parsed JSON results not already covered by grounding
