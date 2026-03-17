@@ -411,7 +411,26 @@ OUTPUT — return ONLY valid JSON array, no markdown:
 ]`;
   }
 
-  const result = await model.generateContent(prompt);
+  // Add timeout to prevent hanging on high-load Gemini
+  let result;
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gemini API timeout")), 30000)
+    );
+    result = await Promise.race([model.generateContent(prompt), timeoutPromise]);
+  } catch (err: any) {
+    // If Gemini fails or times out, return empty with a recoverable error
+    console.error("AI find-materials error (with timeout):", err.message);
+    if (params.materialType === "youtube") {
+      return { type: "youtube", results: [] };
+    } else if (params.materialType === "website") {
+      return { type: "website", results: [] };
+    } else if (params.materialType === "pdf") {
+      return { type: "pdf", results: [] };
+    }
+    return { type: params.materialType, results: [] };
+  }
+
   let text = "";
   try {
     text = result.response.text();
