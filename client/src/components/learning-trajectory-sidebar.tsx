@@ -315,7 +315,7 @@ export function LearningTrajectorySidebar({ isMobileSheet = false }: LearningTra
   if (!subModuleInfo) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-background" data-testid="sidebar-trajectory">
+    <div className="flex flex-col h-full w-full bg-background pb-[env(safe-area-inset-bottom,0px)] md:pb-0" data-testid="sidebar-trajectory">
       <div className="flex items-center justify-between px-4 h-auto md:h-16 pt-[env(safe-area-inset-top)] md:pt-0 border-b shrink-0 min-h-[4rem]">
         <div className="min-w-0 flex-1">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider truncate">Learning Trajectory</h2>
