@@ -371,12 +371,7 @@ export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
   // YouTube uses a plain model (no Google Search) so Gemini returns clean JSON.
-  // Website/PDF/custom use Google Search for real, current URLs.
-  const youtubeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    tools: [{ googleSearch: {} } as any],
-  });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const contextBlock = params.trajectoryContext
     ? `LEARNER CONTEXT:
@@ -502,7 +497,7 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   try {
     // YouTube uses the plain model (no Google Search) so JSON output is reliable.
     // All other types use the Google Search model for real, current URLs.
-    result = await (params.materialType === "youtube" ? youtubeModel : model).generateContent(prompt);
+    result = await model.generateContent(prompt);
   } catch (err: any) {
     console.error("AI find-materials error:", err.message);
     if (params.materialType !== "youtube") {
