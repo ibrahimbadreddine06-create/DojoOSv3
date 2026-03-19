@@ -200,7 +200,7 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-auto pt-[env(safe-area-inset-top)] md:pt-0 px-4">
+    <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-auto px-4">
       <div className="flex items-center justify-between h-14 md:h-16">
         <div className="flex items-center gap-2">
           <Button
