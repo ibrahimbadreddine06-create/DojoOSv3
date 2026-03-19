@@ -248,7 +248,7 @@ function ImageBox({ id, imageData, onImageChange }: any) {
     return <img src={imageData} className="w-full h-full object-cover rounded-md" alt="Widget" />
   }
   return (
-    <label className="flex flex-col items-center justify-center h-full cursor-pointer hover:bg-accent/20 rounded-md transition-colors">
+    <label className="flex flex-col items-center justify-center h-full cursor-pointer hover:bg-primary/20 rounded-md transition-colors">
       <Upload className="w-8 h-8 text-muted-foreground mb-2" />
       <span className="text-xs text-muted-foreground">Upload Image</span>
       <Input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
@@ -419,7 +419,7 @@ export default function HomePage() {
         <div className="transition-all duration-300">
           <ResponsiveGridLayout
             key={config.columns}
-            className={cn("layout", isEditing ? "bg-accent/10 rounded-xl border-dashed border-2 border-accent/50 min-h-[500px]" : "")}
+            className={cn("layout", isEditing ? "bg-primary/10 rounded-xl border-dashed border-2 border-primary/50 min-h-[500px]" : "")}
             layouts={config.layouts}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             // The user wants columns dynamically up to what fits.
