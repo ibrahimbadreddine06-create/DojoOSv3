@@ -280,6 +280,7 @@ export async function findMaterialsForChapter(
 ): Promise<FindMaterialsResult> {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
   });
 
   const contextBlock = params.trajectoryContext
@@ -301,30 +302,25 @@ export async function findMaterialsForChapter(
   let prompt = "";
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator. Use your deep knowledge to find YouTube videos that match this specific learning need.
+    prompt = `You are an expert educational resource curator. Use Google Search to find real, currently available YouTube videos for this learning need.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Search your knowledge for 5-6 YouTube educational videos that would DIRECTLY HELP someone learn exactly this chapter with these specific subtopics and learning goals. 
+TASK: Search Google for 5-6 YouTube educational videos that DIRECTLY HELP someone learn this chapter with these subtopics and goals.
 
-Use your knowledge of educational YouTube content to find videos that:
-1. Directly teach the subtopics listed
-2. Match the learner's level and goals
-3. Come from trustworthy educational creators (Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, etc.)
-
-SEARCH STRATEGY:
-- Think about what topics/concepts are in this chapter
-- Match them to videos you know teach these exact things
-- Find the BEST fit for THIS learner's context
-- Return videos that would actually help them master this
+SEARCH INSTRUCTIONS:
+- Actively search YouTube/Google for videos matching this chapter's topics
+- Prefer trustworthy educational creators: Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, Kurzgesagt, CrashCourse, Sentdex, etc.
+- Find videos that match the learner's level and goals
+- Only include videos that actually exist and are publicly available right now
 
 OUTPUT — return ONLY valid JSON array:
 [
   {
-    "title": "Video title",
+    "title": "Exact video title from YouTube",
     "channel": "Channel name",
     "url": "https://www.youtube.com/watch?v=VIDEO_ID",
     "description": "How this helps (2-3 sentences)",
@@ -333,26 +329,20 @@ OUTPUT — return ONLY valid JSON array:
   }
 ]`;
   } else if (params.materialType === "website") {
-    prompt = `You are an expert educational resource curator. Search your knowledge for websites that match this learning goal.
+    prompt = `You are an expert educational resource curator. Use Google Search to find real, currently accessible websites for this learning need.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Use your knowledge to find 3-5 websites, articles, or documentation pages that would DIRECTLY HELP someone learn exactly this chapter with these subtopics and goals.
+TASK: Search Google for 3-5 websites, articles, or documentation pages that DIRECTLY HELP someone learn this chapter with these subtopics and goals.
 
-Match this learning need to:
-- Wikipedia articles on the exact topics
-- Khan Academy pages matching these subtopics
-- Official documentation and tutorials
-- University education materials (MIT OpenCourseWare, Stanford, etc.)
-- Technical blogs and guides from experts
-
-SEARCH STRATEGY:
-- Think about the key concepts and topics in this chapter
-- Find resources that teach exactly these things at this level
-- Return resources that would help master these specific subtopics
+SEARCH INSTRUCTIONS:
+- Actively search Google for pages matching this chapter's topics
+- Prioritize: Wikipedia, Khan Academy, MIT OpenCourseWare, Stanford, official documentation, expert blogs
+- Prefer .edu, .org, and official domains
+- Only include pages that are currently accessible
 
 OUTPUT — ONLY valid JSON array:
 [
@@ -363,27 +353,19 @@ OUTPUT — ONLY valid JSON array:
   }
 ]`;
   } else if (params.materialType === "pdf") {
-    prompt = `You are an expert educational resource curator. Search your knowledge for PDFs that match this learning goal.
+    prompt = `You are an expert educational resource curator. Use Google Search to find real, freely accessible PDFs for this learning need.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Use your knowledge to find 3-5 free PDFs, papers, or lecture notes that would DIRECTLY HELP someone master this chapter's subtopics and goals.
+TASK: Search Google for 3-5 free PDFs, papers, or lecture notes that DIRECTLY HELP someone master this chapter's subtopics and goals.
 
-Match this learning need to:
-- MIT OpenCourseWare lecture notes
-- Stanford course materials
-- ArXiv technical papers
-- Open textbook chapters
-- Official specifications and standards
-- Academic resources on these exact topics
-
-SEARCH STRATEGY:
-- Think about what free academic resources teach these exact concepts
-- Find papers and notes that directly cover these subtopics
-- Return resources that match this learner's goals and level
+SEARCH INSTRUCTIONS:
+- Actively search Google for free academic PDFs on these topics
+- Prioritize: MIT OpenCourseWare lecture notes, Stanford materials, ArXiv papers, open textbooks, official specs
+- Only include PDFs with direct, working URLs that are currently accessible
 
 OUTPUT — ONLY valid JSON array:
 [
@@ -396,8 +378,7 @@ OUTPUT — ONLY valid JSON array:
 ]`;
   } else {
     // custom
-    prompt = `You are an expert educational resource curator.
-Find the best learning resources for this chapter based on the learner's specific request.
+    prompt = `You are an expert educational resource curator. Use Google Search to find the best learning resources for this specific request.
 
 CHAPTER: "${params.chapterTitle}"
 ${subtopicsBlock}
@@ -405,7 +386,10 @@ ${contextBlock}
 
 LEARNER'S SPECIFIC REQUEST: ${params.userPrompt || "Find the most useful mixed resources"}
 
-Search for real, currently accessible resources of any type (videos, articles, PDFs, tools, interactive demos). Return the 5 most relevant results.
+SEARCH INSTRUCTIONS:
+- Actively search Google for real, currently accessible resources matching this request
+- Include any type: videos, articles, PDFs, tools, interactive demos
+- Return the 5 most relevant and useful results
 
 OUTPUT — return ONLY valid JSON array, no markdown:
 [
@@ -469,28 +453,40 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   if (params.materialType === "youtube") {
-    // ── Step 1: enrich with oEmbed ───────────────────────────────────────────
-    // Parse results from Gemini's JSON output
+    // ── Step 1: enrich AI-suggested videos with oEmbed ───────────────────────
     console.log(`YouTube search: ${parsed.length} videos found from AI response`);
-    
-    // Enrich each parsed video with oEmbed verification (all must verify since these are AI-suggested)
+
     const enriched = await Promise.all(
       parsed.map(c => enrichYoutubeVideo(c, true))
     );
-
-    // Keep only videos that verified via oEmbed
     const verified = enriched.filter((r): r is YoutubeResult => r !== null);
 
-    // Deduplicate by videoId
+    // ── Step 2: extract YouTube URLs from Google Search grounding chunks ──────
+    const candidates = result.response.candidates;
+    const groundingMeta = candidates?.[0]?.groundingMetadata as any;
+    const groundingYoutube: YoutubeResult[] = [];
+    if (groundingMeta?.groundingChunks) {
+      const groundingEnriched = await Promise.all(
+        groundingMeta.groundingChunks
+          .filter((chunk: any) => {
+            const uri: string = chunk.web?.uri || "";
+            return uri.includes("youtube.com/watch") || uri.includes("youtu.be/");
+          })
+          .map((chunk: any) => enrichYoutubeVideo({ url: chunk.web.uri, title: chunk.web.title || "", channel: "", description: "", covers: [], misses: [] }, false))
+      );
+      groundingYoutube.push(...groundingEnriched.filter((r): r is YoutubeResult => r !== null));
+    }
+
+    // ── Step 3: merge, deduplicate, return top 6 ─────────────────────────────
     const seen = new Set<string>();
-    const deduped = verified.filter(r => {
+    const deduped = [...verified, ...groundingYoutube].filter(r => {
       if (!r.videoId) return false;
       if (seen.has(r.videoId)) return false;
       seen.add(r.videoId);
       return true;
     });
 
-    console.log(`YouTube search: ${deduped.length} videos verified via oEmbed`);
+    console.log(`YouTube search: ${verified.length} AI-verified + ${groundingYoutube.length} grounding = ${deduped.length} total`);
     return { type: "youtube", results: deduped.slice(0, 6) };
   } else if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
