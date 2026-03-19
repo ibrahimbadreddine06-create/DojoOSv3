@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { TodaySessions } from "../today-sessions";
+import { MetricRing } from "./metric-ring";
 
 const FREQUENCY_LABELS: Record<string, string> = {
   daily: "Daily",
@@ -129,55 +130,42 @@ function RoutineCard({ routine }: { routine: any }) {
   });
 
   return (
-    <Card
-      className={`transition-all ${done ? "border-primary/30 bg-primary/5" : ""}`}
+    <div
+      className={`bg-card border rounded-2xl px-4 py-3 flex items-center gap-3 transition-all ${done ? "border-violet-500/30 bg-violet-500/5" : "border-border/60"}`}
       data-testid={`card-routine-${routine.id}`}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => toggleMutation.mutate()}
-            disabled={toggleMutation.isPending}
-            className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${done ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary"}`}
-            data-testid={`button-toggle-routine-${routine.id}`}
-          >
-            {done && <Check className="w-3.5 h-3.5" />}
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`font-medium text-sm ${done ? "line-through text-muted-foreground" : ""}`}>
-                {routine.name}
-              </span>
-              <Badge variant="outline" className="text-xs shrink-0">
-                {FREQUENCY_LABELS[routine.frequency] || routine.frequency}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-3 mt-1">
-              {(routine.streak > 0) && (
-                <span className="flex items-center gap-1 text-xs text-orange-500">
-                  <Flame className="w-3 h-3" />
-                  {routine.streak} day streak
-                </span>
-              )}
-              {routine.lastCompletedDate && !done && (
-                <span className="text-xs text-muted-foreground">
-                  Last: {format(new Date(routine.lastCompletedDate + "T00:00:00"), "MMM d")}
-                </span>
-              )}
-            </div>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="shrink-0 h-7 w-7 opacity-0 group-hover:opacity-100"
-            onClick={() => deleteMutation.mutate()}
-            data-testid={`button-delete-routine-${routine.id}`}
-          >
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-          </Button>
+      <button
+        onClick={() => toggleMutation.mutate()}
+        disabled={toggleMutation.isPending}
+        className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${done ? "bg-violet-500 border-violet-500 text-white" : "border-muted-foreground/30 hover:border-violet-500"}`}
+        data-testid={`button-toggle-routine-${routine.id}`}
+      >
+        {done && <Check className="w-3.5 h-3.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={`font-semibold text-sm ${done ? "line-through text-muted-foreground" : ""}`}>
+            {routine.name}
+          </span>
+          <Badge variant="outline" className="text-[10px] h-4 px-1.5 shrink-0">
+            {FREQUENCY_LABELS[routine.frequency] || routine.frequency}
+          </Badge>
         </div>
-      </CardContent>
-    </Card>
+        {routine.streak > 0 && (
+          <span className="flex items-center gap-1 text-[11px] text-orange-500 mt-0.5">
+            <Flame className="w-3 h-3" />
+            {routine.streak} day streak
+          </span>
+        )}
+      </div>
+      <button
+        onClick={() => deleteMutation.mutate()}
+        data-testid={`button-delete-routine-${routine.id}`}
+        className="shrink-0 p-1.5 text-muted-foreground/40 hover:text-destructive transition-colors"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -195,80 +183,71 @@ export function HygieneTab() {
   const monthly = routines?.filter(r => r.frequency === "monthly") || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="p-4 space-y-4 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between pt-2">
         <div>
-          <h2 className="text-xl font-semibold">Hygiene & Appearance</h2>
-          <p className="text-sm text-muted-foreground">Recurring self-care routines</p>
+          <h2 className="text-2xl font-black tracking-tight">Looks</h2>
+          <p className="text-xs text-muted-foreground">Self-care & hygiene routines</p>
         </div>
         <AddRoutineDialog />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {total > 0 ? (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-sm font-semibold">Today's Progress</CardTitle>
-                  <span className="text-sm text-muted-foreground">{completedToday} / {total} done</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <div className="text-4xl font-bold font-mono" data-testid="text-hygiene-completion">
-                    {pct}%
-                  </div>
-                  <Progress value={pct} className="h-3 flex-1" />
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="text-center py-12 border rounded-lg border-dashed">
-              <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No routines yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">Add recurring hygiene routines to track</p>
-              <AddRoutineDialog />
+      {/* Progress ring */}
+      {total > 0 ? (
+        <div className="bg-card border border-border/60 rounded-2xl p-4 flex items-center gap-6">
+          <MetricRing
+            value={pct}
+            max={100}
+            label="Today"
+            unit="%"
+            color="#8b5cf6"
+            size="lg"
+            sublabel={`${completedToday}/${total} done`}
+          />
+          <div className="flex-1">
+            <p className="font-black text-3xl font-mono tabular-nums" data-testid="text-hygiene-completion">{pct}%</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Completion today</p>
+            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
             </div>
-          )}
+          </div>
         </div>
-        <div className="lg:col-span-1">
-          <TodaySessions module="body" itemId="body_hygiene" />
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-10 border border-dashed border-border rounded-2xl">
+          <Sparkles className="w-9 h-9 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">No routines yet</p>
+          <AddRoutineDialog />
         </div>
-      </div>
+      )}
 
+      {/* Routine lists */}
       {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />)}
-        </div>
+        <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-14 bg-muted animate-pulse rounded-2xl" />)}</div>
       ) : total > 0 ? (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {daily.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Daily</h3>
-              <div className="space-y-2 group">
-                {daily.map(r => <RoutineCard key={r.id} routine={r} />)}
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Daily</p>
+              <div className="space-y-2">{daily.map(r => <RoutineCard key={r.id} routine={r} />)}</div>
             </div>
           )}
           {weekly.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Weekly</h3>
-              <div className="space-y-2 group">
-                {weekly.map(r => <RoutineCard key={r.id} routine={r} />)}
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Weekly</p>
+              <div className="space-y-2">{weekly.map(r => <RoutineCard key={r.id} routine={r} />)}</div>
             </div>
           )}
           {monthly.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Monthly</h3>
-              <div className="space-y-2 group">
-                {monthly.map(r => <RoutineCard key={r.id} routine={r} />)}
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Monthly</p>
+              <div className="space-y-2">{monthly.map(r => <RoutineCard key={r.id} routine={r} />)}</div>
             </div>
           )}
         </div>
       ) : null}
+
+      <div className="h-2" />
     </div>
   );
 }

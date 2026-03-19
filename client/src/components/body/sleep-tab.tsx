@@ -7,6 +7,7 @@ import { format, subDays, parseISO } from "date-fns";
 import { AddSleepLogDialog } from "@/components/dialogs/add-sleep-log-dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { TodaySessions } from "../today-sessions";
+import { MetricRing } from "./metric-ring";
 
 const SLEEP_GOAL_HOURS = 8;
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -73,63 +74,72 @@ export function SleepTab() {
     return "hsl(var(--destructive) / 0.7)";
   };
 
+  const readinessColor = todayReadiness === null ? "#6b7280"
+    : todayReadiness >= 70 ? "#22c55e" : todayReadiness >= 40 ? "#eab308" : "#ef4444";
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+    <div className="p-4 space-y-4 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between pt-2">
         <div>
-          <h2 className="text-xl font-semibold">Sleep & Rest</h2>
-          <p className="text-sm text-muted-foreground">Track and analyse your sleep patterns</p>
+          <h2 className="text-2xl font-black tracking-tight">Sleep</h2>
+          <p className="text-xs text-muted-foreground">Rest & recovery tracking</p>
         </div>
         <AddSleepLogDialog />
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className={`text-2xl font-bold font-mono ${getReadinessColor(todayReadiness)}`} data-testid="text-readiness-score">
-              {todayReadiness !== null ? `${todayReadiness}` : "—"}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Readiness</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold font-mono" data-testid="text-avg-sleep">
-              {avgActual.toFixed(1)}h
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">7-Day Avg</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className={`text-2xl font-bold font-mono ${weekDebt > 0 ? "text-destructive" : "text-green-500"}`} data-testid="text-sleep-debt">
-              {weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "0h"}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Sleep Debt</p>
-          </CardContent>
-        </Card>
+      {/* Ring metrics */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-card border border-border/60 rounded-2xl p-3 flex flex-col items-center justify-center py-5">
+          <MetricRing
+            value={todayReadiness ?? 0}
+            max={100}
+            label="Readiness"
+            unit="%"
+            color={readinessColor}
+            size="lg"
+            sublabel="tonight"
+            animate={false}
+          />
+          <span className="sr-only" data-testid="text-readiness-score">{todayReadiness ?? "—"}</span>
+        </div>
+        <div className="bg-card border border-border/60 rounded-2xl p-3 flex flex-col items-center justify-center py-5">
+          <MetricRing
+            value={parseFloat(avgActual.toFixed(1))}
+            max={sleepGoal}
+            label="7-Day Avg"
+            unit="h"
+            color="#6366f1"
+            size="lg"
+            sublabel={`/ ${sleepGoal}h goal`}
+          />
+          <span className="sr-only" data-testid="text-avg-sleep">{avgActual.toFixed(1)}</span>
+        </div>
+        <div className="bg-card border border-border/60 rounded-2xl p-3 flex flex-col items-center justify-center py-5">
+          <MetricRing
+            value={parseFloat(weekDebt.toFixed(1))}
+            max={sleepGoal * 7}
+            label="Sleep Debt"
+            unit="h"
+            color={weekDebt > 0 ? "#ef4444" : "#22c55e"}
+            size="lg"
+            sublabel="this week"
+            animate={false}
+          />
+          <span className="sr-only" data-testid="text-sleep-debt">{weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "0h"}</span>
+        </div>
       </div>
 
-      {/* Chart & Sessions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-sm font-semibold">Last 7 Days</CardTitle>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 rounded-sm bg-primary" /> Actual
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block w-3 h-3 rounded-sm bg-muted" /> Goal
-                  </span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] w-full">
+      {/* Chart */}
+      <div className="bg-card border border-border/60 rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Last 7 Days</p>
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary" /> Actual</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted" /> Goal</span>
+          </div>
+        </div>
+        <div className="h-[200px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={last7} barGap={4}>
                     <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -148,75 +158,64 @@ export function SleepTab() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="lg:col-span-1">
-          <TodaySessions module="body" itemId="body_sleep" />
         </div>
       </div>
 
       {/* Log entries */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
-        </div>
-      ) : allLogs && allLogs.length > 0 ? (
-        <div className="space-y-3">
-          {allLogs.slice(0, 10).map(log => {
-            const readiness = calcReadiness(log);
-            const actual = parseFloat(log.actualHours || 0);
-            const planned = parseFloat(log.plannedHours || sleepGoal);
-            const deficit = planned - actual;
-            return (
-              <Card key={log.id} data-testid={`card-sleep-${log.id}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm">{format(parseISO(log.date), "EEEE, MMM d")}</p>
-                      {log.notes && <p className="text-xs text-muted-foreground">{log.notes}</p>}
-                    </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Planned</p>
-                        <p className="font-mono font-semibold">{parseFloat(log.plannedHours || 0).toFixed(1)}h</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Actual</p>
-                        <p className="font-mono font-semibold">{actual.toFixed(1)}h</p>
-                      </div>
-                      {log.quality && (
-                        <div className="text-center">
-                          <p className="text-xs text-muted-foreground">Quality</p>
-                          <p className="font-mono font-semibold">{log.quality}/5</p>
-                        </div>
-                      )}
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Readiness</p>
-                        <p className={`font-mono font-semibold ${getReadinessColor(readiness)}`}>{readiness}</p>
-                      </div>
-                      {deficit > 0 && (
-                        <Badge variant="outline" className="text-destructive border-destructive/30 text-xs">
-                          <TrendingDown className="w-3 h-3 mr-1" />
-                          -{deficit.toFixed(1)}h
-                        </Badge>
-                      )}
-                    </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Sleep History</p>
+        {isLoading ? (
+          <div className="space-y-2">{[1, 2].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-2xl" />)}</div>
+        ) : allLogs && allLogs.length > 0 ? (
+          <div className="space-y-2">
+            {allLogs.slice(0, 10).map(log => {
+              const readiness = calcReadiness(log);
+              const actual = parseFloat(log.actualHours || 0);
+              const planned = parseFloat(log.plannedHours || sleepGoal);
+              const deficit = planned - actual;
+              const rColor = readiness >= 70 ? "text-green-500" : readiness >= 40 ? "text-yellow-500" : "text-red-500";
+              return (
+                <div key={log.id} data-testid={`card-sleep-${log.id}`}
+                  className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-sm">{format(parseISO(log.date), "EEEE, MMM d")}</p>
+                    {log.notes && <p className="text-[11px] text-muted-foreground">{log.notes}</p>}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <Moon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">No sleep logs yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">Start tracking your sleep patterns</p>
-          <AddSleepLogDialog />
-        </div>
-      )}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground">Actual</p>
+                      <p className="font-mono font-bold text-sm">{actual.toFixed(1)}h</p>
+                    </div>
+                    {log.quality && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-muted-foreground">Quality</p>
+                        <p className="font-mono font-bold text-sm">{log.quality}/5</p>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground">Score</p>
+                      <p className={`font-mono font-bold text-sm ${rColor}`}>{readiness}</p>
+                    </div>
+                    {deficit > 0 && (
+                      <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">
+                        <TrendingDown className="w-3 h-3 mr-1" />-{deficit.toFixed(1)}h
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 py-10 border border-dashed border-border rounded-2xl">
+            <Moon className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No sleep logs yet</p>
+            <AddSleepLogDialog />
+          </div>
+        )}
+      </div>
+
+      <div className="h-2" />
     </div>
   );
 }
