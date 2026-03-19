@@ -289,7 +289,7 @@ function MainLayout() {
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar pt-[env(safe-area-inset-top)]">
+                <div className="flex flex-col h-full w-full bg-sidebar">
                   <AppSidebar isMobileSheet />
                 </div>
               </SheetContent>
@@ -300,7 +300,7 @@ function MainLayout() {
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar pt-[env(safe-area-inset-top)]">
+                <div className="flex flex-col h-full w-full bg-sidebar">
                   <LearningTrajectorySidebar isMobileSheet />
                 </div>
               </SheetContent>
