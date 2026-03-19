@@ -409,7 +409,7 @@ export default function HomePage() {
                 </Button>
               </div>
             )}
-            <Button id="tour-customize-btn" variant={isEditing ? "default" : "outline"} onClick={() => setIsEditing(!isEditing)} className="gap-2">
+            <Button id="tour-customize-btn" variant={isEditing ? "secondary" : "outline"} onClick={() => setIsEditing(!isEditing)} className="gap-2">
               {isEditing ? <Check className="w-4 h-4" /> : <Settings2 className="w-4 h-4" />}
               {isEditing ? "Done Customizing" : "Customize"}
             </Button>
