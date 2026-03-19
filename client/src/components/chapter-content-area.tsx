@@ -499,17 +499,12 @@ export function ChapterContentArea({
         onClose={() => setAiFinderOpen(false)}
         chapter={{ id: chapter.id, title: chapter.title }}
         chapterContext={chapter.notes || ""}
-        learningObjectives={chapter.learningObjectives || ""}
         topicId={topicId}
         courseId={courseId}
         disciplineId={disciplineId}
         trajectoryContext={trajectoryContext}
         onMaterialsAdded={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/materials/chapter", chapter.id] });
-        }}
-        onLearningObjectivesSaved={(objectives) => {
-          apiRequest("PATCH", `/api/learn-plan-items/${chapter.id}`, { learningObjectives: objectives });
-          queryClient.invalidateQueries({ queryKey: ["/api/learn-plan-items"] });
         }}
       />
 

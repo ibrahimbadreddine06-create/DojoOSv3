@@ -57,7 +57,6 @@ interface Props {
   onClose: () => void;
   chapter: { id: string; title: string };
   chapterContext?: string;
-  learningObjectives?: string; // Fixed directive: what exactly must be learned
   topicId?: string;
   courseId?: string;
   disciplineId?: string;
@@ -68,7 +67,6 @@ interface Props {
     submoduleName: string;
   };
   onMaterialsAdded?: () => void;
-  onLearningObjectivesSaved?: (objectives: string) => void;
 }
 
 // ─── Type Tile ────────────────────────────────────────────────────────────────
@@ -262,8 +260,7 @@ function CustomCard({ result, selected, onToggle }: { result: CustomResult; sele
 
 export function AIMaterialFinder({
   open, onClose, chapter, chapterContext = "",
-  learningObjectives: initialObjectives = "",
-  topicId, courseId, disciplineId, trajectoryContext, onMaterialsAdded, onLearningObjectivesSaved,
+  topicId, courseId, disciplineId, trajectoryContext, onMaterialsAdded,
 }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("type-select");
@@ -272,7 +269,7 @@ export function AIMaterialFinder({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentType, setCurrentType] = useState<MaterialSearchType>("youtube");
-  const [objectives, setObjectives] = useState(initialObjectives);
+  const [objectives, setObjectives] = useState("");
   const [editingObjectives, setEditingObjectives] = useState(false);
 
   const handleClose = () => {
@@ -390,9 +387,8 @@ export function AIMaterialFinder({
   };
 
   const handleSaveObjectives = () => {
-    onLearningObjectivesSaved?.(objectives);
     setEditingObjectives(false);
-    toast({ title: "Learning objectives saved", description: "The directive will be used for all future material searches in this chapter." });
+    toast({ title: "Learning directive set", description: "This directive will be used for material searches in this session." });
   };
 
   return (
