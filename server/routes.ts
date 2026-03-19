@@ -317,6 +317,22 @@ export function registerRoutes(app: Express): Server {
     res.json({ success: true });
   });
 
+  // AI: Generate learning objectives directive for a chapter
+  app.post("/api/ai/generate-learning-objectives", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+    try {
+      const { generateLearningObjectives } = await import("./ai");
+      const objectives = await generateLearningObjectives(req.body);
+      res.json({ objectives });
+    } catch (e: any) {
+      console.error("AI generate-learning-objectives error:", e);
+      res.status(500).json({ message: e.message || "Generation failed" });
+    }
+  });
+
   // AI: Find materials for a chapter
   app.post("/api/ai/find-materials", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

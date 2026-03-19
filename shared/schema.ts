@@ -191,6 +191,7 @@ export const learnPlanItems = pgTable("learn_plan_items", {
   importance: integer("importance").notNull().default(3), // 1-5 scale
   order: integer("order").notNull().default(0),
   notes: text("notes"), // Rich text notes for the chapter
+  learningObjectives: text("learning_objectives"), // Fixed directive: what exactly must be learned in this chapter
   createdAt: timestamp("created_at").defaultNow(),
 });
 
