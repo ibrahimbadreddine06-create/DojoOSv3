@@ -15,11 +15,6 @@ html {
   min-height: calc(100% + env(safe-area-inset-top));
 }
 
-@media all and (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
-  }
-}
 
 /* Force Radix Portal transparency to prevent iOS bottom gaps */
 [data-radix-portal] {
