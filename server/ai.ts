@@ -38,8 +38,20 @@ export interface CustomResult {
 export interface FindMaterialsParams {
   chapterTitle: string;
   chapterContext: string;
+  learningObjectives?: string; // Fixed directive: what exactly must be learned
   materialType: MaterialSearchType;
   userPrompt?: string;
+  trajectoryContext?: {
+    goal: string;
+    context: string;
+    submoduleType: string;
+    submoduleName: string;
+  };
+}
+
+export interface GenerateLearningObjectivesParams {
+  chapterTitle: string;
+  chapterContext?: string;
   trajectoryContext?: {
     goal: string;
     context: string;
@@ -219,6 +231,33 @@ Source type values: "university", "book", "course", "institution", "website"`;
   return parsed;
 }
 
+// ─── Learning Objectives Generator ───────────────────────────────────────────
+
+export async function generateLearningObjectives(
+  params: GenerateLearningObjectivesParams
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const contextBlock = params.trajectoryContext
+    ? `Subject: ${params.trajectoryContext.submoduleName}\nGoal: ${params.trajectoryContext.goal}\nLevel: ${params.trajectoryContext.context}`
+    : "";
+
+  const prompt = `You are a curriculum expert. Generate a concise, structured learning directive for a chapter.
+
+CHAPTER: "${params.chapterTitle}"
+${contextBlock}
+${params.chapterContext ? `EXISTING NOTES:\n${params.chapterContext}` : ""}
+
+Create a bullet-pointed list of exactly what a learner must understand after completing this chapter.
+Be specific and concrete — list the key concepts, skills, formulas, or techniques that must be mastered.
+This directive will be used to evaluate whether study materials cover the right content.
+
+OUTPUT: Plain text bullet list (use • bullets), no markdown headers, max 10 bullets, each bullet is a specific learning objective.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
+
 // ─── AI Material Finder ───────────────────────────────────────────────────────
 
 function extractYoutubeId(url: string): string {
@@ -275,6 +314,63 @@ async function enrichYoutubeVideo(rawResult: any, mustVerify: boolean): Promise<
   };
 }
 
+// Analyze a YouTube video's actual content against the learning directive using Gemini's video understanding.
+async function analyzeVideoContent(
+  videoId: string,
+  directive: string,
+  chapterTitle: string
+): Promise<{ covers: string[]; misses: string[]; score: number; description: string } | null> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  const prompt = `You are evaluating a YouTube video for a learner studying: "${chapterTitle}".
+
+LEARNING DIRECTIVE — what the learner must master:
+${directive}
+
+Watch this video and analyze its actual content. Then determine:
+1. Which specific learning objectives from the directive are clearly covered?
+2. Which specific learning objectives are NOT adequately covered?
+3. Alignment score: how well does this video serve this directive? (0-10)
+4. Write a 2-sentence summary of what this video actually teaches.
+
+Be strict and honest — only mark something as "covered" if the video genuinely teaches it.
+
+OUTPUT — ONLY valid JSON, no markdown:
+{
+  "covers": ["exact objectives from directive that are well covered"],
+  "misses": ["exact objectives from directive that are missing or only touched on"],
+  "score": 7,
+  "description": "2-sentence description of what this video actually teaches."
+}`;
+
+  try {
+    const result = await model.generateContent({
+      contents: [{
+        role: "user",
+        parts: [
+          { fileData: { mimeType: "video/mp4", fileUri: videoUrl } },
+          { text: prompt },
+        ],
+      }],
+    } as any);
+
+    const text = result.response.text();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (typeof parsed.score !== "number") return null;
+    return {
+      covers: Array.isArray(parsed.covers) ? parsed.covers : [],
+      misses: Array.isArray(parsed.misses) ? parsed.misses : [],
+      score: parsed.score,
+      description: parsed.description || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
@@ -301,31 +397,32 @@ export async function findMaterialsForChapter(
 
   let prompt = "";
 
+  // Build the directive: prefer explicit learningObjectives, fall back to chapterContext
+  const directive = params.learningObjectives || params.chapterContext || params.chapterTitle;
+
   if (params.materialType === "youtube") {
     prompt = `You are an expert educational resource curator. Use Google Search to find real, currently available YouTube videos for this learning need.
 
 CHAPTER: "${params.chapterTitle}"
-${subtopicsBlock}
+LEARNING DIRECTIVE (what must be mastered):
+${directive}
 ${contextBlock}
 ${userPromptBlock}
 
-TASK: Search Google for 5-6 YouTube educational videos that DIRECTLY HELP someone learn this chapter with these subtopics and goals.
+TASK: Search Google for 8 YouTube educational videos that DIRECTLY HELP someone learn this chapter based on the learning directive above.
 
 SEARCH INSTRUCTIONS:
 - Actively search YouTube/Google for videos matching this chapter's topics
-- Prefer trustworthy educational creators: Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, Kurzgesagt, CrashCourse, Sentdex, etc.
-- Find videos that match the learner's level and goals
+- Prefer trustworthy educational creators: Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, Fireship, Traversy Media, The Organic Chemistry Tutor, PatrickJMT, Professor Leonard, Kurzgesagt, etc.
 - Only include videos that actually exist and are publicly available right now
+- Each video must have a REAL, VALID YouTube video ID
 
-OUTPUT — return ONLY valid JSON array:
+OUTPUT — return ONLY a valid JSON array with up to 8 entries:
 [
   {
     "title": "Exact video title from YouTube",
     "channel": "Channel name",
-    "url": "https://www.youtube.com/watch?v=VIDEO_ID",
-    "description": "How this helps (2-3 sentences)",
-    "covers": ["subtopic covered"],
-    "misses": ["subtopic not in video"]
+    "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID"
   }
 ]`;
   } else if (params.materialType === "website") {
@@ -453,15 +550,16 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   }
 
   if (params.materialType === "youtube") {
-    // ── Step 1: enrich AI-suggested videos with oEmbed ───────────────────────
-    console.log(`YouTube search: ${parsed.length} videos found from AI response`);
+    // ── Step 1: Verify AI-suggested candidates via oEmbed ────────────────────
+    console.log(`YouTube search: ${parsed.length} candidates from AI response`);
 
     const enriched = await Promise.all(
       parsed.map(c => enrichYoutubeVideo(c, true))
     );
+
     const verified = enriched.filter((r): r is YoutubeResult => r !== null);
 
-    // ── Step 2: extract YouTube URLs from Google Search grounding chunks ──────
+    // ── Step 2: Also extract YouTube URLs from Google Search grounding chunks ─
     const candidates = result.response.candidates;
     const groundingMeta = candidates?.[0]?.groundingMetadata as any;
     const groundingYoutube: YoutubeResult[] = [];
@@ -477,7 +575,7 @@ OUTPUT — return ONLY valid JSON array, no markdown:
       groundingYoutube.push(...groundingEnriched.filter((r): r is YoutubeResult => r !== null));
     }
 
-    // ── Step 3: merge, deduplicate, return top 6 ─────────────────────────────
+    // ── Step 3: Merge and deduplicate all candidates ──────────────────────────
     const seen = new Set<string>();
     const deduped = [...verified, ...groundingYoutube].filter(r => {
       if (!r.videoId) return false;
@@ -486,8 +584,41 @@ OUTPUT — return ONLY valid JSON array, no markdown:
       return true;
     });
 
-    console.log(`YouTube search: ${verified.length} AI-verified + ${groundingYoutube.length} grounding = ${deduped.length} total`);
-    return { type: "youtube", results: deduped.slice(0, 6) };
+    console.log(`YouTube search: ${verified.length} AI-verified + ${groundingYoutube.length} grounding = ${deduped.length} total candidates`);
+
+    // ── Step 4: Analyze each video's actual content against the directive ─────
+    // Run analysis in parallel with a per-video timeout (15 s)
+    const analysisResults = await Promise.allSettled(
+      deduped.map(async (video) => {
+        const analysis = await Promise.race([
+          analyzeVideoContent(video.videoId, directive, params.chapterTitle),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 15000)),
+        ]);
+        return { video, analysis };
+      })
+    );
+
+    // Merge analysis into video results; fall back to original metadata if analysis fails
+    const analyzed: (YoutubeResult & { _score: number })[] = analysisResults.map(r => {
+      if (r.status === "rejected") return null;
+      const { video, analysis } = r.value;
+      if (!analysis) {
+        return { ...video, _score: -1 };
+      }
+      return {
+        ...video,
+        covers: analysis.covers,
+        misses: analysis.misses,
+        description: analysis.description || video.description,
+        _score: analysis.score,
+      };
+    }).filter((v): v is YoutubeResult & { _score: number } => v !== null);
+
+    // Sort by alignment score (highest first), return exactly top 4
+    analyzed.sort((a, b) => b._score - a._score);
+    const top4 = analyzed.slice(0, 4).map(({ _score: _, ...v }) => v);
+    console.log(`YouTube search: returning ${top4.length} videos after content analysis`);
+    return { type: "youtube", results: top4 };
   } else if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
       title: r.title || "Untitled",

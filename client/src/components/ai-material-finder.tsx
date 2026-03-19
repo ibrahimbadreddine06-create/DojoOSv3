@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sparkles, Youtube, Globe, FileText, Search, Loader2,
-  Check, Plus, ChevronLeft, Play, Link2, BookOpen,
+  Check, Plus, ChevronLeft, Play, Link2, BookOpen, Target, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Material } from "@shared/schema";
@@ -57,6 +57,7 @@ interface Props {
   onClose: () => void;
   chapter: { id: string; title: string };
   chapterContext?: string;
+  learningObjectives?: string; // Fixed directive: what exactly must be learned
   topicId?: string;
   courseId?: string;
   disciplineId?: string;
@@ -67,6 +68,7 @@ interface Props {
     submoduleName: string;
   };
   onMaterialsAdded?: () => void;
+  onLearningObjectivesSaved?: (objectives: string) => void;
 }
 
 // ─── Type Tile ────────────────────────────────────────────────────────────────
@@ -124,22 +126,6 @@ function getYoutubeThumbnail(videoId: string) {
   return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
 }
 
-function isYoutubeResult(r: SearchResult, type: MaterialSearchType): r is YoutubeResult {
-  return type === "youtube";
-}
-
-function isWebsiteResult(r: SearchResult, type: MaterialSearchType): r is WebsiteResult {
-  return type === "website";
-}
-
-function isPdfResult(r: SearchResult, type: MaterialSearchType): r is PdfResult {
-  return type === "pdf";
-}
-
-function isCustomResult(r: SearchResult, type: MaterialSearchType): r is CustomResult {
-  return type === "custom";
-}
-
 // ─── Result Cards ─────────────────────────────────────────────────────────────
 
 function YoutubeCard({ result, selected, onToggle }: { result: YoutubeResult; selected: boolean; onToggle: () => void }) {
@@ -166,12 +152,12 @@ function YoutubeCard({ result, selected, onToggle }: { result: YoutubeResult; se
       <div className="p-3 space-y-2">
         <p className="text-sm font-medium leading-snug line-clamp-2">{result.title}</p>
         <p className="text-xs text-muted-foreground">{result.channel}</p>
-        <p className="text-xs text-muted-foreground line-clamp-2">{result.description}</p>
+        <p className="text-xs text-muted-foreground line-clamp-3">{result.description}</p>
         {result.covers.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {result.covers.slice(0, 3).map((c, i) => (
+            {result.covers.slice(0, 4).map((c, i) => (
               <Badge key={i} variant="secondary" className="text-[10px] text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-950">
-                {c}
+                ✓ {c}
               </Badge>
             ))}
           </div>
@@ -276,7 +262,8 @@ function CustomCard({ result, selected, onToggle }: { result: CustomResult; sele
 
 export function AIMaterialFinder({
   open, onClose, chapter, chapterContext = "",
-  topicId, courseId, disciplineId, trajectoryContext, onMaterialsAdded,
+  learningObjectives: initialObjectives = "",
+  topicId, courseId, disciplineId, trajectoryContext, onMaterialsAdded, onLearningObjectivesSaved,
 }: Props) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("type-select");
@@ -285,6 +272,8 @@ export function AIMaterialFinder({
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentType, setCurrentType] = useState<MaterialSearchType>("youtube");
+  const [objectives, setObjectives] = useState(initialObjectives);
+  const [editingObjectives, setEditingObjectives] = useState(false);
 
   const handleClose = () => {
     setStep("type-select");
@@ -292,14 +281,34 @@ export function AIMaterialFinder({
     setPrompt("");
     setResults([]);
     setSelectedIds(new Set());
+    setEditingObjectives(false);
     onClose();
   };
+
+  const generateObjectivesMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/ai/generate-learning-objectives", {
+        chapterTitle: chapter.title,
+        chapterContext,
+        trajectoryContext,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setObjectives(data.objectives || "");
+      setEditingObjectives(true);
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to generate objectives", description: err.message, variant: "destructive" });
+    },
+  });
 
   const searchMutation = useMutation({
     mutationFn: async (type: MaterialSearchType) => {
       const res = await apiRequest("POST", "/api/ai/find-materials", {
         chapterTitle: chapter.title,
         chapterContext,
+        learningObjectives: objectives || undefined,
         materialType: type,
         userPrompt: prompt.trim() || undefined,
         trajectoryContext,
@@ -324,7 +333,7 @@ export function AIMaterialFinder({
   const addMutation = useMutation({
     mutationFn: async () => {
       const selected = Array.from(selectedIds).map(i => results[i]);
-      const promises = selected.map((result, _) => {
+      const promises = selected.map((result) => {
         let type: string;
         let thumbnailUrl: string | undefined;
 
@@ -380,9 +389,15 @@ export function AIMaterialFinder({
     searchMutation.mutate(type);
   };
 
+  const handleSaveObjectives = () => {
+    onLearningObjectivesSaved?.(objectives);
+    setEditingObjectives(false);
+    toast({ title: "Learning objectives saved", description: "The directive will be used for all future material searches in this chapter." });
+  };
+
   return (
     <Dialog open={open} onOpenChange={o => !o && handleClose()}>
-      <DialogContent className="max-w-2xl h-[88vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-5 pb-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Sparkles className="w-4 h-4 text-primary" />
@@ -398,8 +413,77 @@ export function AIMaterialFinder({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <ScrollArea className="flex-1 min-h-0">
               <div className="px-6 py-5 space-y-5">
+
+                {/* Learning Directive ─────────────────────────────────── */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-primary" />
+                      <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                        Learning Directive
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {objectives && !editingObjectives && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs px-2"
+                          onClick={() => setEditingObjectives(true)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs px-2 gap-1"
+                        onClick={() => generateObjectivesMutation.mutate()}
+                        disabled={generateObjectivesMutation.isPending}
+                        data-testid="button-generate-objectives"
+                      >
+                        {generateObjectivesMutation.isPending
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <RefreshCw className="w-3 h-3" />}
+                        {objectives ? "Regenerate" : "Generate with AI"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {objectives && !editingObjectives ? (
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+                      <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{objectives}</p>
+                    </div>
+                  ) : editingObjectives ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={objectives}
+                        onChange={e => setObjectives(e.target.value)}
+                        rows={5}
+                        className="resize-none text-xs font-mono"
+                        placeholder="• What the learner must understand after this chapter&#10;• Be specific: list key concepts, formulas, techniques&#10;• This directive guides video selection and analysis"
+                        data-testid="textarea-learning-objectives"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingObjectives(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="h-7 text-xs" onClick={handleSaveObjectives}>
+                          Save directive
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      No directive set — generate one with AI or the chapter notes will be used.
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t" />
+
                 <p className="text-sm text-muted-foreground">
-                  Choose a resource type and optionally describe what you need. The AI will search the web for the best real materials.
+                  Choose a resource type. For YouTube, the AI finds 8 candidates then analyzes each video's actual content against your directive — only the 4 best matches are returned.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {(Object.entries(TYPE_CONFIG) as [MaterialSearchType, typeof TYPE_CONFIG.youtube][]).map(([type, config]) => {
@@ -465,9 +549,13 @@ export function AIMaterialFinder({
               <Loader2 className="w-16 h-16 absolute inset-0 text-primary animate-spin opacity-30" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-semibold">Searching for materials</p>
+              <p className="text-sm font-semibold">
+                {selectedType === "youtube" ? "Finding & analyzing videos..." : "Searching for materials..."}
+              </p>
               <p className="text-sm text-muted-foreground">
-                AI is browsing the web for the best {selectedType === "youtube" ? "videos" : selectedType === "pdf" ? "PDFs" : selectedType === "website" ? "websites" : "resources"} for this chapter...
+                {selectedType === "youtube"
+                  ? "AI searches for candidates, then analyzes each video's actual content against your learning directive. This can take up to 30 seconds."
+                  : `AI is browsing for the best ${selectedType === "pdf" ? "PDFs" : selectedType === "website" ? "websites" : "resources"} for this chapter...`}
               </p>
             </div>
           </div>
@@ -487,7 +575,7 @@ export function AIMaterialFinder({
                   <ChevronLeft className="w-4 h-4 mr-1" /> Back
                 </Button>
                 <span className="text-xs text-muted-foreground">
-                  {results.length} results — click to select
+                  {results.length} result{results.length !== 1 ? "s" : ""} — click to select
                 </span>
               </div>
               <Button
