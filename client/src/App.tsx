@@ -200,7 +200,7 @@ function DualSidebarHeader() {
   };
 
   return (
-    <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-auto px-4">
+    <header className="border-b bg-background sticky top-0 z-40 shrink-0 md:h-16 h-auto px-4 pt-[env(safe-area-inset-top)] md:pt-0">
       <div className="flex items-center justify-between h-14 md:h-16">
         <div className="flex items-center gap-2">
           <Button
@@ -289,7 +289,7 @@ function MainLayout() {
                 <VisuallyHidden.Root>
                   <SheetTitle>Main Navigation</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar">
+                <div className="flex flex-col h-full w-full bg-sidebar pt-[env(safe-area-inset-top)]">
                   <AppSidebar isMobileSheet />
                 </div>
               </SheetContent>
@@ -300,7 +300,7 @@ function MainLayout() {
                 <VisuallyHidden.Root>
                   <SheetTitle>Learning Trajectory</SheetTitle>
                 </VisuallyHidden.Root>
-                <div className="flex flex-col h-full w-full bg-sidebar">
+                <div className="flex flex-col h-full w-full bg-sidebar pt-[env(safe-area-inset-top)]">
                   <LearningTrajectorySidebar isMobileSheet />
                 </div>
               </SheetContent>
