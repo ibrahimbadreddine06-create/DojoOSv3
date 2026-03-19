@@ -339,8 +339,12 @@ export function registerRoutes(app: Express): Server {
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
     }
+    const body = req.body as FindMaterialsParams;
+    if (body.materialType === "youtube" && !process.env.YOUTUBE_API_KEY) {
+      return res.status(503).json({ message: "YouTube search not configured (missing YOUTUBE_API_KEY)" });
+    }
     try {
-      const result = await findMaterialsForChapter(req.body as FindMaterialsParams);
+      const result = await findMaterialsForChapter(body);
       res.json(result);
     } catch (e: any) {
       console.error("AI find-materials error:", e);

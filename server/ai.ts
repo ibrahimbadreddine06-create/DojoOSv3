@@ -260,58 +260,50 @@ OUTPUT: Plain text bullet list (use • bullets), no markdown headers, max 10 bu
 
 // ─── AI Material Finder ───────────────────────────────────────────────────────
 
-function extractYoutubeId(url: string): string {
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("youtu.be")) return u.pathname.slice(1).split("?")[0];
-    return u.searchParams.get("v") || "";
-  } catch {
-    return "";
-  }
-}
+// Search YouTube using the YouTube Data API v3 — returns real results, no AI hallucination.
+async function searchYouTubeAPI(query: string, maxResults = 10): Promise<YoutubeResult[]> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("YouTube API key not configured (missing YOUTUBE_API_KEY)");
 
-// Enrich a YouTube result via oEmbed.
-// mustVerify=true → returns null if oEmbed fails (hard filter for AI-fabricated IDs).
-// mustVerify=false → returns soft fallback if oEmbed fails (trusted grounding URLs).
-async function enrichYoutubeVideo(rawResult: any, mustVerify: boolean): Promise<YoutubeResult | null> {
-  const url = rawResult.url || "";
-  const videoId = extractYoutubeId(url);
+  const params = new URLSearchParams({
+    part: "snippet",
+    q: query,
+    type: "video",
+    maxResults: String(maxResults),
+    relevanceLanguage: "en",
+    key: apiKey,
+  });
 
-  if (videoId) {
-    try {
-      const canonical = `https://www.youtube.com/watch?v=${videoId}`;
-      const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`;
-      const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        const data = await res.json() as { title: string; author_name: string; thumbnail_url: string };
-        return {
-          title: data.title || rawResult.title || "YouTube Video",
-          channel: data.author_name || rawResult.channel || "",
-          url: canonical,
-          videoId,
-          thumbnailUrl: data.thumbnail_url,
-          description: rawResult.description || "",
-          covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
-          misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
-        };
-      }
-    } catch { /* fall through */ }
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`YouTube API error ${res.status}: ${errBody.substring(0, 200)}`);
   }
 
-  // oEmbed failed — if this result needs verification, discard it (it's fake)
-  if (mustVerify) return null;
+  const data = await res.json() as { items?: any[] };
 
-  // Grounding-sourced URLs: keep with soft fallback (real Google Search result)
-  return {
-    title: rawResult.title || "YouTube Video",
-    channel: rawResult.channel || "",
-    url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : url,
-    videoId: videoId || "",
-    thumbnailUrl: videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : "",
-    description: rawResult.description || "",
-    covers: Array.isArray(rawResult.covers) ? rawResult.covers : [],
-    misses: Array.isArray(rawResult.misses) ? rawResult.misses : [],
-  };
+  return (data.items || [])
+    .filter((item: any) => item.id?.videoId)
+    .map((item: any) => {
+      const videoId: string = item.id.videoId;
+      const snippet = item.snippet || {};
+      return {
+        title: snippet.title || "YouTube Video",
+        channel: snippet.channelTitle || "",
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        videoId,
+        thumbnailUrl:
+          snippet.thumbnails?.medium?.url ||
+          snippet.thumbnails?.default?.url ||
+          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        description: snippet.description || "",
+        covers: [] as string[],
+        misses: [] as string[],
+      } satisfies YoutubeResult;
+    });
 }
 
 // Analyze a YouTube video's content against the learning directive using Gemini's knowledge.
@@ -370,7 +362,6 @@ OUTPUT — ONLY valid JSON, no markdown:
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
-  // YouTube uses a plain model (no Google Search) so Gemini returns clean JSON.
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const contextBlock = params.trajectoryContext
@@ -395,30 +386,63 @@ export async function findMaterialsForChapter(
   const directive = params.learningObjectives || params.chapterContext || params.chapterTitle;
 
   if (params.materialType === "youtube") {
-    prompt = `You are an expert educational resource curator. Use Google Search to find real, currently available YouTube videos for this learning need.
+    // ── YouTube: search via YouTube Data API v3 (real results, no AI hallucination) ──
+    const searchQuery = [
+      params.chapterTitle,
+      params.trajectoryContext?.submoduleName,
+      "tutorial",
+    ].filter(Boolean).join(" ");
 
-CHAPTER: "${params.chapterTitle}"
-LEARNING DIRECTIVE (what must be mastered):
-${directive}
-${contextBlock}
-${userPromptBlock}
+    console.log(`YouTube API search: "${searchQuery}"`);
 
-TASK: Search Google for 8 YouTube educational videos that DIRECTLY HELP someone learn this chapter based on the learning directive above.
+    let candidates: YoutubeResult[] = [];
+    try {
+      candidates = await searchYouTubeAPI(searchQuery, 10);
+    } catch (err: any) {
+      console.error("YouTube API search failed:", err.message);
+      throw new Error(`YouTube search failed: ${err.message}`);
+    }
 
-SEARCH INSTRUCTIONS:
-- Actively search YouTube/Google for videos matching this chapter's topics
-- Prefer trustworthy educational creators: Khan Academy, MIT OpenCourseWare, 3Blue1Brown, Crash Course, freeCodeCamp, Fireship, Traversy Media, The Organic Chemistry Tutor, PatrickJMT, Professor Leonard, Kurzgesagt, etc.
-- Only include videos that actually exist and are publicly available right now
-- Each video must have a REAL, VALID YouTube video ID
+    console.log(`YouTube API: ${candidates.length} results found`);
 
-OUTPUT — return ONLY a valid JSON array with up to 8 entries:
-[
-  {
-    "title": "Exact video title from YouTube",
-    "channel": "Channel name",
-    "url": "https://www.youtube.com/watch?v=REAL_VIDEO_ID"
-  }
-]`;
+    // Deduplicate by videoId
+    const seen = new Set<string>();
+    const deduped = candidates.filter(v => {
+      if (seen.has(v.videoId)) return false;
+      seen.add(v.videoId);
+      return true;
+    });
+
+    // Analyze each video's content against the directive and rank by relevance
+    const analysisResults = await Promise.allSettled(
+      deduped.map(async (video) => {
+        const analysis = await Promise.race([
+          analyzeVideoContent(video.videoId, video.title, video.channel, directive, params.chapterTitle),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 12000)),
+        ]);
+        return { video, analysis };
+      })
+    );
+
+    const analyzed: (YoutubeResult & { _score: number })[] = analysisResults
+      .map(r => {
+        if (r.status === "rejected") return null;
+        const { video, analysis } = r.value;
+        if (!analysis) return { ...video, _score: -1 };
+        return {
+          ...video,
+          covers: analysis.covers,
+          misses: analysis.misses,
+          description: analysis.description || video.description,
+          _score: analysis.score,
+        };
+      })
+      .filter((v): v is YoutubeResult & { _score: number } => v !== null);
+
+    analyzed.sort((a, b) => b._score - a._score);
+    const top4 = analyzed.slice(0, 4).map(({ _score: _, ...v }) => v);
+    console.log(`YouTube search: returning ${top4.length} videos after content analysis`);
+    return { type: "youtube", results: top4 };
   } else if (params.materialType === "website") {
     prompt = `You are an expert educational resource curator. Use Google Search to find real, currently accessible websites for this learning need.
 
@@ -493,24 +517,19 @@ OUTPUT — return ONLY valid JSON array, no markdown:
 ]`;
   }
 
+  // Website, PDF, and custom types: use Gemini with Google Search grounding
   let result;
   try {
-    // YouTube uses the plain model (no Google Search) so JSON output is reliable.
-    // All other types use the Google Search model for real, current URLs.
     result = await model.generateContent(prompt);
   } catch (err: any) {
     console.error("AI find-materials error:", err.message);
-    if (params.materialType !== "youtube") {
-      return { type: params.materialType, results: [] };
-    }
-    return { type: "youtube", results: [] };
+    return { type: params.materialType as "website" | "pdf" | "custom", results: [] };
   }
 
   let text = "";
   try {
     text = result.response.text();
   } catch {
-    // Gemini may throw if the response was blocked or contains no text parts
     text = "";
   }
 
@@ -526,77 +545,16 @@ OUTPUT — return ONLY valid JSON array, no markdown:
     }
   }
 
-  // Gemini sometimes returns an empty text body when it relies entirely on
-  // grounding metadata (no JSON array in the response text). For YouTube we
-  // can still recover from grounding chunks alone, so treat parse failures as
-  // an empty parsed array rather than a hard error.
   let parsed: any[] = [];
   try {
     const attempt = JSON.parse(jsonStr);
     if (Array.isArray(attempt)) parsed = attempt;
   } catch {
-    if (params.materialType !== "youtube") {
-      console.error("Failed to parse AI material search response:", text.substring(0, 500));
-      throw new Error("AI returned an invalid response. Please try again.");
-    }
-    // For YouTube: proceed with empty parsed array; grounding chunks will provide candidates
-    console.warn("YouTube search: could not parse JSON from AI response, relying on grounding chunks only.");
+    console.error("Failed to parse AI material search response:", text.substring(0, 500));
+    throw new Error("AI returned an invalid response. Please try again.");
   }
 
-  if (params.materialType === "youtube") {
-    // ── Step 1: Verify AI-suggested candidates via oEmbed ────────────────────
-    console.log(`YouTube search: ${parsed.length} candidates from AI response`);
-
-    const enriched = await Promise.all(
-      parsed.map(c => enrichYoutubeVideo(c, true))
-    );
-
-    const verified = enriched.filter((r): r is YoutubeResult => r !== null);
-
-    // ── Step 2: Deduplicate verified candidates ───────────────────────────────
-    const seen = new Set<string>();
-    const deduped = verified.filter(r => {
-      if (!r.videoId) return false;
-      if (seen.has(r.videoId)) return false;
-      seen.add(r.videoId);
-      return true;
-    });
-
-    console.log(`YouTube search: ${deduped.length} videos verified via oEmbed`);
-
-    // ── Step 4: Analyze each video's content against the directive (knowledge-based) ──
-    const analysisResults = await Promise.allSettled(
-      deduped.map(async (video) => {
-        const analysis = await Promise.race([
-          analyzeVideoContent(video.videoId, video.title, video.channel, directive, params.chapterTitle),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 12000)),
-        ]);
-        return { video, analysis };
-      })
-    );
-
-    // Merge analysis into video results; fall back to original metadata if analysis fails
-    const analyzed: (YoutubeResult & { _score: number })[] = analysisResults.map(r => {
-      if (r.status === "rejected") return null;
-      const { video, analysis } = r.value;
-      if (!analysis) {
-        return { ...video, _score: -1 };
-      }
-      return {
-        ...video,
-        covers: analysis.covers,
-        misses: analysis.misses,
-        description: analysis.description || video.description,
-        _score: analysis.score,
-      };
-    }).filter((v): v is YoutubeResult & { _score: number } => v !== null);
-
-    // Sort by alignment score (highest first), return exactly top 4
-    analyzed.sort((a, b) => b._score - a._score);
-    const top4 = analyzed.slice(0, 4).map(({ _score: _, ...v }) => v);
-    console.log(`YouTube search: returning ${top4.length} videos after content analysis`);
-    return { type: "youtube", results: top4 };
-  } else if (params.materialType === "website") {
+  if (params.materialType === "website") {
     const results: WebsiteResult[] = parsed.map((r: any) => ({
       title: r.title || "Untitled",
       url: r.url || "",
