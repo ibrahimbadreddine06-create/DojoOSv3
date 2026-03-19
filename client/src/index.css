@@ -30,6 +30,14 @@ html {
 @tailwind components;
 @tailwind utilities;
 
+/* Safe area: push all headers below status bar in standalone PWA mode.
+   This covers both the main header and all fullscreen page headers. */
+@media all and (display-mode: standalone) {
+  header {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);
