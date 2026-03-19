@@ -1,67 +1,82 @@
 import { motion } from "framer-motion";
-import { Dumbbell, Moon, Sparkles, Utensils, ChevronLeft } from "lucide-react";
+import { Dumbbell, Moon, Sparkles, Utensils, ChevronLeft, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 
 interface BodyLayoutProps {
     children: React.ReactNode;
 }
 
+const navItems = [
+    { id: "hub", icon: Home, label: "Hub", path: "/body", color: "text-primary", activeColor: "#3b82f6" },
+    { id: "workout", icon: Dumbbell, label: "Activity", path: "/body/workout", color: "text-red-500", activeColor: "#ef4444" },
+    { id: "intake", icon: Utensils, label: "Nutrition", path: "/body/intake", color: "text-orange-500", activeColor: "#f97316" },
+    { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", color: "text-indigo-500", activeColor: "#6366f1" },
+    { id: "hygiene", icon: Sparkles, label: "Looks", path: "/body/hygiene", color: "text-violet-500", activeColor: "#8b5cf6" },
+];
+
 export function BodyLayout({ children }: BodyLayoutProps) {
     const [location] = useLocation();
 
-    const navItems = [
-        { id: "workout", icon: Dumbbell, label: "Workout", path: "/body/workout", color: "text-red-500" },
-        { id: "intake", icon: Utensils, label: "Intake", path: "/body/intake", color: "text-blue-500" },
-        { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", color: "text-indigo-500" },
-        { id: "hygiene", icon: Sparkles, label: "Looks", path: "/body/hygiene", color: "text-purple-500" }, // hygiene mapped to looks
-    ];
+    const activeItem = navItems.slice().reverse().find(item =>
+        item.id === "hub" ? location === "/body" : location.startsWith(item.path)
+    );
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground">
-            {/* Minimized Sidebar */}
-            <div className="w-20 border-r flex flex-col items-center py-8 gap-8 bg-card/30 backdrop-blur-md fixed h-full z-10">
+        <div className="flex flex-col min-h-screen bg-background text-foreground">
+            {/* Slim top bar */}
+            <header className="sticky top-0 z-30 flex items-center px-4 h-11 border-b border-border bg-background/90 backdrop-blur-md shrink-0">
                 <Link href="/body">
-                    <Button variant="ghost" size="icon" className="mb-4 hover:bg-primary/10">
-                        <ChevronLeft className="w-6 h-6" />
-                    </Button>
+                    <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>DojoOS</span>
+                    </button>
                 </Link>
+                <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-sm">
+                    {activeItem?.label ?? "Body"}
+                </span>
+            </header>
 
-                {navItems.map((item) => {
-                    const isActive = location.includes(item.path);
-                    const Icon = item.icon;
+            {/* Main content with bottom padding for nav */}
+            <main className="flex-1 pb-20">
+                {children}
+            </main>
 
-                    return (
-                        <Link key={item.id} href={item.path}>
-                            <div className={`
-                        relative group flex items-center justify-center w-12 h-12 rounded-full cursor-pointer transition-all duration-300
-                        ${isActive ? `bg-accent ${item.color}` : "text-muted-foreground hover:bg-accent/50"}
-                    `}>
-                                <Icon className="w-6 h-6" />
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="activeBubble"
-                                        className="absolute inset-0 rounded-full border-2 border-primary/20"
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            {/* Bottom navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
+                <div className="flex items-end justify-around px-2 pt-1 pb-safe" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+                    {navItems.map((item) => {
+                        const isActive = item.id === "hub"
+                            ? location === "/body"
+                            : location.startsWith(item.path);
+                        const Icon = item.icon;
+
+                        return (
+                            <Link key={item.id} href={item.path}>
+                                <div className="relative flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer group">
+                                    {/* Active indicator dot */}
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="bottomNavDot"
+                                            className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                                            style={{ backgroundColor: item.activeColor }}
+                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                        />
+                                    )}
+                                    <Icon
+                                        className={`w-5 h-5 transition-all duration-200 ${isActive ? item.color : "text-muted-foreground group-hover:text-foreground"}`}
+                                        strokeWidth={isActive ? 2.5 : 1.8}
                                     />
-                                )}
-
-                                {/* Tooltip */}
-                                <div className="absolute left-14 bg-popover text-popover-foreground px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                                    {item.label}
+                                    <span
+                                        className={`text-[10px] font-medium transition-all duration-200 ${isActive ? "text-foreground" : "text-muted-foreground/70 group-hover:text-muted-foreground"}`}
+                                    >
+                                        {item.label}
+                                    </span>
                                 </div>
-                            </div>
-                        </Link>
-                    );
-                })}
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 pl-20 transition-all duration-300">
-                <div className="max-w-7xl mx-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {children}
+                            </Link>
+                        );
+                    })}
                 </div>
-            </div>
+            </nav>
         </div>
     );
 }
