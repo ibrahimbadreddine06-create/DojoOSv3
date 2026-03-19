@@ -314,27 +314,32 @@ async function enrichYoutubeVideo(rawResult: any, mustVerify: boolean): Promise<
   };
 }
 
-// Analyze a YouTube video's actual content against the learning directive using Gemini's video understanding.
+// Analyze a YouTube video's content against the learning directive using Gemini's knowledge.
+// Uses text-only analysis (knowledge-based) — more reliable than fileData YouTube processing.
 async function analyzeVideoContent(
   videoId: string,
+  videoTitle: string,
+  channel: string,
   directive: string,
   chapterTitle: string
 ): Promise<{ covers: string[]; misses: string[]; score: number; description: string } | null> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   const prompt = `You are evaluating a YouTube video for a learner studying: "${chapterTitle}".
+
+VIDEO: "${videoTitle}" by ${channel}
+URL: https://www.youtube.com/watch?v=${videoId}
 
 LEARNING DIRECTIVE — what the learner must master:
 ${directive}
 
-Watch this video and analyze its actual content. Then determine:
-1. Which specific learning objectives from the directive are clearly covered?
+Based on your knowledge of this video's content, determine:
+1. Which specific learning objectives from the directive are clearly covered in this video?
 2. Which specific learning objectives are NOT adequately covered?
 3. Alignment score: how well does this video serve this directive? (0-10)
-4. Write a 2-sentence summary of what this video actually teaches.
+4. Write a 2-sentence description of what this video actually teaches.
 
-Be strict and honest — only mark something as "covered" if the video genuinely teaches it.
+Be strict — only mark something as "covered" if the video genuinely teaches it in depth.
 
 OUTPUT — ONLY valid JSON, no markdown:
 {
@@ -345,16 +350,7 @@ OUTPUT — ONLY valid JSON, no markdown:
 }`;
 
   try {
-    const result = await model.generateContent({
-      contents: [{
-        role: "user",
-        parts: [
-          { fileData: { mimeType: "video/mp4", fileUri: videoUrl } },
-          { text: prompt },
-        ],
-      }],
-    } as any);
-
+    const result = await model.generateContent(prompt);
     const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
@@ -374,6 +370,9 @@ OUTPUT — ONLY valid JSON, no markdown:
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
+  // YouTube uses a plain model (no Google Search) so Gemini returns clean JSON.
+  // Website/PDF/custom use Google Search for real, current URLs.
+  const youtubeModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
     tools: [{ googleSearch: {} } as any],
@@ -501,14 +500,14 @@ OUTPUT — return ONLY valid JSON array, no markdown:
 
   let result;
   try {
-    result = await model.generateContent(prompt);
+    // YouTube uses the plain model (no Google Search) so JSON output is reliable.
+    // All other types use the Google Search model for real, current URLs.
+    result = await (params.materialType === "youtube" ? youtubeModel : model).generateContent(prompt);
   } catch (err: any) {
     console.error("AI find-materials error:", err.message);
-    // For non-YouTube, Gemini failure = can't get results
     if (params.materialType !== "youtube") {
       return { type: params.materialType, results: [] };
     }
-    // YouTube: if Gemini fails, return empty (no grounding without response)
     return { type: "youtube", results: [] };
   }
 
@@ -559,40 +558,23 @@ OUTPUT — return ONLY valid JSON array, no markdown:
 
     const verified = enriched.filter((r): r is YoutubeResult => r !== null);
 
-    // ── Step 2: Also extract YouTube URLs from Google Search grounding chunks ─
-    const candidates = result.response.candidates;
-    const groundingMeta = candidates?.[0]?.groundingMetadata as any;
-    const groundingYoutube: YoutubeResult[] = [];
-    if (groundingMeta?.groundingChunks) {
-      const groundingEnriched = await Promise.all(
-        groundingMeta.groundingChunks
-          .filter((chunk: any) => {
-            const uri: string = chunk.web?.uri || "";
-            return uri.includes("youtube.com/watch") || uri.includes("youtu.be/");
-          })
-          .map((chunk: any) => enrichYoutubeVideo({ url: chunk.web.uri, title: chunk.web.title || "", channel: "", description: "", covers: [], misses: [] }, false))
-      );
-      groundingYoutube.push(...groundingEnriched.filter((r): r is YoutubeResult => r !== null));
-    }
-
-    // ── Step 3: Merge and deduplicate all candidates ──────────────────────────
+    // ── Step 2: Deduplicate verified candidates ───────────────────────────────
     const seen = new Set<string>();
-    const deduped = [...verified, ...groundingYoutube].filter(r => {
+    const deduped = verified.filter(r => {
       if (!r.videoId) return false;
       if (seen.has(r.videoId)) return false;
       seen.add(r.videoId);
       return true;
     });
 
-    console.log(`YouTube search: ${verified.length} AI-verified + ${groundingYoutube.length} grounding = ${deduped.length} total candidates`);
+    console.log(`YouTube search: ${deduped.length} videos verified via oEmbed`);
 
-    // ── Step 4: Analyze each video's actual content against the directive ─────
-    // Run analysis in parallel with a per-video timeout (15 s)
+    // ── Step 4: Analyze each video's content against the directive (knowledge-based) ──
     const analysisResults = await Promise.allSettled(
       deduped.map(async (video) => {
         const analysis = await Promise.race([
-          analyzeVideoContent(video.videoId, directive, params.chapterTitle),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 15000)),
+          analyzeVideoContent(video.videoId, video.title, video.channel, directive, params.chapterTitle),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 12000)),
         ]);
         return { video, analysis };
       })
