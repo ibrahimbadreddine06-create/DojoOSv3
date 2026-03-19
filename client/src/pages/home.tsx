@@ -382,16 +382,16 @@ export default function HomePage() {
     <div className="min-h-screen bg-background relative pb-24">
       <OnboardingTour />
       <div className="p-4 md:p-8 space-y-4 max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground">
               {format(new Date(), "EEEE, MMMM do, yyyy")}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             {isEditing && (
-              <div className="flex items-center gap-2 animate-in fade-in duration-300">
+              <div className="flex flex-wrap items-center gap-2 animate-in fade-in duration-300">
                 <span className="text-sm font-medium">Columns:</span>
                 <Select value={config.columns?.toString() || "3"} onValueChange={(v) => setColumns(parseInt(v))}>
                   <SelectTrigger className="w-24 h-9 bg-background"><SelectValue /></SelectTrigger>
@@ -401,6 +401,12 @@ export default function HomePage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button size="sm" variant="outline" onClick={() => addWidget("image")} className="gap-1 h-9">
+                  <ImageIcon className="w-4 h-4" /> Image
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => addWidget("clock")} className="gap-1 h-9">
+                  <Clock className="w-4 h-4" /> Clock
+                </Button>
               </div>
             )}
             <Button id="tour-customize-btn" variant={isEditing ? "default" : "outline"} onClick={() => setIsEditing(!isEditing)} className="gap-2">
