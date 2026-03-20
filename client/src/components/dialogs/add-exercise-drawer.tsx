@@ -63,16 +63,15 @@ export function AddExerciseDrawer({ onSelect, trigger }: AddExerciseDrawerProps)
                                     onClick={() => handleSelect(exercise.id)}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
-                                            {exercise.imageUrl ? (
+                                        <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center relative">
+                                            <Dumbbell className="w-5 h-5 text-muted-foreground/40" />
+                                            {exercise.imageUrl && (
                                                 <img
                                                     src={exercise.imageUrl}
                                                     alt={exercise.name}
-                                                    className="h-full w-full object-cover"
+                                                    className="absolute inset-0 h-full w-full object-cover"
                                                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                                                 />
-                                            ) : (
-                                                <Dumbbell className="w-5 h-5 text-muted-foreground/40" />
                                             )}
                                         </div>
                                         <div>
