@@ -23,15 +23,16 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
-            {/* Slim top bar */}
-            <header className="sticky top-0 z-30 flex items-center px-4 h-11 border-b border-border bg-background/90 backdrop-blur-md shrink-0">
+            {/* Slim top bar with safe area */}
+            <header className="sticky top-0 z-30 flex items-center px-4 border-b border-border bg-background/90 backdrop-blur-md shrink-0"
+                style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(2.75rem + env(safe-area-inset-top))" }}>
                 <Link href="/body">
                     <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
                         <ChevronLeft className="w-4 h-4" />
                         <span>DojoOS</span>
                     </button>
                 </Link>
-                <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-sm">
+                <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-sm" style={{ top: "calc(50% + env(safe-area-inset-top) / 2)" }}>
                     {activeItem?.label ?? "Body"}
                 </span>
             </header>

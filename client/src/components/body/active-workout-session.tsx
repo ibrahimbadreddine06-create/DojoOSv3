@@ -334,7 +334,8 @@ export function ActiveWorkoutSession() {
         <div className="h-[100dvh] w-full bg-background flex flex-col overflow-hidden">
 
             {/* ── Top status bar ───────────────────────────────────────── */}
-            <div className="shrink-0 bg-background/95 backdrop-blur-md border-b border-border">
+            <div className="shrink-0 bg-background/95 backdrop-blur-md border-b border-border"
+                style={{ paddingTop: "env(safe-area-inset-top)" }}>
                 <div className="flex items-center justify-between px-4 py-2.5">
                     <button
                         onClick={() => setLocation("/body")}
@@ -418,12 +419,12 @@ export function ActiveWorkoutSession() {
                             </div>
 
                             {/* ── HERO IMAGE — takes all remaining vertical space ── */}
-                            <div className="flex-1 relative mx-4 mb-3 rounded-2xl overflow-hidden bg-muted/50 min-h-0">
+                            <div className="flex-1 relative mx-4 mb-3 rounded-2xl overflow-hidden bg-muted/30 min-h-0">
                                 {currentEx.exercise.imageUrl && !imgError ? (
                                     <img
                                         src={currentEx.exercise.imageUrl}
                                         alt={currentEx.exercise.name}
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-contain"
                                         onError={() => setImgError(true)}
                                     />
                                 ) : (
