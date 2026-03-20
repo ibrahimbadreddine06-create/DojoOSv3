@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { AddExerciseDrawer } from "@/components/dialogs/add-exercise-drawer";
 import {
     ArrowLeft, Play, Square, SkipForward, Coffee, ExternalLink,
-    Dumbbell, Plus, Timer as TimerIcon, ChevronRight, Check, X
+    Dumbbell, Plus, Timer as TimerIcon, ChevronRight, Check, X, BookOpen
 } from "lucide-react";
 import { ExerciseLibraryItem, Workout, WorkoutExercise, WorkoutSet } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -260,6 +260,7 @@ export function ActiveWorkoutSession() {
     const [showLogModal, setShowLogModal] = useState(false);
     const [showFinish, setShowFinish] = useState(false);
     const [imgError, setImgError] = useState(false);
+    const [showInstructions, setShowInstructions] = useState(false);
 
     if (!match || !params?.id) return null;
     const workoutId = params.id;
@@ -377,7 +378,7 @@ export function ActiveWorkoutSession() {
                     {exercises.map((e, i) => {
                         const allDone = e.sets.length > 0 && e.sets.every(s => s.completed);
                         return (
-                            <button key={e.id} onClick={() => { setActiveExIdx(i); setImgError(false); }}
+                            <button key={e.id} onClick={() => { setActiveExIdx(i); setImgError(false); setShowInstructions(false); }}
                                 className={cn(
                                     "shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border",
                                     i === activeExIdx ? "bg-primary text-primary-foreground border-primary"
@@ -432,13 +433,44 @@ export function ActiveWorkoutSession() {
                                     </div>
                                 )}
 
-                                {/* YouTube tutorial button — top right corner */}
-                                {currentEx.exercise.videoUrl && (
-                                    <a href={currentEx.exercise.videoUrl} target="_blank" rel="noopener noreferrer"
-                                        className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/80 transition-colors">
-                                        <ExternalLink className="w-3 h-3" />
-                                        Tutorial
-                                    </a>
+                                {/* Top-right buttons */}
+                                <div className="absolute top-3 right-3 flex gap-2">
+                                    {currentEx.exercise.instructions && (
+                                        <button
+                                            onClick={() => setShowInstructions(v => !v)}
+                                            className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/80 transition-colors"
+                                        >
+                                            <BookOpen className="w-3 h-3" />
+                                            How-to
+                                        </button>
+                                    )}
+                                    {currentEx.exercise.videoUrl && (
+                                        <a href={currentEx.exercise.videoUrl} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-black/80 transition-colors">
+                                            <ExternalLink className="w-3 h-3" />
+                                            Tutorial
+                                        </a>
+                                    )}
+                                </div>
+
+                                {/* Instructions overlay */}
+                                {showInstructions && currentEx.exercise.instructions && (
+                                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm overflow-y-auto p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/70">How to perform</p>
+                                            <button onClick={() => setShowInstructions(false)} className="text-white/60 hover:text-white">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <ol className="space-y-2">
+                                            {currentEx.exercise.instructions.split("\n").filter(Boolean).map((step, i) => (
+                                                <li key={i} className="flex gap-2.5 text-sm text-white/90">
+                                                    <span className="text-[10px] font-black text-red-400 mt-0.5 shrink-0 w-4">{i + 1}.</span>
+                                                    <span>{step}</span>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </div>
                                 )}
 
                                 {/* Set stopwatch overlay (when running) */}
@@ -523,7 +555,7 @@ export function ActiveWorkoutSession() {
 
                     {/* Skip */}
                     <button
-                        onClick={() => { setActiveExIdx(i => Math.min(i + 1, exercises.length - 1)); setImgError(false); }}
+                        onClick={() => { setActiveExIdx(i => Math.min(i + 1, exercises.length - 1)); setImgError(false); setShowInstructions(false); }}
                         disabled={activeExIdx >= exercises.length - 1}
                         className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-2xl border border-border/60 hover:bg-accent transition-colors shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                     >

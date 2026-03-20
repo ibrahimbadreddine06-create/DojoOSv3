@@ -266,40 +266,87 @@ export function WorkoutTab() {
               </div>
             </div>
 
-            <div className="md:col-span-3 bg-card border border-border/60 rounded-2xl p-5">
-              {selectedExerciseId ? (
-                <div className="h-full flex flex-col gap-4">
-                  <div>
-                    <h3 className="text-xl font-black">{exercises?.find(e => e.id === selectedExerciseId)?.name}</h3>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-widest mt-0.5">Max weight over time · kg</p>
-                  </div>
-                  <div className="flex-1 min-h-[200px]">
-                    {exerciseProgress && exerciseProgress.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={exerciseProgress.map(p => ({ date: p.date.slice(5), weight: p.maxWeight }))}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.08} />
-                          <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
-                          <YAxis fontSize={11} tickLine={false} axisLine={false} domain={["dataMin - 5", "dataMax + 5"]} unit="kg" />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))", fontSize: 12 }}
-                            formatter={(v: number) => [`${v} kg`, "Max Weight"]}
-                          />
-                          <Line type="monotone" dataKey="weight" stroke="#ef4444" strokeWidth={2.5}
-                            dot={{ r: 4, fill: "#ef4444", strokeWidth: 0 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
-                        <TrendingUp className="w-9 h-9 opacity-20" />
-                        <p className="text-sm">No sessions logged yet</p>
+            <div className="md:col-span-3 bg-card border border-border/60 rounded-2xl overflow-hidden">
+              {selectedExerciseId ? (() => {
+                const ex = exercises?.find(e => e.id === selectedExerciseId);
+                return (
+                  <div className="h-full flex flex-col">
+                    {/* Exercise image */}
+                    {ex?.imageUrl && (
+                      <div className="relative h-44 bg-muted flex-shrink-0 overflow-hidden">
+                        <img src={ex.imageUrl} alt={ex.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+                        <div className="absolute bottom-3 left-4 flex gap-1.5 flex-wrap">
+                          {ex.targetMuscleGroup && (
+                            <span className="text-[10px] font-bold uppercase tracking-widest bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm capitalize">
+                              {ex.targetMuscleGroup.replace(/-/g, " ")}
+                            </span>
+                          )}
+                          {ex.category && (
+                            <span className="text-[10px] font-bold uppercase tracking-widest bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+                              {ex.category}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
+                    <div className="p-5 flex flex-col gap-4 flex-1 overflow-y-auto">
+                      <div>
+                        <h3 className="text-xl font-black">{ex?.name}</h3>
+                        {!ex?.imageUrl && (
+                          <div className="flex gap-1.5 mt-1 flex-wrap">
+                            {ex?.targetMuscleGroup && <Badge variant="secondary" className="capitalize text-xs">{ex.targetMuscleGroup.replace(/-/g, " ")}</Badge>}
+                            {ex?.category && <Badge variant="outline" className="text-xs">{ex.category}</Badge>}
+                          </div>
+                        )}
+                      </div>
+                      {/* Instructions */}
+                      {ex?.instructions && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">How to</p>
+                          <ol className="space-y-1.5">
+                            {ex.instructions.split("\n").filter(Boolean).map((step, i) => (
+                              <li key={i} className="flex gap-2.5 text-sm text-muted-foreground">
+                                <span className="text-[10px] font-black text-primary mt-0.5 shrink-0 w-4">{i + 1}.</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                      {/* Progress chart */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Max weight over time · kg</p>
+                        <div className="min-h-[160px]">
+                          {exerciseProgress && exerciseProgress.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={160}>
+                              <LineChart data={exerciseProgress.map(p => ({ date: p.date.slice(5), weight: p.maxWeight }))}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.08} />
+                                <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                                <YAxis fontSize={11} tickLine={false} axisLine={false} domain={["dataMin - 5", "dataMax + 5"]} unit="kg" />
+                                <Tooltip
+                                  contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "12px", border: "1px solid hsl(var(--border))", fontSize: 12 }}
+                                  formatter={(v: number) => [`${v} kg`, "Max Weight"]}
+                                />
+                                <Line type="monotone" dataKey="weight" stroke="#ef4444" strokeWidth={2.5}
+                                  dot={{ r: 4, fill: "#ef4444", strokeWidth: 0 }} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="h-[160px] flex flex-col items-center justify-center text-muted-foreground gap-2">
+                              <TrendingUp className="w-9 h-9 opacity-20" />
+                              <p className="text-sm">No sessions logged yet</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground min-h-[200px]">
+                );
+              })() : (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground min-h-[200px] p-5">
                   <Dumbbell className="w-10 h-10 opacity-15 mb-3" />
-                  <p className="text-sm">Select an exercise to view progress</p>
+                  <p className="text-sm">Select an exercise to view details</p>
                 </div>
               )}
             </div>
