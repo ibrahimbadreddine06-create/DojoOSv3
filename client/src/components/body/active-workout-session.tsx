@@ -308,7 +308,7 @@ export function ActiveWorkoutSession() {
     });
 
     if (isLoading) return (
-        <div className="flex items-center justify-center h-screen bg-background">
+        <div className="flex items-center justify-center h-[100dvh] w-full bg-background">
             <p className="text-muted-foreground text-sm animate-pulse">Loading…</p>
         </div>
     );
@@ -330,7 +330,7 @@ export function ActiveWorkoutSession() {
     };
 
     return (
-        <div className="h-screen bg-background flex flex-col overflow-hidden">
+        <div className="h-[100dvh] w-full bg-background flex flex-col overflow-hidden">
 
             {/* ── Top status bar ───────────────────────────────────────── */}
             <div className="shrink-0 bg-background/95 backdrop-blur-md border-b border-border">
