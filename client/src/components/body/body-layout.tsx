@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Dumbbell, Moon, Sparkles, Utensils, ChevronLeft, Home } from "lucide-react";
+import { Dumbbell, Moon, Sparkles, Utensils, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 interface BodyLayoutProps {
@@ -7,11 +7,11 @@ interface BodyLayoutProps {
 }
 
 const navItems = [
-    { id: "hub", icon: Home, label: "Hub", path: "/body", color: "text-primary", activeColor: "#3b82f6" },
-    { id: "workout", icon: Dumbbell, label: "Activity", path: "/body/workout", color: "text-red-500", activeColor: "#ef4444" },
-    { id: "intake", icon: Utensils, label: "Nutrition", path: "/body/intake", color: "text-orange-500", activeColor: "#f97316" },
-    { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", color: "text-indigo-500", activeColor: "#6366f1" },
-    { id: "hygiene", icon: Sparkles, label: "Looks", path: "/body/hygiene", color: "text-violet-500", activeColor: "#8b5cf6" },
+    { id: "hub", icon: Home, label: "Hub", path: "/body", activeColor: "#3b82f6" },
+    { id: "workout", icon: Dumbbell, label: "Activity", path: "/body/workout", activeColor: "#ef4444" },
+    { id: "intake", icon: Utensils, label: "Nutrition", path: "/body/intake", activeColor: "#f97316" },
+    { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", activeColor: "#6366f1" },
+    { id: "hygiene", icon: Sparkles, label: "Looks", path: "/body/hygiene", activeColor: "#8b5cf6" },
 ];
 
 export function BodyLayout({ children }: BodyLayoutProps) {
@@ -23,28 +23,23 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
-            {/* Slim top bar with safe area */}
-            <header className="sticky top-0 z-30 flex items-center px-4 border-b border-border bg-background/90 backdrop-blur-md shrink-0"
-                style={{ paddingTop: "env(safe-area-inset-top)", height: "calc(2.75rem + env(safe-area-inset-top))" }}>
-                <Link href="/body">
-                    <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>DojoOS</span>
-                    </button>
-                </Link>
-                <span className="absolute left-1/2 -translate-x-1/2 font-semibold text-sm" style={{ top: "calc(50% + env(safe-area-inset-top) / 2)" }}>
-                    {activeItem?.label ?? "Body"}
-                </span>
-            </header>
+            {/* Safe area top spacer */}
+            <div className="shrink-0" style={{ height: 'env(safe-area-inset-top)' }} />
 
-            {/* Main content with bottom padding for nav */}
-            <main className="flex-1 pb-20">
+            {/* Main content */}
+            <main className="flex-1" style={{ paddingBottom: 'calc(4rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
                 {children}
             </main>
 
-            {/* Bottom navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-                <div className="flex items-end justify-around px-2 pt-1" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+            {/* Bottom nav */}
+            <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/40"
+                style={{
+                    background: 'rgba(var(--background-rgb, 255,255,255), 0.97)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                }}>
+                <div className="flex items-end justify-around px-1 pt-2"
+                    style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
                     {navItems.map((item) => {
                         const isActive = item.id === "hub"
                             ? location === "/body"
@@ -53,22 +48,30 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
                         return (
                             <Link key={item.id} href={item.path}>
-                                <div className="relative flex flex-col items-center gap-0.5 px-3 py-1 cursor-pointer group">
-                                    {/* Active indicator dot */}
+                                <div className="relative flex flex-col items-center gap-1 px-3 py-1 cursor-pointer min-w-[48px]">
+                                    {/* Active indicator */}
                                     {isActive && (
                                         <motion.div
-                                            layoutId="bottomNavDot"
-                                            className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                                            layoutId="navIndicator"
+                                            className="absolute -top-2 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full"
                                             style={{ backgroundColor: item.activeColor }}
-                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
                                         />
                                     )}
                                     <Icon
-                                        className={`w-5 h-5 transition-all duration-200 ${isActive ? item.color : "text-muted-foreground group-hover:text-foreground"}`}
+                                        className="w-5 h-5 transition-all duration-150"
+                                        style={{
+                                            color: isActive ? item.activeColor : undefined,
+                                            opacity: isActive ? 1 : 0.35,
+                                        }}
                                         strokeWidth={isActive ? 2.5 : 1.8}
                                     />
                                     <span
-                                        className={`text-[10px] font-medium transition-all duration-200 ${isActive ? "text-foreground" : "text-muted-foreground/70 group-hover:text-muted-foreground"}`}
+                                        className="text-[9px] font-bold transition-all duration-150 uppercase tracking-wide"
+                                        style={{
+                                            color: isActive ? item.activeColor : undefined,
+                                            opacity: isActive ? 1 : 0.35,
+                                        }}
                                     >
                                         {item.label}
                                     </span>

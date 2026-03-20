@@ -1,29 +1,12 @@
-import { Dumbbell, Moon, Sparkles, Utensils, ChevronRight, Flame, ArrowRight, CalendarDays, Zap, Settings } from "lucide-react";
+import { Dumbbell, Moon, Sparkles, Utensils, Flame, Zap, ChevronRight, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Workout, IntakeLog, SleepLog } from "@shared/schema";
-import { format, isAfter, subDays, isToday, startOfWeek, eachDayOfInterval, endOfWeek } from "date-fns";
-import { MetricRing } from "./metric-ring";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
+import { format, isAfter, subDays, isToday } from "date-fns";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const TODAY = format(new Date(), "yyyy-MM-dd");
-
-function BentoCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-    return (
-        <div className={`bg-card border border-border/60 rounded-2xl p-4 ${className}`}>
-            {children}
-        </div>
-    );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-    return (
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            {children}
-        </p>
-    );
-}
 
 export function BodyHub() {
     const [, setLocation] = useLocation();
@@ -35,22 +18,12 @@ export function BodyHub() {
     const { data: bodyProfile } = useQuery<any>({ queryKey: ["/api/body-profile"] });
 
     const sevenDaysAgo = subDays(new Date(), 7);
-    const thirtyDaysAgo = subDays(new Date(), 30);
 
-    // --- Metrics ---
     const recentWorkouts = workouts?.filter(w =>
         w.date && isAfter(new Date(w.date), sevenDaysAgo) && w.completed
     ) || [];
 
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    const weekWorkoutDays = new Set(
-        workouts?.filter(w => w.completed && w.date && isAfter(new Date(w.date), weekStart))
-            .map(w => format(new Date(w.date!), "yyyy-MM-dd")) || []
-    );
-
-    // Streak calculation
+    // Streak
     const streak = (() => {
         if (!workouts?.length) return 0;
         const sorted = [...workouts]
@@ -64,7 +37,7 @@ export function BodyHub() {
             const prevStr = format(subDays(checkDate, 1), "yyyy-MM-dd");
             if (wDate === checkStr || wDate === prevStr) {
                 count++;
-                checkDate = subDays(checkDate, count === 1 && wDate === checkStr ? 1 : 1);
+                checkDate = subDays(checkDate, 1);
             } else break;
         }
         return count;
@@ -81,269 +54,230 @@ export function BodyHub() {
 
     const totalRoutines = hygieneRoutines?.length || 0;
     const completedToday = hygieneRoutines?.filter(r => r.lastCompletedDate === TODAY).length || 0;
-    const hygienePct = totalRoutines > 0 ? Math.round((completedToday / totalRoutines) * 100) : 0;
 
-    // Readiness score
-    const activityScore = Math.min(100, recentWorkouts.length * 15);
-    const sleepScore = Math.min(100, (avgSleep / 8) * 100);
-    const nutritionScore = todayCalories > 0 ? Math.min(100, (todayCalories / calorieGoal) * 100) : 0;
-    const readinessScore = Math.round((activityScore + sleepScore + hygienePct + nutritionScore) / 4);
-
-    const readinessColor = readinessScore >= 70 ? "#22c55e" : readinessScore >= 40 ? "#eab308" : "#ef4444";
-
-    // Calorie trend (last 30 days)
-    const calorieTrend = (() => {
-        if (!workouts) return [];
-        const thirtyDayIntakes = intakeLogs ? [] : [];
-        // Group intakeLogs by date and sum calories
-        const grouped: Record<string, number> = {};
-        // We only have today's logs here, so show last 7 days of dummy-friendly data
-        // In production, fetch all intake logs; for now, show what we have
-        return [];
-    })();
-
-    // Today's scheduled workout
     const todayWorkout = workouts?.find(w => w.date && isToday(new Date(w.date)) && !w.completed);
     const todayCompletedWorkout = workouts?.find(w => w.date && isToday(new Date(w.date)) && w.completed);
 
-    // Last 7 days workout dots
     const last7Days = Array.from({ length: 7 }, (_, i) => {
         const d = subDays(new Date(), 6 - i);
         const dStr = format(d, "yyyy-MM-dd");
-        const hasWorkout = workouts?.some(w => w.date && format(new Date(w.date), "yyyy-MM-dd") === dStr && w.completed);
+        const hasWorkout = workouts?.some(w =>
+            w.date && format(new Date(w.date), "yyyy-MM-dd") === dStr && w.completed
+        );
         return { date: d, hasWorkout: !!hasWorkout };
     });
 
+    const recentWorkoutsList = workouts
+        ?.filter(w => w.completed && w.date)
+        .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())
+        .slice(0, 3) || [];
+
     return (
-        <div className="p-4 space-y-4 max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between pt-2">
+        <div className="pb-8">
+            {/* ── Header ─── */}
+            <div className="px-5 pt-5 pb-4 flex items-start justify-between">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight">Body</h1>
-                    <p className="text-xs text-muted-foreground">{format(new Date(), "EEEE, MMMM d")}</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                        {format(new Date(), "EEEE, MMM d")}
+                    </p>
+                    <h1 className="text-3xl font-black tracking-tight mt-0.5">Body</h1>
                 </div>
                 <button
                     onClick={() => setLocation("/body/setup")}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mt-1"
                 >
                     <Settings className="w-4 h-4" />
                 </button>
             </div>
 
-            {/* Section A: Three ring metrics */}
-            <div>
-                <SectionLabel>Today's Overview</SectionLabel>
-                <div className="grid grid-cols-3 gap-3">
-                    {/* Readiness */}
-                    <BentoCard className="flex flex-col items-center justify-center py-5">
-                        <MetricRing
-                            value={readinessScore}
-                            max={100}
-                            label="Readiness"
-                            unit="%"
-                            color={readinessColor}
-                            size="lg"
-                            sublabel="Overall"
-                        />
-                    </BentoCard>
+            {/* ── Today's workout hero ─── */}
+            <div className="px-4 mb-4">
+                {todayWorkout ? (
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setLocation(`/body/workout/active/${todayWorkout.id}`)}
+                        className="w-full rounded-3xl p-5 text-left overflow-hidden relative"
+                        style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', minHeight: 120 }}
+                    >
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-200/70 mb-1">Today's Workout</p>
+                        <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{todayWorkout.title}</h2>
+                        <div className="flex items-center justify-between mt-4">
+                            <p className="text-red-200/70 text-sm font-semibold">Ready to go</p>
+                            <div className="flex items-center gap-2 bg-white text-red-600 rounded-full px-4 py-2 font-black text-sm">
+                                <Zap className="w-4 h-4" /> Start
+                            </div>
+                        </div>
+                        {/* Decorative circle */}
+                        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full"
+                            style={{ background: 'rgba(255,255,255,0.06)' }} />
+                    </motion.button>
+                ) : todayCompletedWorkout ? (
+                    <div className="w-full rounded-3xl p-5 relative overflow-hidden"
+                        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #14532d 100%)', minHeight: 100 }}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-green-200/70 mb-1">Completed Today</p>
+                        <h2 className="text-xl font-black text-white">{todayCompletedWorkout.title}</h2>
+                        <p className="text-green-200/60 text-sm font-semibold mt-2">Great work! 💪</p>
+                        <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full"
+                            style={{ background: 'rgba(255,255,255,0.06)' }} />
+                    </div>
+                ) : (
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setLocation("/body/workout")}
+                        className="w-full rounded-3xl p-5 text-left border-2 border-dashed border-border/60 flex items-center justify-between"
+                    >
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mb-1">Today</p>
+                            <p className="font-bold text-foreground/70">No workout planned</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Tap to browse presets</p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground/40" />
+                    </motion.button>
+                )}
+            </div>
 
-                    {/* Calories */}
-                    <BentoCard className="flex flex-col items-center justify-center py-5">
-                        <MetricRing
-                            value={Math.round(todayCalories)}
-                            max={calorieGoal}
-                            label="Calories"
-                            unit="kcal"
-                            color="#f97316"
-                            size="lg"
-                            sublabel={`/ ${calorieGoal}`}
-                        />
-                    </BentoCard>
-
-                    {/* Activity */}
-                    <BentoCard className="flex flex-col items-center justify-center py-5">
-                        <MetricRing
-                            value={recentWorkouts.length}
-                            max={5}
-                            label="Activity"
-                            unit="/ wk"
-                            color="#ef4444"
-                            size="lg"
-                            sublabel="sessions"
-                        />
-                    </BentoCard>
+            {/* ── Stats row ─── */}
+            <div className="px-4 mb-4">
+                <div className="grid grid-cols-4 gap-2">
+                    {[
+                        {
+                            icon: <Flame className="w-4 h-4 text-orange-500" />,
+                            value: String(streak),
+                            label: "Streak",
+                            sub: "days",
+                        },
+                        {
+                            icon: <Moon className="w-4 h-4 text-indigo-400" />,
+                            value: avgSleep > 0 ? avgSleep.toFixed(1) : "—",
+                            label: "Sleep",
+                            sub: "avg h",
+                        },
+                        {
+                            icon: <Utensils className="w-4 h-4 text-orange-400" />,
+                            value: todayCalories > 0 ? Math.round(todayCalories) > 999
+                                ? `${(Math.round(todayCalories) / 1000).toFixed(1)}k` : String(Math.round(todayCalories)) : "—",
+                            label: "Kcal",
+                            sub: "today",
+                        },
+                        {
+                            icon: <Dumbbell className="w-4 h-4 text-red-500" />,
+                            value: String(recentWorkouts.length),
+                            label: "Sessions",
+                            sub: "7 days",
+                        },
+                    ].map((s, i) => (
+                        <div key={i} className="bg-card border border-border/50 rounded-2xl p-3 flex flex-col items-center gap-1">
+                            {s.icon}
+                            <span className="font-mono font-black text-lg leading-none tabular-nums">{s.value}</span>
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">{s.sub}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            {/* Section B: Streak + Sleep */}
-            <div className="grid grid-cols-3 gap-3">
-                {/* Streak (2/3) */}
-                <BentoCard className="col-span-2">
-                    <SectionLabel>Workout Streak</SectionLabel>
-                    <div className="flex items-end gap-4">
-                        <div className="flex items-baseline gap-1">
-                            <span className="font-mono font-black text-5xl tabular-nums leading-none">{streak}</span>
-                            <span className="text-muted-foreground text-sm font-medium">days</span>
-                        </div>
-                        <Flame className="w-8 h-8 text-orange-500 mb-0.5 shrink-0" />
-                    </div>
-                    {/* 7-day dots */}
-                    <div className="flex gap-1.5 mt-3">
+            {/* ── Last 7 days ─── */}
+            <div className="px-4 mb-4">
+                <div className="bg-card border border-border/50 rounded-2xl p-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 mb-3">Last 7 days</p>
+                    <div className="flex gap-2 justify-between">
                         {last7Days.map((day, i) => (
-                            <div key={i} className="flex flex-col items-center gap-1">
-                                <div
-                                    className={`w-6 h-6 rounded-full transition-all ${day.hasWorkout
-                                        ? "bg-red-500 shadow-sm shadow-red-500/40"
-                                        : "bg-muted"
-                                        }`}
-                                />
-                                <span className="text-[9px] text-muted-foreground/60 font-medium">
+                            <div key={i} className="flex flex-col items-center gap-1.5">
+                                <div className={cn(
+                                    "w-8 h-8 rounded-full transition-all",
+                                    day.hasWorkout
+                                        ? "bg-red-500 shadow-lg shadow-red-500/30"
+                                        : isToday(day.date)
+                                            ? "border-2 border-dashed border-border"
+                                            : "bg-muted"
+                                )} />
+                                <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase">
                                     {format(day.date, "EEEEE")}
                                 </span>
                             </div>
                         ))}
                     </div>
-                </BentoCard>
-
-                {/* Sleep (1/3) */}
-                <BentoCard className="flex flex-col items-center justify-center py-4">
-                    <MetricRing
-                        value={parseFloat(avgSleep.toFixed(1))}
-                        max={bodyProfile?.sleepGoalHours || 8}
-                        label="Sleep"
-                        unit="h"
-                        color="#6366f1"
-                        size="md"
-                        sublabel="avg 7d"
-                    />
-                </BentoCard>
-            </div>
-
-            {/* Section C: Today's Session */}
-            <div>
-                <SectionLabel>Today's Session</SectionLabel>
-                {todayWorkout ? (
-                    <BentoCard className="cursor-pointer hover:border-primary/40 transition-colors group"
-                        onClick={() => setLocation(`/body/workout/active/${todayWorkout.id}`)}>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-bold text-base">{todayWorkout.title}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">Scheduled for today</p>
-                            </div>
-                            <button className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-colors">
-                                <Zap className="w-3.5 h-3.5" />
-                                Start
-                            </button>
-                        </div>
-                    </BentoCard>
-                ) : todayCompletedWorkout ? (
-                    <BentoCard>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                                <Zap className="w-4 h-4 text-green-500" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-sm">Workout done today!</p>
-                                <p className="text-xs text-muted-foreground">{todayCompletedWorkout.title}</p>
-                            </div>
-                        </div>
-                    </BentoCard>
-                ) : (
-                    <BentoCard>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-semibold text-sm text-muted-foreground">No session planned</p>
-                                <p className="text-xs text-muted-foreground/60 mt-0.5">Rest day or add a workout</p>
-                            </div>
-                            <button
-                                onClick={() => setLocation("/body/workout")}
-                                className="text-xs font-semibold text-primary flex items-center gap-1 hover:underline"
-                            >
-                                Presets <ArrowRight className="w-3 h-3" />
-                            </button>
-                        </div>
-                    </BentoCard>
-                )}
-            </div>
-
-            {/* Section D: Module quick access */}
-            <div>
-                <SectionLabel>Modules</SectionLabel>
-                <div className="grid grid-cols-2 gap-3">
-                    <ModuleCard
-                        title="Activity"
-                        icon={<Dumbbell className="w-4 h-4" />}
-                        metric={`${recentWorkouts.length} sessions`}
-                        sublabel="this week"
-                        color="text-red-500"
-                        borderColor="border-red-500/40"
-                        onClick={() => setLocation("/body/workout")}
-                    />
-                    <ModuleCard
-                        title="Nutrition"
-                        icon={<Utensils className="w-4 h-4" />}
-                        metric={`${Math.round(todayCalories)} kcal`}
-                        sublabel={`/ ${calorieGoal} today`}
-                        color="text-orange-500"
-                        borderColor="border-orange-500/40"
-                        onClick={() => setLocation("/body/intake")}
-                    />
-                    <ModuleCard
-                        title="Sleep"
-                        icon={<Moon className="w-4 h-4" />}
-                        metric={`${avgSleep.toFixed(1)}h`}
-                        sublabel="avg this week"
-                        color="text-indigo-500"
-                        borderColor="border-indigo-500/40"
-                        onClick={() => setLocation("/body/sleep")}
-                    />
-                    <ModuleCard
-                        title="Looks"
-                        icon={<Sparkles className="w-4 h-4" />}
-                        metric={totalRoutines > 0 ? `${completedToday}/${totalRoutines}` : "—"}
-                        sublabel={totalRoutines > 0 ? "routines today" : "Set up routines"}
-                        color="text-violet-500"
-                        borderColor="border-violet-500/40"
-                        onClick={() => setLocation("/body/hygiene")}
-                    />
                 </div>
             </div>
 
-            <div className="h-2" />
-        </div>
-    );
-}
-
-function ModuleCard({
-    title,
-    icon,
-    metric,
-    sublabel,
-    color,
-    borderColor,
-    onClick,
-}: {
-    title: string;
-    icon: React.ReactNode;
-    metric: string;
-    sublabel: string;
-    color: string;
-    borderColor: string;
-    onClick: () => void;
-}) {
-    return (
-        <motion.div
-            whileTap={{ scale: 0.97 }}
-            onClick={onClick}
-            className={`bg-card border ${borderColor} rounded-2xl p-4 cursor-pointer hover:border-opacity-70 transition-colors group`}
-        >
-            <div className="flex items-center justify-between mb-2">
-                <div className={`${color}`}>{icon}</div>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
+            {/* ── Modules ─── */}
+            <div className="px-4 mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 mb-3 px-1">Modules</p>
+                <div className="space-y-2">
+                    {[
+                        {
+                            icon: <Dumbbell className="w-5 h-5" />,
+                            color: "text-red-500",
+                            bg: "bg-red-500/8",
+                            title: "Activity",
+                            value: `${recentWorkouts.length} sessions this week`,
+                            path: "/body/workout",
+                        },
+                        {
+                            icon: <Utensils className="w-5 h-5" />,
+                            color: "text-orange-500",
+                            bg: "bg-orange-500/8",
+                            title: "Nutrition",
+                            value: todayCalories > 0 ? `${Math.round(todayCalories)} / ${calorieGoal} kcal today` : "No intake logged today",
+                            path: "/body/intake",
+                        },
+                        {
+                            icon: <Moon className="w-5 h-5" />,
+                            color: "text-indigo-400",
+                            bg: "bg-indigo-500/8",
+                            title: "Sleep",
+                            value: avgSleep > 0 ? `${avgSleep.toFixed(1)}h avg this week` : "No sleep logged",
+                            path: "/body/sleep",
+                        },
+                        {
+                            icon: <Sparkles className="w-5 h-5" />,
+                            color: "text-violet-500",
+                            bg: "bg-violet-500/8",
+                            title: "Looks",
+                            value: totalRoutines > 0 ? `${completedToday}/${totalRoutines} routines today` : "Set up your routines",
+                            path: "/body/hygiene",
+                        },
+                    ].map((m) => (
+                        <motion.button
+                            key={m.title}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setLocation(m.path)}
+                            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-card border border-border/50 hover:border-border transition-colors text-left"
+                        >
+                            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", m.bg, m.color)}>
+                                {m.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm">{m.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{m.value}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />
+                        </motion.button>
+                    ))}
+                </div>
             </div>
-            <p className="font-mono font-black text-xl tabular-nums leading-none">{metric}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{sublabel}</p>
-            <p className={`text-xs font-semibold mt-1 ${color}`}>{title}</p>
-        </motion.div>
+
+            {/* ── Recent workouts ─── */}
+            {recentWorkoutsList.length > 0 && (
+                <div className="px-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 mb-3 px-1">Recent</p>
+                    <div className="space-y-2">
+                        {recentWorkoutsList.map((w) => (
+                            <div key={w.id}
+                                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/50">
+                                <div className="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                                    <Dumbbell className="w-4 h-4 text-red-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-sm truncate">{w.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {w.date ? format(new Date(w.date), "EEE, MMM d") : ""}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
