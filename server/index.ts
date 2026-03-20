@@ -135,13 +135,13 @@ async function seedDatabase() {
     if (needsReseed) {
       if (existing && existing.length > 0) {
         console.log("Existing exercises have no imageUrl - reseeding...");
-        await db.delete(exerciseLibrary).catch(e => console.error(e));
+        await db.delete(exerciseLibrary).catch((e: unknown) => console.error(e));
       }
       console.log(`Seeding ${EXERCISES_DATA.length} exercises...`);
       const batchSize = 100;
       for (let i = 0; i < EXERCISES_DATA.length; i += batchSize) {
         const batch = EXERCISES_DATA.slice(i, i + batchSize);
-        await db.insert(exerciseLibrary).values(batch).onConflictDoNothing().catch(e => console.error(e));
+        await db.insert(exerciseLibrary).values(batch).onConflictDoNothing().catch((e: unknown) => console.error(e));
       }
       console.log("Exercise seeding complete.");
     }

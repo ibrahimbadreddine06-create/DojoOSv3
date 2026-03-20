@@ -456,7 +456,7 @@ export function ActiveWorkoutSession() {
 
                                 {/* Instructions overlay */}
                                 {showInstructions && currentEx.exercise.instructions && (
-                                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm overflow-y-auto p-4">
+                                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm overflow-y-auto p-4 pb-8">
                                         <div className="flex items-center justify-between mb-3">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-white/70">How to perform</p>
                                             <button onClick={() => setShowInstructions(false)} className="text-white/60 hover:text-white">
@@ -514,7 +514,7 @@ export function ActiveWorkoutSession() {
             </div>
 
             {/* ── Bottom action bar ─────────────────────────────────────── */}
-            <div className="shrink-0 bg-background/95 backdrop-blur-md border-t border-border px-4 py-3 pb-safe"
+            <div className="shrink-0 bg-background/95 backdrop-blur-md border-t border-border px-4 pt-3"
                 style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
                 <div className="flex items-center gap-3 max-w-xl mx-auto">
 

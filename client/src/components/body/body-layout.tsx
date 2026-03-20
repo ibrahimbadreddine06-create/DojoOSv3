@@ -44,7 +44,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
             {/* Bottom navigation */}
             <nav className="fixed bottom-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-t border-border">
-                <div className="flex items-end justify-around px-2 pt-1 pb-safe" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+                <div className="flex items-end justify-around px-2 pt-1" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
                     {navItems.map((item) => {
                         const isActive = item.id === "hub"
                             ? location === "/body"
