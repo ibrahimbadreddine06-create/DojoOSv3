@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
+import React, { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Dumbbell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ExerciseLibraryItem } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -63,15 +63,24 @@ export function AddExerciseDrawer({ onSelect, trigger }: AddExerciseDrawerProps)
                                     onClick={() => handleSelect(exercise.id)}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold uppercase">
-                                            {exercise.name.substring(0, 2)}
+                                        <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+                                            {exercise.imageUrl ? (
+                                                <img
+                                                    src={exercise.imageUrl}
+                                                    alt={exercise.name}
+                                                    className="h-full w-full object-cover"
+                                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                                />
+                                            ) : (
+                                                <Dumbbell className="w-5 h-5 text-muted-foreground/40" />
+                                            )}
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-sm">{exercise.name}</h4>
-                                            <p className="text-xs text-muted-foreground capitalize">{exercise.targetMuscleGroup}</p>
+                                            <p className="text-xs text-muted-foreground capitalize">{exercise.targetMuscleGroup?.replace(/-/g, " ")}</p>
                                         </div>
                                     </div>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8">
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 flex-shrink-0">
                                         <Plus className="w-4 h-4" />
                                     </Button>
                                 </div>
