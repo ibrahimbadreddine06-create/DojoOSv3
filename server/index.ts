@@ -8,6 +8,7 @@ import { setupAuth } from "./auth";
 import { EXERCISES_DATA } from "./seeds/exercises";
 import { db } from "./db";
 import { exerciseLibrary } from "../shared/schema";
+import { isNull, eq } from "drizzle-orm";
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("!!! Unhandled Rejection at:", promise, "reason:", reason);
@@ -130,13 +131,9 @@ async function seedDatabase() {
       console.error("DB Query Failed (Missing DATABASE_URL on Vercel?):", err);
       return [];
     });
-    
-    const needsReseed = !existing?.length || existing.every(e => !e.imageUrl);
-    if (needsReseed) {
-      if (existing && existing.length > 0) {
-        console.log("Existing exercises have no imageUrl - reseeding...");
-        await db.delete(exerciseLibrary).catch((e: unknown) => console.error(e));
-      }
+
+    if (!existing?.length) {
+      // Fresh DB — insert all exercises
       console.log(`Seeding ${EXERCISES_DATA.length} exercises...`);
       const batchSize = 100;
       for (let i = 0; i < EXERCISES_DATA.length; i += batchSize) {
@@ -144,6 +141,25 @@ async function seedDatabase() {
         await db.insert(exerciseLibrary).values(batch).onConflictDoNothing().catch((e: unknown) => console.error(e));
       }
       console.log("Exercise seeding complete.");
+    } else {
+      // Patch existing exercises that are missing imageUrl
+      const missingImages = existing.filter(e => !e.imageUrl);
+      if (missingImages.length > 0) {
+        console.log(`Patching imageUrl for ${missingImages.length} exercises...`);
+        const seedMap = new Map(EXERCISES_DATA.map(e => [e.name.toLowerCase(), e.imageUrl]));
+        let patched = 0;
+        for (const ex of missingImages) {
+          const url = seedMap.get(ex.name.toLowerCase());
+          if (url) {
+            await db.update(exerciseLibrary)
+              .set({ imageUrl: url })
+              .where(eq(exerciseLibrary.id, ex.id))
+              .catch((e: unknown) => console.error(e));
+            patched++;
+          }
+        }
+        console.log(`Patched ${patched} exercises with imageUrl.`);
+      }
     }
     
     const existingDisciplines = await storage.getDisciplines().catch(e => []);
