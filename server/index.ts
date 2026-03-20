@@ -6,6 +6,8 @@ import { registerRoutes } from "./routes";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { EXERCISES_DATA } from "./seeds/exercises";
+import { db } from "./db";
+import { exerciseLibrary } from "../shared/schema";
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("!!! Unhandled Rejection at:", promise, "reason:", reason);
@@ -130,10 +132,13 @@ async function seedDatabase() {
     });
     
     if (existing && existing.length === 0) {
-      console.log("Seeding exercises...");
-      for (const ex of EXERCISES_DATA) {
-        await storage.createExerciseLibraryItem(ex).catch(e => console.error(e));
+      console.log(`Seeding ${EXERCISES_DATA.length} exercises...`);
+      const batchSize = 100;
+      for (let i = 0; i < EXERCISES_DATA.length; i += batchSize) {
+        const batch = EXERCISES_DATA.slice(i, i + batchSize);
+        await db.insert(exerciseLibrary).values(batch).onConflictDoNothing().catch(e => console.error(e));
       }
+      console.log("Exercise seeding complete.");
     }
     
     const existingDisciplines = await storage.getDisciplines().catch(e => []);
