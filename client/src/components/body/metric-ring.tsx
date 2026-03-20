@@ -62,7 +62,19 @@ export function MetricRing({
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: diameter, height: diameter }}>
+      <div
+        className="relative rounded-full"
+        style={{
+          width: diameter,
+          height: diameter,
+          boxShadow: `inset 0 2px 8px rgba(0,0,0,0.35), inset 0 -1px 3px rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.04)`
+        }}
+      >
+        {/* Subtle inner gradient for depth */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{ background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.03) 0%, transparent 60%)' }}
+        />
         <svg
           width={diameter}
           height={diameter}
@@ -77,7 +89,7 @@ export function MetricRing({
             fill="none"
             stroke={color}
             strokeWidth={strokeWidth}
-            opacity={0.15}
+            opacity={0.18}
           />
           {/* Progress ring */}
           <circle
