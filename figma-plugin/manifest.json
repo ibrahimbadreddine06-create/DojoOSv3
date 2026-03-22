@@ -1,0 +1,7 @@
+{
+  "name": "DojoOS Activity Page",
+  "id": "dojoos-activity-export",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}
