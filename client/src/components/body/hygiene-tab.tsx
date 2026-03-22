@@ -182,6 +182,12 @@ export function HygieneTab() {
   const weekly = routines?.filter(r => r.frequency === "weekly") || [];
   const monthly = routines?.filter(r => r.frequency === "monthly") || [];
 
+  const bestStreak = routines?.reduce((max, r) => Math.max(max, r.bestStreak || 0), 0) || 0;
+  const totalStreak = routines?.reduce((sum, r) => sum + (r.streak || 0), 0) || 0;
+  const dailyDone = daily.filter(r => isCompletedToday(r)).length;
+  const weeklyDone = weekly.filter(r => isCompletedToday(r)).length;
+  const monthlyDone = monthly.filter(r => isCompletedToday(r)).length;
+
   return (
     <div className="p-4 space-y-4 max-w-3xl mx-auto">
       {/* Header */}
@@ -205,11 +211,34 @@ export function HygieneTab() {
             size="lg"
             sublabel={`${completedToday}/${total} done`}
           />
-          <div className="flex-1">
-            <p className="font-black text-3xl font-mono tabular-nums" data-testid="text-hygiene-completion">{pct}%</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Completion today</p>
-            <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+          <div className="flex-1 space-y-3">
+            <div>
+              <p className="font-black text-3xl font-mono tabular-nums" data-testid="text-hygiene-completion">{pct}%</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Completion today</p>
+              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-violet-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+            {/* Breakdown by frequency */}
+            <div className="grid grid-cols-3 gap-2">
+              {daily.length > 0 && (
+                <div className="text-center">
+                  <p className="font-mono font-bold text-sm">{dailyDone}/{daily.length}</p>
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Daily</p>
+                </div>
+              )}
+              {weekly.length > 0 && (
+                <div className="text-center">
+                  <p className="font-mono font-bold text-sm">{weeklyDone}/{weekly.length}</p>
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Weekly</p>
+                </div>
+              )}
+              {monthly.length > 0 && (
+                <div className="text-center">
+                  <p className="font-mono font-bold text-sm">{monthlyDone}/{monthly.length}</p>
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Monthly</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -246,6 +275,30 @@ export function HygieneTab() {
           )}
         </div>
       ) : null}
+
+      {/* Streak stats */}
+      {total > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-card border border-border/60 rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+              <Flame className="w-4 h-4 text-orange-500" />
+            </div>
+            <div>
+              <p className="font-mono font-black text-xl leading-none">{totalStreak}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Active streaks</p>
+            </div>
+          </div>
+          <div className="bg-card border border-border/60 rounded-2xl p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-violet-500" />
+            </div>
+            <div>
+              <p className="font-mono font-black text-xl leading-none">{bestStreak}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">Best streak</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="h-2" />
     </div>
