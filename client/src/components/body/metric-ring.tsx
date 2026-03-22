@@ -31,6 +31,8 @@ export function MetricRing({
 }: MetricRingProps) {
   const { diameter, strokeWidth, fontSize, unitSize, labelSize } = SIZE_MAP[size];
   const [animatedProgress, setAnimatedProgress] = useState(0);
+  // Stable filter ID based on label to avoid conflicts
+  const filterId = `glow-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
   const radius = (diameter - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -67,7 +69,7 @@ export function MetricRing({
         style={{
           width: diameter,
           height: diameter,
-          boxShadow: `inset 0 2px 8px rgba(0,0,0,0.35), inset 0 -1px 3px rgba(255,255,255,0.04), 0 1px 0 rgba(255,255,255,0.04)`
+          boxShadow: `inset 0 2px 8px rgba(0,0,0,0.35), inset 0 -1px 3px rgba(255,255,255,0.04), 0 0 ${animatedProgress > 0.1 ? "16px" : "0px"} ${color}30`
         }}
       >
         {/* Subtle inner gradient for depth */}
@@ -81,6 +83,15 @@ export function MetricRing({
           viewBox={`0 0 ${diameter} ${diameter}`}
           style={{ transform: "rotate(-90deg)" }}
         >
+          <defs>
+            <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           {/* Background ring */}
           <circle
             cx={center}
@@ -89,21 +100,24 @@ export function MetricRing({
             fill="none"
             stroke={color}
             strokeWidth={strokeWidth}
-            opacity={0.18}
+            opacity={0.22}
           />
-          {/* Progress ring */}
-          <circle
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            style={{ transition: "stroke-dashoffset 0.05s linear" }}
-          />
+          {/* Progress ring with glow */}
+          {animatedProgress > 0 && (
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              filter={`url(#${filterId})`}
+              style={{ transition: "stroke-dashoffset 0.05s linear" }}
+            />
+          )}
         </svg>
         {/* Center content */}
         <div

@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Moon, Zap, TrendingDown } from "lucide-react";
+import { Moon, TrendingDown, Star } from "lucide-react";
 import { format, subDays, parseISO } from "date-fns";
 import { AddSleepLogDialog } from "@/components/dialogs/add-sleep-log-dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
-import { TodaySessions } from "../today-sessions";
 import { MetricRing } from "./metric-ring";
 
 const SLEEP_GOAL_HOURS = 8;
@@ -58,8 +56,13 @@ export function SleepTab() {
     return acc + (deficit > 0 ? deficit : 0);
   }, 0);
 
-  const avgActual = last7.filter(d => d.hasData).reduce((s, d) => s + d.actual, 0) /
-    (last7.filter(d => d.hasData).length || 1);
+  const daysWithData = last7.filter(d => d.hasData);
+  const avgActual = daysWithData.reduce((s, d) => s + d.actual, 0) / (daysWithData.length || 1);
+
+  // Sleep efficiency: avg (actual / goal) over last 7 days with data
+  const avgEfficiency = daysWithData.length > 0
+    ? Math.round(daysWithData.reduce((s, d) => s + Math.min(1, d.actual / (d.planned || sleepGoal)), 0) / daysWithData.length * 100)
+    : 0;
 
   const getReadinessColor = (score: number | null) => {
     if (score === null) return "text-muted-foreground";
@@ -94,11 +97,11 @@ export function SleepTab() {
           <MetricRing
             value={todayReadiness ?? 0}
             max={100}
-            label="Readiness"
+            label="Recovery"
             unit="%"
             color={readinessColor}
             size="lg"
-            sublabel="tonight"
+            sublabel="last night"
             animate={false}
           />
           <span className="sr-only" data-testid="text-readiness-score">{todayReadiness ?? "—"}</span>
@@ -117,13 +120,13 @@ export function SleepTab() {
         </div>
         <div className="bg-card border border-border/60 rounded-2xl p-3 flex flex-col items-center justify-center py-5">
           <MetricRing
-            value={parseFloat(weekDebt.toFixed(1))}
-            max={sleepGoal * 7}
-            label="Sleep Debt"
-            unit="h"
-            color={weekDebt > 0 ? "#ef4444" : "#22c55e"}
+            value={avgEfficiency}
+            max={100}
+            label="Efficiency"
+            unit="%"
+            color={avgEfficiency >= 90 ? "#22c55e" : avgEfficiency >= 70 ? "#eab308" : "#ef4444"}
             size="lg"
-            sublabel="this week"
+            sublabel="7-day avg"
             animate={false}
           />
           <span className="sr-only" data-testid="text-sleep-debt">{weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "0h"}</span>
@@ -161,6 +164,28 @@ export function SleepTab() {
         </div>
       </div>
 
+      {/* Sleep debt summary bar */}
+      {daysWithData.length > 0 && (
+        <div className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Sleep Debt</p>
+            <p className={`font-mono font-black text-xl tabular-nums ${weekDebt > 0 ? "text-red-500" : "text-green-500"}`}>
+              {weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "0h"}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">this week</p>
+          </div>
+          <div className="flex-1 max-w-[160px]">
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${weekDebt > 0 ? "bg-red-500" : "bg-green-500"}`}
+                style={{ width: `${weekDebt > 0 ? Math.min(100, (weekDebt / (sleepGoal * 7)) * 100) : 100}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">{daysWithData.length}/7 days logged</p>
+          </div>
+        </div>
+      )}
+
       {/* Log entries */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Sleep History</p>
@@ -173,30 +198,33 @@ export function SleepTab() {
               const actual = parseFloat(log.actualHours || 0);
               const planned = parseFloat(log.plannedHours || sleepGoal);
               const deficit = planned - actual;
+              const eff = planned > 0 ? Math.min(100, Math.round((actual / planned) * 100)) : 0;
               const rColor = readiness >= 70 ? "text-green-500" : readiness >= 40 ? "text-yellow-500" : "text-red-500";
+              const qualityStars = log.quality ? "★".repeat(log.quality) + "☆".repeat(5 - log.quality) : null;
               return (
                 <div key={log.id} data-testid={`card-sleep-${log.id}`}
                   className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-sm">{format(parseISO(log.date), "EEEE, MMM d")}</p>
-                    {log.notes && <p className="text-[11px] text-muted-foreground">{log.notes}</p>}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm">{format(parseISO(log.date), "EEE, MMM d")}</p>
+                    {qualityStars && (
+                      <p className="text-[11px] text-yellow-400 tracking-tight leading-none mt-0.5">{qualityStars}</p>
+                    )}
+                    {log.notes && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{log.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-4 shrink-0">
+                  <div className="flex items-center gap-3 shrink-0">
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Actual</p>
+                      <p className="text-[10px] text-muted-foreground">Slept</p>
                       <p className="font-mono font-bold text-sm">{actual.toFixed(1)}h</p>
                     </div>
-                    {log.quality && (
-                      <div className="text-center">
-                        <p className="text-[10px] text-muted-foreground">Quality</p>
-                        <p className="font-mono font-bold text-sm">{log.quality}/5</p>
-                      </div>
-                    )}
                     <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Score</p>
+                      <p className="text-[10px] text-muted-foreground">Eff.</p>
+                      <p className={`font-mono font-bold text-sm ${eff >= 90 ? "text-green-500" : eff >= 70 ? "text-yellow-500" : "text-red-500"}`}>{eff}%</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] text-muted-foreground">Recovery</p>
                       <p className={`font-mono font-bold text-sm ${rColor}`}>{readiness}</p>
                     </div>
-                    {deficit > 0 && (
+                    {deficit > 0.5 && (
                       <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">
                         <TrendingDown className="w-3 h-3 mr-1" />-{deficit.toFixed(1)}h
                       </Badge>
