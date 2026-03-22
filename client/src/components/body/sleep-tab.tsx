@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { Moon, TrendingDown, Star } from "lucide-react";
+import { Moon, TrendingDown, Zap, BedDouble, Star } from "lucide-react";
 import { format, subDays, parseISO } from "date-fns";
 import { AddSleepLogDialog } from "@/components/dialogs/add-sleep-log-dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
@@ -16,6 +16,16 @@ function calcReadiness(log: any): number {
   const planned = parseFloat(log.plannedHours || SLEEP_GOAL_HOURS);
   const goalRatio = Math.min(1, actual / planned);
   return Math.round(quality * 10 + goalRatio * 50);
+}
+
+function QualityStars({ quality }: { quality: number }) {
+  return (
+    <span className="text-[12px] tracking-tight">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span key={i} style={{ color: i < quality ? "#f59e0b" : "#374151" }}>★</span>
+      ))}
+    </span>
+  );
 }
 
 export function SleepTab() {
@@ -50,35 +60,30 @@ export function SleepTab() {
   const todayLog = allLogs?.find(l => l.date === todayStr);
   const todayReadiness = todayLog ? calcReadiness(todayLog) : null;
 
+  const daysWithData = last7.filter(d => d.hasData);
+
   const weekDebt = last7.reduce((acc, d) => {
     if (!d.hasData) return acc;
     const deficit = sleepGoal - d.actual;
     return acc + (deficit > 0 ? deficit : 0);
   }, 0);
 
-  const daysWithData = last7.filter(d => d.hasData);
   const avgActual = daysWithData.reduce((s, d) => s + d.actual, 0) / (daysWithData.length || 1);
 
-  // Sleep efficiency: avg (actual / goal) over last 7 days with data
   const avgEfficiency = daysWithData.length > 0
     ? Math.round(daysWithData.reduce((s, d) => s + Math.min(1, d.actual / (d.planned || sleepGoal)), 0) / daysWithData.length * 100)
     : 0;
 
-  const getReadinessColor = (score: number | null) => {
-    if (score === null) return "text-muted-foreground";
-    if (score >= 70) return "text-green-500";
-    if (score >= 40) return "text-yellow-500";
-    return "text-red-500";
-  };
+  const readinessColor = todayReadiness === null ? "#6b7280"
+    : todayReadiness >= 70 ? "#22c55e" : todayReadiness >= 40 ? "#eab308" : "#ef4444";
+
+  const effColor = avgEfficiency >= 90 ? "#22c55e" : avgEfficiency >= 70 ? "#eab308" : "#ef4444";
 
   const getBarColor = (entry: any) => {
     if (!entry.hasData) return "hsl(var(--muted))";
-    if (entry.actual >= entry.planned) return "hsl(var(--primary))";
-    return "hsl(var(--destructive) / 0.7)";
+    if (entry.actual >= entry.planned) return "#6366f1";
+    return "#ef444488";
   };
-
-  const readinessColor = todayReadiness === null ? "#6b7280"
-    : todayReadiness >= 70 ? "#22c55e" : todayReadiness >= 40 ? "#eab308" : "#ef4444";
 
   return (
     <div className="p-4 space-y-4 max-w-3xl mx-auto">
@@ -124,7 +129,7 @@ export function SleepTab() {
             max={100}
             label="Efficiency"
             unit="%"
-            color={avgEfficiency >= 90 ? "#22c55e" : avgEfficiency >= 70 ? "#eab308" : "#ef4444"}
+            color={effColor}
             size="lg"
             sublabel="7-day avg"
             animate={false}
@@ -133,58 +138,68 @@ export function SleepTab() {
         </div>
       </div>
 
+      {/* Sleep debt + days logged summary */}
+      {daysWithData.length > 0 && (
+        <div className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center gap-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: weekDebt > 0 ? "#ef444415" : "#22c55e15" }}>
+              <BedDouble className="w-4 h-4" style={{ color: weekDebt > 0 ? "#ef4444" : "#22c55e" }} />
+            </div>
+            <div>
+              <p className="font-mono font-black text-xl leading-none" style={{ color: weekDebt > 0 ? "#ef4444" : "#22c55e" }}>
+                {weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "On track"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">sleep debt this week</p>
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>{daysWithData.length}/7 days logged</span>
+              <span>{weekDebt > 0 ? `${weekDebt.toFixed(1)}h behind` : "✓ goal met"}</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${weekDebt > 0 ? Math.min(100, (weekDebt / (sleepGoal * 3)) * 100) : 100}%`,
+                  background: weekDebt > 0 ? "#ef4444" : "#22c55e",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chart */}
       <div className="bg-card border border-border/60 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Last 7 Days</p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary" /> Actual</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted" /> Goal</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#6366f1" }} /> Met goal</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: "#ef444488" }} /> Deficit</span>
           </div>
         </div>
-        <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={last7} barGap={4}>
-                    <XAxis dataKey="day" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={v => `${v}h`} domain={[0, Math.max(sleepGoal + 2, 10)]} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
-                      itemStyle={{ color: "hsl(var(--foreground))" }}
-                      formatter={(val: any, name: string) => [`${parseFloat(val).toFixed(1)}h`, name]}
-                    />
-                    <ReferenceLine y={sleepGoal} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: `Goal ${sleepGoal}h`, fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                    <Bar dataKey="planned" name="Planned" fill="hsl(var(--muted))" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="actual" name="Actual" radius={[3, 3, 0, 0]}>
-                      {last7.map((entry, i) => (
-                        <Cell key={i} fill={getBarColor(entry)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+        <div className="h-[180px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={last7} barGap={4}>
+              <XAxis dataKey="day" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v}h`} domain={[0, Math.max(sleepGoal + 2, 10)]} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
+                itemStyle={{ color: "hsl(var(--foreground))" }}
+                formatter={(val: any, name: string) => [`${parseFloat(val).toFixed(1)}h`, name]}
+              />
+              <ReferenceLine y={sleepGoal} stroke="#6366f155" strokeDasharray="4 4" label={{ value: `${sleepGoal}h`, fontSize: 10, fill: "#6366f1" }} />
+              <Bar dataKey="actual" name="Actual" radius={[4, 4, 0, 0]}>
+                {last7.map((entry, i) => (
+                  <Cell key={i} fill={getBarColor(entry)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Sleep debt summary bar */}
-      {daysWithData.length > 0 && (
-        <div className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Sleep Debt</p>
-            <p className={`font-mono font-black text-xl tabular-nums ${weekDebt > 0 ? "text-red-500" : "text-green-500"}`}>
-              {weekDebt > 0 ? `-${weekDebt.toFixed(1)}h` : "0h"}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">this week</p>
-          </div>
-          <div className="flex-1 max-w-[160px]">
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ${weekDebt > 0 ? "bg-red-500" : "bg-green-500"}`}
-                style={{ width: `${weekDebt > 0 ? Math.min(100, (weekDebt / (sleepGoal * 7)) * 100) : 100}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">{daysWithData.length}/7 days logged</p>
-          </div>
-        </div>
-      )}
 
       {/* Log entries */}
       <div>
@@ -199,30 +214,27 @@ export function SleepTab() {
               const planned = parseFloat(log.plannedHours || sleepGoal);
               const deficit = planned - actual;
               const eff = planned > 0 ? Math.min(100, Math.round((actual / planned) * 100)) : 0;
-              const rColor = readiness >= 70 ? "text-green-500" : readiness >= 40 ? "text-yellow-500" : "text-red-500";
-              const qualityStars = log.quality ? "★".repeat(log.quality) + "☆".repeat(5 - log.quality) : null;
+              const rColor = readiness >= 70 ? "#22c55e" : readiness >= 40 ? "#eab308" : "#ef4444";
               return (
                 <div key={log.id} data-testid={`card-sleep-${log.id}`}
                   className="bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-semibold text-sm">{format(parseISO(log.date), "EEE, MMM d")}</p>
-                    {qualityStars && (
-                      <p className="text-[11px] text-yellow-400 tracking-tight leading-none mt-0.5">{qualityStars}</p>
-                    )}
+                    {log.quality && <QualityStars quality={log.quality} />}
                     {log.notes && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{log.notes}</p>}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-4 shrink-0">
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground">Slept</p>
                       <p className="font-mono font-bold text-sm">{actual.toFixed(1)}h</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground">Eff.</p>
-                      <p className={`font-mono font-bold text-sm ${eff >= 90 ? "text-green-500" : eff >= 70 ? "text-yellow-500" : "text-red-500"}`}>{eff}%</p>
+                      <p className="font-mono font-bold text-sm" style={{ color: eff >= 90 ? "#22c55e" : eff >= 70 ? "#eab308" : "#ef4444" }}>{eff}%</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] text-muted-foreground">Recovery</p>
-                      <p className={`font-mono font-bold text-sm ${rColor}`}>{readiness}</p>
+                      <p className="font-mono font-bold text-sm" style={{ color: rColor }}>{readiness}</p>
                     </div>
                     {deficit > 0.5 && (
                       <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">
