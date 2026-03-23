@@ -11,7 +11,7 @@ const navItems = [
     { id: "activity", icon: Dumbbell, label: "Activity", path: "/body/activity", activeColor: "#ef4444" },
     { id: "nutrition", icon: Utensils, label: "Nutrition", path: "/body/nutrition", activeColor: "#f97316" },
     { id: "sleep", icon: Moon, label: "Rest", path: "/body/sleep", activeColor: "#6366f1" },
-    { id: "looks", icon: Sparkles, label: "Looks", path: "/body/looks", activeColor: "#8b5cf6" },
+    { id: "looks", icon: Sparkles, label: "Hygiene & Looks", path: "/body/looks", activeColor: "#8b5cf6" },
 ];
 
 export function BodyLayout({ children }: BodyLayoutProps) {

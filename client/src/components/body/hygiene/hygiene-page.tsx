@@ -390,20 +390,11 @@ export function HygienePage() {
             </div>
           ) : total === 0 ? (
             <div className="px-6 pb-8 space-y-5">
-              <div className="flex flex-col items-center justify-center py-6 text-center animate-pulse">
+              <div className="flex flex-col items-center justify-center py-10 text-center">
                 <p className="text-sm font-semibold text-muted-foreground">No routines tracked yet</p>
                 <p className="text-xs text-muted-foreground/60 mt-1 max-w-[250px]">
                   Add a routine to see your goal-linked progress and cadence populate here.
                 </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {[1,2,3,4,5,6].map((i) => (
-                  <div key={i} className="border border-dashed border-border/40 rounded-xl p-4 min-h-[100px] flex flex-col gap-2 opacity-50">
-                    <div className="h-2 bg-muted rounded w-3/4" />
-                    <div className="h-2 bg-muted rounded w-full" />
-                    <div className="h-2 bg-muted rounded w-5/6" />
-                  </div>
-                ))}
               </div>
               <div className="flex justify-center pt-2">
                 <AddRoutineDialog />
