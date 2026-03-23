@@ -819,3 +819,20 @@ OUTPUT — return ONLY a valid JSON array (no markdown, no extra text):
     throw new Error("AI returned an invalid flashcard response. Please try again.");
   }
 }
+
+// ─── Activity Brief ──────────────────────────────────────────────────────────
+
+export async function generateActivityBrief(dailyData: any): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "No activity logged yet today. Tap '+ Log activity' to get started.";
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const dataStr = JSON.stringify(dailyData || {});
+  const prompt = `In 1-2 sentences, summarize the user's activity status for today. Data: ${dataStr}. Keep it conversational and motivating. No markdown. If there's no meaningful data, say something encouraging about getting started.`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  return text.trim();
+}

@@ -518,6 +518,9 @@ export const bodyProfile = pgTable("body_profile", {
   dailyCarbsGoal: integer("daily_carbs_goal"),
   dailyFatsGoal: integer("daily_fats_goal"),
   sleepGoalHours: decimal("sleep_goal_hours", { precision: 3, scale: 1 }).default("8.0"),
+  weeklyEffortTarget: integer("weekly_effort_target").default(500),
+  dailyEnergyGoal: integer("daily_energy_goal"), // kcal burn goal
+  activeTimeGoal: integer("active_time_goal").default(45), // minutes
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -546,6 +549,14 @@ export const dailyState = pgTable("daily_state", {
   waterConsumed: decimal("water_consumed", { precision: 6, scale: 2 }), // ml
   // Hygiene
   hygieneCompletionRate: decimal("hygiene_completion_rate", { precision: 5, scale: 2 }), // 0-100
+  // Activity metrics
+  effortScore: integer("effort_score"), // 0-100 composite
+  caloriesBurned: integer("calories_burned"),
+  recoveryScore: integer("recovery_score"), // 0-100 (wearable)
+  activeMinutes: integer("active_minutes"),
+  steps: integer("steps"),
+  distanceKm: decimal("distance_km", { precision: 7, scale: 2 }),
+  avgHeartRate: integer("avg_heart_rate"),
   // Planner
   plannerCompletion: decimal("planner_completion", { precision: 5, scale: 2 }), // 0-100
   // Goal events
@@ -582,6 +593,21 @@ export const workoutSetsRelations = relations(workoutSets, ({ one }) => ({
     references: [workoutExercises.id],
   }),
 }));
+
+// ===== ACTIVITY LOGS (non-workout activities: runs, walks, etc.) =====
+export const activityLogs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  activityType: text("activity_type").notNull(), // run, walk, cycle, swim, sport, other
+  activityName: text("activity_name"), // custom name for sport/other
+  durationMinutes: integer("duration_minutes"),
+  distanceKm: decimal("distance_km", { precision: 7, scale: 2 }),
+  caloriesBurned: integer("calories_burned"),
+  perceivedEffort: integer("perceived_effort"), // 1-10
+  notes: text("notes"),
+  loggedAt: timestamp("logged_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // ===== WORSHIP =====
 export const salahLogs = pgTable("salah_logs", {
@@ -885,6 +911,9 @@ export const insertPersonSchema = createInsertSchema(people).omit({ id: true, cr
 export const insertPageSettingSchema = createInsertSchema(pageSettings).omit({ id: true });
 export const insertDailyMetricSchema = createInsertSchema(dailyMetrics).omit({ id: true, createdAt: true });
 export const insertWorkoutPresetSchema = createInsertSchema(workoutPresets).omit({ id: true, createdAt: true, lastPerformed: true });
+export const insertActivityLogSchema = createInsertSchema(activityLogs, {
+  loggedAt: z.coerce.date().optional(),
+}).omit({ id: true, createdAt: true });
 
 // ===== TYPES =====
 export type TimeBlock = typeof timeBlocks.$inferSelect;
@@ -915,6 +944,8 @@ export type WorkoutSet = typeof workoutSets.$inferSelect;
 export type InsertWorkoutSet = z.infer<typeof insertWorkoutSetSchema>;
 export type MuscleStat = typeof muscleStats.$inferSelect;
 export type InsertMuscleStat = z.infer<typeof insertMuscleStatSchema>;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 
 export type IntakeLog = typeof intakeLogs.$inferSelect;
 export type InsertIntakeLog = z.infer<typeof insertIntakeLogSchema>;

@@ -15,7 +15,8 @@ import {
   insertPossessionSchema, insertOutfitSchema, insertCourseSchema, insertLessonSchema,
   insertCourseExerciseSchema, insertBusinessSchema, insertWorkProjectSchema, insertTaskSchema,
   insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema,
-  insertDisciplineSchema, insertDisciplineLogSchema, insertDailyStateSchema
+  insertDisciplineSchema, insertDisciplineLogSchema, insertDailyStateSchema,
+  insertActivityLogSchema, insertWorkoutPresetSchema
 } from "../shared/schema";
 
 export function registerRoutes(app: Express): Server {
@@ -869,6 +870,40 @@ export function registerRoutes(app: Express): Server {
       res.json(state);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
+    }
+  });
+
+  // ===== ACTIVITY LOGS =====
+  app.get("/api/activity-logs/:date", async (req, res) => {
+    const logs = await storage.getActivityLogs(req.params.date);
+    res.json(logs);
+  });
+
+  app.get("/api/activity-logs", async (req, res) => {
+    const logs = await storage.getAllActivityLogs();
+    res.json(logs);
+  });
+
+  app.post("/api/activity-logs", async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const data = insertActivityLogSchema.parse({ ...req.body, userId: (req.user as any).id });
+      const log = await storage.createActivityLog(data);
+      res.json(log);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  // Activity AI Brief
+  app.post("/api/activity/ai-brief", async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const { generateActivityBrief } = await import("./ai");
+      const brief = await generateActivityBrief(req.body.dailyData);
+      res.json({ brief });
+    } catch (e: any) {
+      res.json({ brief: "No activity logged yet today. Tap '+ Log activity' to get started." });
     }
   });
 
