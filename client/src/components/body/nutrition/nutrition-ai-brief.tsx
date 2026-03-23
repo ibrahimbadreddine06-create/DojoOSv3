@@ -33,10 +33,7 @@ export function NutritionAiBrief({ intakeLogs, bodyProfile }: NutritionAiBriefPr
       <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/40 mt-0.5 shrink-0">
         <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 fill-amber-600/20" />
       </div>
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-           <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/70 dark:text-amber-400/70">Daily Insight</span>
-        </div>
+      <div className="flex-1">
         {isLoading && intakeLogs.length > 0 ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full bg-amber-200/30" />
