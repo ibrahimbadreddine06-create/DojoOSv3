@@ -10,7 +10,7 @@ const navItems = [
     { id: "hub", icon: Home, label: "Hub", path: "/body", activeColor: "#3b82f6" },
     { id: "activity", icon: Dumbbell, label: "Activity", path: "/body/activity", activeColor: "#ef4444" },
     { id: "nutrition", icon: Utensils, label: "Nutrition", path: "/body/nutrition", activeColor: "#f97316" },
-    { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", activeColor: "#6366f1" },
+    { id: "sleep", icon: Moon, label: "Rest", path: "/body/sleep", activeColor: "#6366f1" },
     { id: "looks", icon: Sparkles, label: "Looks", path: "/body/looks", activeColor: "#8b5cf6" },
 ];
 

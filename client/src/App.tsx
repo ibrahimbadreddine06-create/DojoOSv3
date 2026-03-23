@@ -54,6 +54,7 @@ import NotFound from "@/pages/not-found";
 import { ActiveWorkoutSession } from "@/components/body/active-workout-session";
 import ActivityDrilldown from "@/pages/activity-drilldown";
 import NutritionDrilldown from "@/pages/nutrition-drilldown";
+import RestDrilldown from "@/pages/rest-drilldown";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const [location, setLocation] = useLocation();
@@ -98,6 +99,7 @@ const ProtectedDisciplineDetail = () => <ProtectedRoute component={DisciplineDet
 const ProtectedBody = () => <ProtectedRoute component={Body} />;
 const ProtectedActivityDrilldown = () => <ProtectedRoute component={ActivityDrilldown} />;
 const ProtectedNutritionDrilldown = () => <ProtectedRoute component={NutritionDrilldown} />;
+const ProtectedRestDrilldown = () => <ProtectedRoute component={RestDrilldown} />;
 const ProtectedWorship = () => <ProtectedRoute component={Worship} />;
 const ProtectedFinances = () => <ProtectedRoute component={Finances} />;
 const ProtectedMasterpieces = () => <ProtectedRoute component={Masterpieces} />;
@@ -126,6 +128,7 @@ function AuthenticatedRouter() {
       <Route path="/body" component={ProtectedBody} />
       <Route path="/body/activity/metric/:metricKey" component={ProtectedActivityDrilldown} />
       <Route path="/body/nutrition/metric/:metricKey" component={ProtectedNutritionDrilldown} />
+      <Route path="/body/rest/metric/:metricKey" component={ProtectedRestDrilldown} />
       <Route path="/body/:subpage" component={ProtectedBody} />
       <Route path="/worship" component={ProtectedWorship} />
       <Route path="/finances" component={ProtectedFinances} />
