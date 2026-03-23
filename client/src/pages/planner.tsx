@@ -1487,8 +1487,7 @@ export default function Planner() {
           !isTimeSlotAvailable(
             tempBlock.startTime,
             tempBlock.endTime,
-            dragState.blockId,
-            isPresetMode,
+            dragState.blockId
           )
         ) {
           toast({

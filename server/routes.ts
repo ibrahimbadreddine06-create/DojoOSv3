@@ -133,7 +133,6 @@ export function registerRoutes(app: Express): Server {
     const type = req.params.type;
     const normalizedType = type.replace(/-/g, '_');
 
-    // Generic hub for linkable items across modules
     switch (normalizedType) {
       case "goals":
         const goals = await storage.getGoals();
@@ -143,10 +142,10 @@ export function registerRoutes(app: Express): Server {
         return res.json(disciplines.map(d => ({ id: d.id, name: d.name })));
       case "body":
         return res.json([
-          { id: "body_activity", name: "Activity" },
-          { id: "body_nutrition", name: "Nutrition" },
-          { id: "body_sleep", name: "Sleep" },
-          { id: "body_looks", name: "Looks" },
+          { id: "body_intake", name: "Intake & Hydration" },
+          { id: "body_sleep", name: "Sleep & Recovery" },
+          { id: "body_hygiene", name: "Hygiene & Appearance" },
+          { id: "body_workouts", name: "Workouts & Fitness" },
         ]);
       case "masterpieces":
         const masterpieces = await storage.getMasterpieces();
@@ -169,12 +168,21 @@ export function registerRoutes(app: Express): Server {
       case "second_brain":
       case "languages":
       case "language":
-        const dbType = (normalizedType === "languages" || normalizedType === "language") ? "language" : normalizedType;
+        const dbType = (normalizedType === "languages" || normalizedType === "language") ? "language" : "second_brain";
         const themes = await storage.getKnowledgeTopics(dbType);
         return res.json(themes.map(t => ({ id: t.id, name: t.name })));
       default:
         res.json([]);
     }
+  });
+
+  app.get("/api/knowledge-topics/:type", async (req, res) => {
+    const type = req.params.type;
+    const normalizedType = type.replace(/-/g, '_');
+    const dbType = (normalizedType === "languages" || normalizedType === "language") ? "language" : "second_brain";
+    
+    const themes = await storage.getKnowledgeTopics(dbType);
+    res.json(themes); // Return full objects for Second Brain and Languages
   });
 
   app.get("/api/page-settings", async (req, res) => {
@@ -232,11 +240,11 @@ export function registerRoutes(app: Express): Server {
         const sections = await storage.getMasterpieceSections(itemId);
         return res.json(sections.map(s => ({ id: s.id, name: s.title })));
       case "body":
-        if (itemId === "body_activity" || itemId === "body_workouts") {
+        if (itemId === "body_workouts") {
           const exercises = await storage.getExerciseLibrary();
           return res.json(exercises.map(e => ({ id: e.id, name: e.name })));
         }
-        if (itemId === "body_looks" || itemId === "body_hygiene") {
+        if (itemId === "body_hygiene") {
           const routines = await storage.getHygieneRoutines();
           return res.json(routines.map((r: any) => ({ id: r.id, name: r.name || "Routine" })));
         }
@@ -599,6 +607,20 @@ export function registerRoutes(app: Express): Server {
     res.json(item);
   });
 
+  // Nutrition Optimizations
+  app.get("/api/nutrition/overview/:date", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const overview = await storage.getNutritionOverview((req.user as any).id, req.params.date);
+    res.json(overview);
+  });
+
+  app.get("/api/nutrition/trends/batch", async (req, res) => {
+    const metrics = (req.query.metrics as string || "").split(',').filter(Boolean);
+    const days = parseInt(req.query.days as string) || 7;
+    const trends = await storage.getNutritionTrendsBatch(metrics, days);
+    res.json(trends);
+  });
+
   // Workout Execution
   app.get("/api/workouts/:id/exercises", async (req, res) => {
     const exercises = await storage.getWorkoutExercises(req.params.id);
@@ -908,17 +930,6 @@ export function registerRoutes(app: Express): Server {
     const rangeStr = String(req.query.range || "30d");
     const days = rangeStr === "7d" ? 7 : rangeStr === "90d" ? 90 : rangeStr === "180d" ? 180 : rangeStr === "365d" ? 365 : 30;
     res.json(await storage.getNutritionTrends(metric, days));
-  });
-  app.get("/api/nutrition/trends/batch", async (req, res) => {
-    const metricsParam = String(req.query.metrics || "");
-    const metrics = metricsParam ? metricsParam.split(",") : ["calories"];
-    const rangeStr = String(req.query.range || "7d");
-    const days = rangeStr === "7d" ? 7 : rangeStr === "90d" ? 90 : rangeStr === "180d" ? 180 : rangeStr === "365d" ? 365 : 30;
-    res.json(await storage.getNutritionTrendsBatch(metrics, days));
-  });
-  app.get("/api/nutrition/overview/:date", async (req, res) => {
-    if (!req.user) return res.status(401).send("Not authenticated");
-    res.json(await storage.getNutritionOverview(req.user.id, req.params.date));
   });
 
   // ===== FOOD SEARCH (OpenFoodFacts proxy) =====
@@ -1579,11 +1590,9 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/me/privacy", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const settings = await storage.getPrivacySettings(req.user.id);
+    const settings = await storage.getPrivacySettings((req.user as any).id);
     res.json(settings);
   });
-
-
 
   const httpServer = createServer(app);
   return httpServer;

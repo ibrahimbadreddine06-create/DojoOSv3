@@ -44,7 +44,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 const CORE_MODULES = ["planner", "goals", "second_brain", "languages", "studies", "body", "disciplines", "possessions"];
 
 interface DashboardConfigV3 {
-  layouts: { lg: Layout; md: Layout; sm: Layout };
+  layouts: { lg: Layout; md: Layout; sm: Layout; xs?: Layout; xxs?: Layout };
   imageData: Record<string, string>;
   nextWidgetId: number;
   hidden: string[];

@@ -49,7 +49,7 @@ export function setupAuth(app: Express) {
         try {
             const pgSession = connectPgSimple(session);
             sessionSettings.store = new pgSession({
-                pool,
+                pool: pool as any,
                 createTableIfMissing: true,
                 tableName: 'session'
             });
