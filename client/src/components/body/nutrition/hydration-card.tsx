@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Link } from "wouter";
 
 interface HydrationCardProps {
   waterAmount: number;
@@ -18,8 +19,8 @@ export function HydrationCard({ waterAmount, waterGoal = 3000 }: HydrationCardPr
   const addMutation = useMutation({
     mutationFn: async (amount: number) => {
       await apiRequest("POST", "/api/intake-logs", {
-        name: "Water",
-        type: "water",
+        mealName: "Water",
+        mealType: "water",
         date: today,
         water: amount,
         calories: 0, protein: 0, carbs: 0, fats: 0
@@ -32,33 +33,37 @@ export function HydrationCard({ waterAmount, waterGoal = 3000 }: HydrationCardPr
 
   return (
     <div className="bg-card border rounded-xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-blue-500">
-            <Droplets className="w-4 h-4" />
-            <h3 className="text-sm font-black uppercase tracking-widest">Hydration</h3>
+      <Link href="/body/nutrition/metric/water">
+        <div className="flex justify-between items-start cursor-pointer group">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-blue-500 group-hover:text-blue-600 transition-colors">
+              <Droplets className="w-4 h-4" />
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500">Hydration</h3>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-black tracking-tighter">{waterAmount}</span>
+              <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest">/ {waterGoal} ml</span>
+            </div>
           </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-3xl font-black tracking-tighter">{waterAmount}</span>
-            <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest">/ {waterGoal} ml</span>
+          <div className="text-right">
+             <span className="text-xs font-mono font-black text-blue-500/50">{Math.round(progress)}%</span>
           </div>
         </div>
-        <div className="text-right">
-           <span className="text-xs font-mono font-black text-blue-500/50">{Math.round(progress)}%</span>
-        </div>
-      </div>
+      </Link>
 
       <div className="mt-6 space-y-4">
         {/* Fill Bar */}
-        <div className="h-6 bg-blue-500/10 rounded-lg overflow-hidden border border-blue-500/20 relative">
-          <div 
-            className="h-full bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-1000 ease-out relative"
-            style={{ width: `${progress}%` }}
-          >
-            {/* Water Ripple Layer */}
-             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_-20%,#fff,transparent)]" />
+        <Link href="/body/nutrition/metric/water">
+          <div className="h-6 bg-blue-500/10 rounded-lg overflow-hidden border border-blue-500/20 relative cursor-pointer group">
+            <div 
+              className="h-full bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-1000 ease-out relative"
+              style={{ width: `${progress}%` }}
+            >
+              {/* Water Ripple Layer */}
+               <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_-20%,#fff,transparent)] group-hover:opacity-30 transition-opacity" />
+            </div>
           </div>
-        </div>
+        </Link>
 
         {/* Quick Add Pills */}
         <div className="grid grid-cols-4 gap-2">

@@ -67,42 +67,53 @@ export function NutritionPage() {
   };
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in duration-700 p-1 md:p-0">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700">
       <NutritionHeader onLogClick={() => handleOpenLogModal()} />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-8 mt-8">
         <NutritionAiBrief intakeLogs={logs} bodyProfile={profile} />
         <NutritionScoreCard intakeLogs={logs} bodyProfile={profile} />
-      </div>
+        <CalorieMacroCard intakeLogs={logs} bodyProfile={profile} />
+        <EnergyBalanceCard intakeLogs={logs} dailyState={dailyState} />
 
-      <CalorieMacroCard intakeLogs={logs} bodyProfile={profile} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <EnergyBalanceCard intakeLogs={logs} dailyState={dailyState} />
-        </div>
-        <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <HydrationCard waterAmount={waterTotal} waterGoal={profile?.waterGoal || 2500} />
-        </div>
-        <div className="lg:col-span-1">
           <FastingCard 
             activeLog={activeFastingLog} 
             bodyProfile={profile} 
             onConfigureClick={() => setIsFastingModalOpen(true)} 
           />
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <FuelFingerprint intakeLogs={logs} />
+          <MicronutrientGrid intakeLogs={logs} bodyProfile={profile} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <IntakeRoutines date={today} />
+          <NutritionTrends intakeLogs={logs} />
+        </div>
       </div>
 
-      <FuelFingerprint intakeLogs={logs} />
-      <MicronutrientGrid intakeLogs={logs} />
-      <IntakeRoutines date={today} />
-      <NutritionTrends intakeLogs={logs} />
-
       {/* Unified Daily Log (Planned vs Consumed) */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-baseline px-1">
-          <h2 className="text-xl font-bold tracking-tight">Daily Intake Log</h2>
-          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Planned vs Consumed</span>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline gap-4 px-1">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold tracking-tight">Intake log — today</h2>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Planned today</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {["Breakfast", "Lunch", "Dinner", "Snack"].map(meal => (
+              <button 
+                key={meal}
+                onClick={() => handleOpenLogModal()}
+                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-muted/50 hover:bg-purple-500/10 hover:text-purple-500 transition-all border border-transparent hover:border-purple-500/20"
+              >
+                + {meal}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-3">

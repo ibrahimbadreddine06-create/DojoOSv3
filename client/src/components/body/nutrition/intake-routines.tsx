@@ -38,25 +38,39 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-baseline px-1">
-        <h2 className="text-xl font-bold tracking-tight">Daily Intake Routines</h2>
-        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Auto-Synced</span>
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold tracking-tight">Daily Intake Routines</h2>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Auto-Synced</p>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-[10px] font-black uppercase tracking-widest text-purple-500 hover:bg-purple-500/10"
+        >
+          Configure
+        </Button>
       </div>
 
-      <div className="bg-card border rounded-2xl overflow-hidden divide-y">
+      <div className="bg-card border rounded-2xl overflow-hidden divide-y divide-border/50">
         {routineList.length === 0 ? (
           <div className="p-12 text-center space-y-2">
             <p className="text-muted-foreground/60 text-sm">No routines configured.</p>
-            <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase text-purple-500">Configure Routines</Button>
+            <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase text-purple-500">Add Routine</Button>
           </div>
         ) : (
           routineList.map(r => {
             const isTaken = checkedIds.has(r.id);
+            const statusColor = r.type === "medication" ? "bg-red-500" : r.type === "supplement" ? "bg-emerald-500" : "bg-blue-500";
             
             return (
-              <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
+              <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors group">
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-xl border ${isTaken ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600" : "bg-muted/50 border-border/50 text-muted-foreground/40"}`}>
-                    {r.type === "medication" ? <Pill className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+                  <div className="relative">
+                    <div className={`p-2 rounded-xl border ${isTaken ? "bg-muted/50 border-border/50 text-muted-foreground/30" : "bg-purple-500/5 text-purple-500/40 border-purple-500/10"}`}>
+                      {r.type === "medication" ? <Pill className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+                    </div>
+                    {/* Status Dot */}
+                    <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card ${statusColor}`} />
                   </div>
                   <div>
                     <p className={`font-black tracking-tight ${isTaken ? "line-through text-muted-foreground/40" : ""}`}>
@@ -68,18 +82,16 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
                   </div>
                 </div>
                 
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <button 
                   onClick={() => toggleMutation.mutate(r.id)}
-                  className={`h-10 w-10 rounded-full transition-all ${
+                  className={`h-10 w-10 flex items-center justify-center rounded-full transition-all border-2 ${
                     isTaken 
-                      ? "text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10" 
-                      : "text-muted-foreground/20 hover:text-purple-500 hover:bg-purple-500/10"
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                      : "bg-transparent border-muted hover:border-purple-500/40 text-muted-foreground/20 hover:text-purple-500"
                   }`}
                 >
-                  {isTaken ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                </Button>
+                  {isTaken ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6 stroke-1.5" />}
+                </button>
               </div>
             );
           })

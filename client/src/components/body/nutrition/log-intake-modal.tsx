@@ -178,7 +178,7 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
           </div>
         ) : (
           <Tabs defaultValue="food" className="w-full" onValueChange={(v) => setSelectedType(v as IntakeType)}>
-            <div className="px-6 py-4 bg-muted/30 border-b">
+            <div className="px-6 py-4 bg-purple-500/5 border-b border-purple-500/10">
               <TabsList className="grid grid-cols-5 w-full bg-transparent gap-2 h-auto">
                 <LogTypeTrigger value="food" icon={<Utensils className="w-4 h-4" />} label="Food" active={selectedType === "food"} />
                 <LogTypeTrigger value="water" icon={<Droplets className="w-4 h-4" />} label="Water" active={selectedType === "water"} />
@@ -188,29 +188,34 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
               </TabsList>
             </div>
 
-            <div className="p-6 h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="p-6 h-[450px] overflow-y-auto custom-scrollbar">
               <TabsContent value="food" className="mt-0 space-y-6">
                 <div className="space-y-4">
-                  <div className="relative">
-                    {isSearching ? (
-                      <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500 animate-spin" />
-                    ) : (
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    )}
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                      {isSearching ? (
+                        <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4 text-muted-foreground group-focus-within:text-purple-500 transition-colors" />
+                      )}
+                    </div>
                     <Input 
                       placeholder="Search food or scan barcode..." 
-                      className="pl-10 h-12 bg-muted/50 border-none focus-visible:ring-purple-500" 
+                      className="pl-10 h-12 bg-muted/30 border-2 border-transparent focus-visible:ring-0 focus-visible:border-purple-500/50 transition-all font-bold text-sm" 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
+                    <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-purple-500/10 rounded-lg text-muted-foreground hover:text-purple-600 transition-colors">
+                      <Barcode className="w-5 h-5" />
+                    </button>
                   </div>
 
                   {searchResults.length > 0 && (
-                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 animate-in fade-in slide-in-from-top-2 duration-300">
                       {searchResults.map((p: any) => (
                         <div 
                           key={p._id} 
-                          className="p-3 rounded-xl border bg-card hover:border-purple-500 transition-all cursor-pointer flex justify-between items-center group"
+                          className="p-3 rounded-2xl border-2 border-transparent bg-muted/30 hover:bg-white hover:border-purple-500/30 hover:shadow-lg hover:shadow-purple-500/5 transition-all cursor-pointer flex justify-between items-center group"
                           onClick={() => logMutation.mutate({ 
                             mealName: p.product_name, 
                             mealType: "snack", 
@@ -218,46 +223,75 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
                             protein: p.nutriments?.proteins_100g || 0,
                             carbs: p.nutriments?.carbohydrates_100g || 0,
                             fats: p.nutriments?.fat_100g || 0,
+                            fiber: p.nutriments?.fiber_100g || 0,
+                            sugar: p.nutriments?.sugars_100g || 0,
+                            sodium: p.nutriments?.sodium_100g ? p.nutriments.sodium_100g * 1000 : 0, // Convert g to mg
                             imageUrl: p.image_front_small_url
                           })}
                         >
                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded bg-muted overflow-hidden">
-                                {p.image_front_small_url ? <img src={p.image_front_small_url} alt="" className="w-full h-full object-cover" /> : <Utensils className="w-4 h-4 m-2 opacity-20" />}
+                              <div className="w-10 h-10 rounded-xl bg-white border shadow-sm overflow-hidden flex items-center justify-center p-1">
+                                {p.image_front_small_url ? <img src={p.image_front_small_url} alt="" className="w-full h-full object-contain" /> : <Utensils className="w-5 h-5 opacity-20" />}
                               </div>
-                              <p className="text-[11px] font-black tracking-tight line-clamp-1">{p.product_name}</p>
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-black tracking-tight line-clamp-1">{p.product_name || "Unknown Product"}</p>
+                                <p className="text-[10px] font-bold text-muted-foreground">{p.brands || "Food Item"}</p>
+                              </div>
                           </div>
-                          <span className="text-[10px] font-black font-mono">{p.nutriments?.["energy-kcal_100g"] || 0} kcal</span>
+                          <div className="text-right">
+                            <span className="text-xs font-black font-mono text-purple-600">{Math.round(p.nutriments?.["energy-kcal_100g"] || 0)}</span>
+                            <span className="text-[8px] font-black uppercase text-muted-foreground/50 ml-0.5">kcal</span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                      variant="outline" 
-                      className="h-20 flex-col gap-2 border-dashed border-2 hover:border-purple-500 hover:bg-purple-50/50 hover:text-purple-600 transition-all group"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={photoMutation.isPending}
-                    >
-                      {photoMutation.isPending ? <Loader2 className="w-6 h-6 animate-spin" /> : <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />}
-                      <span className="text-[10px] font-black uppercase tracking-widest">{photoMutation.isPending ? "Analyzing..." : "Take Photo"}</span>
-                    </Button>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                    
-                    <Button 
-                      variant="outline" 
-                      className="h-20 flex-col gap-2 border-dashed border-2 hover:border-purple-500 hover:bg-purple-50/50 hover:text-purple-600 transition-all group"
-                      onClick={() => setDescribeMode(true)}
-                    >
-                      <MessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Describe Meal</span>
-                    </Button>
-                  </div>
+                  {!searchQuery && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="h-24 flex-col gap-2 border-2 border-dashed bg-purple-500/[0.02] hover:bg-purple-500/5 hover:border-purple-500/40 hover:text-purple-600 transition-all group rounded-2xl"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={photoMutation.isPending}
+                      >
+                        <div className="p-3 rounded-xl bg-purple-100/50 group-hover:scale-110 transition-transform">
+                          {photoMutation.isPending ? <Loader2 className="w-6 h-6 animate-spin text-purple-600" /> : <Camera className="w-6 h-6 text-purple-600" />}
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{photoMutation.isPending ? "Analyzing..." : "Analyze Photo"}</span>
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="h-24 flex-col gap-2 border-2 border-dashed bg-purple-500/[0.02] hover:bg-purple-500/5 hover:border-purple-500/40 hover:text-purple-600 transition-all group rounded-2xl"
+                        onClick={() => setDescribeMode(true)}
+                      >
+                        <div className="p-3 rounded-xl bg-purple-100/50 group-hover:scale-110 transition-transform">
+                          <MessageSquare className="w-6 h-6 text-purple-600" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Describe Meal</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
+                {/* Macro Presets */}
+                {!searchQuery && (
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                      <Zap className="w-3 h-3 text-amber-500" /> Quick Add Macros
+                    </h4>
+                    <div className="grid grid-cols-4 gap-2">
+                       <MacroQuickAdd label="Prot" color="bg-blue-500" onAdd={() => logMutation.mutate({ mealName: "Extra Protein", protein: 10, calories: 40 })} />
+                       <MacroQuickAdd label="Carb" color="bg-amber-500" onAdd={() => logMutation.mutate({ mealName: "Extra Carbs", carbs: 15, calories: 60 })} />
+                       <MacroQuickAdd label="Fat" color="bg-pink-500" onAdd={() => logMutation.mutate({ mealName: "Extra Fat", fats: 5, calories: 45 })} />
+                       <MacroQuickAdd label="Fib" color="bg-teal-500" onAdd={() => logMutation.mutate({ mealName: "Fiber Boost", fiber: 5, calories: 10 })} />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
                     <History className="w-3 h-3" /> Recent Items
                   </h4>
                   <div className="space-y-2">
@@ -273,18 +307,49 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
                     <Button 
                       key={amt} 
                       variant="outline" 
-                      className="h-24 flex-col gap-2 hover:border-blue-500 hover:bg-blue-50/50 hover:text-blue-600 text-lg font-black"
+                      className="h-24 flex-col gap-2 rounded-2xl border-2 hover:border-blue-500 hover:bg-blue-50/50 hover:text-blue-600 transition-all group"
                       onClick={() => logMutation.mutate({ mealName: "Water", mealType: "water", water: amt, calories: 0, protein: 0, carbs: 0, fats: 0 })}
                     >
-                      <Droplets className="w-6 h-6 text-blue-500" />
-                      {amt}ml
+                      <div className="p-3 rounded-xl bg-blue-100/50 group-hover:scale-110 transition-transform">
+                        <Droplets className="w-6 h-6 text-blue-500" />
+                      </div>
+                      <span className="text-lg font-black tracking-tighter">{amt}ml</span>
                     </Button>
                   ))}
                 </div>
               </TabsContent>
               
-              <TabsContent value="supplement" className="mt-0 text-center py-10 text-muted-foreground italic text-xs">
-                No supplements available to log from routines.
+              <TabsContent value="supplement" className="mt-0 space-y-4">
+                <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                    <Zap className="w-3 h-3 text-amber-500" /> From Your Routines
+                  </h4>
+                  <div className="space-y-2">
+                    {/* Filtered routines would go here */}
+                    <div className="p-4 border-2 border-dashed rounded-2xl text-center text-[10px] font-bold text-muted-foreground/50 py-10">
+                      Routines integration pending...
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="medication" className="mt-0 space-y-4">
+                 <div className="space-y-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 px-1">
+                    <Pill className="w-3 h-3 text-red-500" /> Prescribed Routines
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="p-4 border-2 border-dashed rounded-2xl text-center text-[10px] font-bold text-muted-foreground/50 py-10">
+                      Routines integration pending...
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="other" className="mt-0 space-y-4">
+                <div className="p-8 text-center italic text-muted-foreground/60 text-xs">
+                  Quick-log other items like coffee, tea, or custom snacks.
+                </div>
               </TabsContent>
             </div>
           </Tabs>
@@ -300,6 +365,18 @@ function LogTypeTrigger({ value, icon, label, active }: { value: string, icon: R
        <div className={`p-2 rounded-lg ${active ? "bg-purple-100/50" : "bg-muted/50"}`}>{icon}</div>
        <span className="text-[9px] font-black uppercase tracking-widest leading-none">{label}</span>
     </TabsTrigger>
+  );
+}
+
+function MacroQuickAdd({ label, color, onAdd }: { label: string, color: string, onAdd: () => void }) {
+  return (
+    <button 
+      onClick={onAdd}
+      className={`p-2.5 rounded-2xl border-2 border-transparent bg-muted/30 hover:bg-white hover:border-purple-500/20 hover:shadow-md transition-all flex flex-col items-center gap-1 group`}
+    >
+      <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
+      <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground group-hover:text-purple-600 transition-colors">+{label}</span>
+    </button>
   );
 }
 

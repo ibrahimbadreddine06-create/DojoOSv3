@@ -859,8 +859,13 @@ export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any
     protein: bodyProfile?.dailyProteinGoal || 150,
   };
 
-  const dataStr = JSON.stringify({ totals, goals });
-  const prompt = `In 1-2 sentences, summarize the user's nutrition status for today. Be factual and specific. Use this data: ${dataStr}. Example: "Protein on track — 142g of 188g consumed. 860 kcal remaining toward your 2500 kcal goal." No motivational language. No markdown.`;
+  const dataStr = JSON.stringify({ totals, goals, logs: intakeLogs.map(l => ({ name: l.mealName, cals: l.calories })) });
+  const prompt = `You are a nutrition data analyst. In 1-2 sentences, summarize the user's intake compared to their goals.
+    Be factual, specific, and concise. 
+    Use this data: ${dataStr}.
+    Focus on Calories and Protein first. If they have logged specific meals, you can mention them if relevant to the balance.
+    Example: "Protein on track — 142g of 188g consumed. 860 kcal remaining toward your 2500 kcal goal."
+    No motivational language. No markdown. No conversational filler.`;
 
   const result = await model.generateContent(prompt);
   return result.response.text().trim();
@@ -898,7 +903,7 @@ export async function analyzeMealDescription(description: string): Promise<any> 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const prompt = `Analyze this meal description and provide estimated nutritional values. 
+  const prompt = `Analyze this meal description for the DojoOS Nutrition module. 
     Meal: "${description}"
     
     Return ONLY a JSON object with: 
@@ -910,7 +915,17 @@ export async function analyzeMealDescription(description: string): Promise<any> 
     - fiber (number, grams)
     - fuelCategories (string array matching: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat)
     
-    Example: {"mealName": "Chicken Salad", "calories": 350, "protein": 30, "carbs": 10, " fats": 20, "fiber": 5, "fuelCategories": ["plants", "quality-protein"]}
+    Rules for fuelCategories:
+    - "plants": vegetables, fruits, whole grains
+    - "quality-protein": lean meats, fish, tofu, legumes
+    - "complex-carbs": whole grains, sweet potatoes, legumes
+    - "healthy-fats": avocado, nuts, olive oil, seeds
+    - "ultra-processed": packaged snacks, sodas, fast food
+    - "high-sodium": processed meats, canned soups, salty snacks
+    - "added-sugars": candies, sugary drinks, desserts
+    - "red-processed-meat": bacon, sausage, salami, red meat
+    
+    Example: {"mealName": "Chicken Salad", "calories": 350, "protein": 30, "carbs": 10, "fats": 20, "fiber": 5, "fuelCategories": ["plants", "quality-protein"]}
     If you cannot estimate, return null.`;
 
   const result = await model.generateContent(prompt);
@@ -931,7 +946,7 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const prompt = `Analyze this meal photo and provide estimated nutritional values. 
+  const prompt = `Analyze this meal photo for the DojoOS Nutrition module. 
     
     Return ONLY a JSON object with: 
     - mealName (string)
@@ -941,6 +956,16 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
     - fats (number, grams)
     - fiber (number, grams)
     - fuelCategories (string array matching: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat)
+    
+    Rules for fuelCategories:
+    - "plants": vegetables, fruits, whole grains
+    - "quality-protein": lean meats, fish, tofu, legumes
+    - "complex-carbs": whole grains, sweet potatoes, legumes
+    - "healthy-fats": avocado, nuts, olive oil, seeds
+    - "ultra-processed": packaged snacks, sodas, fast food
+    - "high-sodium": processed meats, canned soups, salty snacks
+    - "added-sugars": candies, sugary drinks, desserts
+    - "red-processed-meat": bacon, sausage, salami, red meat
     
     Example: {"mealName": "Steak and Veggies", "calories": 500, "protein": 40, "carbs": 15, "fats": 30, "fiber": 8, "fuelCategories": ["quality-protein", "plants"]}
     If you cannot identify the food, return null.`;

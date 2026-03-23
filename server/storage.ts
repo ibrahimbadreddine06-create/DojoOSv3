@@ -1082,11 +1082,30 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const [existing] = await db.select().from(intakeRoutineCheckins)
       .where(and(eq(intakeRoutineCheckins.routineId, routineId), eq(intakeRoutineCheckins.date, date)));
+    
     if (existing) {
+      // Uncheck: remove checkin and associated log
       await db.delete(intakeRoutineCheckins).where(eq(intakeRoutineCheckins.id, existing.id));
+      await db.delete(intakeLogs).where(and(eq(intakeLogs.routineId, routineId), sql`DATE(${intakeLogs.date}) = ${date}`));
       return null;
     }
+    
+    // Check in
     const [checkin] = await db.insert(intakeRoutineCheckins).values({ routineId, date }).returning();
+    
+    // Sync to IntakeLogs for micronutrient tracking
+    const [routine] = await db.select().from(intakeRoutines).where(eq(intakeRoutines.id, routineId));
+    if (routine && routine.micronutrientField && routine.micronutrientAmount) {
+      const logData: any = {
+        date: new Date(date + 'T12:00:00Z'), // Noon of that day
+        mealName: routine.name,
+        mealType: "supplement",
+        routineId: routineId,
+      };
+      logData[routine.micronutrientField] = routine.micronutrientAmount;
+      await db.insert(intakeLogs).values(logData);
+    }
+    
     return checkin;
   }
 
@@ -1110,16 +1129,70 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const since = new Date();
     since.setDate(since.getDate() - days);
+    
+    // Core metrics mapping
     const metricToField: Record<string, any> = {
-      calories: intakeLogs.calories, protein: intakeLogs.protein,
-      carbs: intakeLogs.carbs, fat: intakeLogs.fats, fiber: intakeLogs.fiber,
-      hydration: intakeLogs.water, vitaminD: intakeLogs.vitaminD,
-      vitaminC: intakeLogs.vitaminC, iron: intakeLogs.iron, calcium: intakeLogs.calcium,
-      potassium: intakeLogs.potassium, zinc: intakeLogs.zinc, magnesium: intakeLogs.magnesium,
+      calories: intakeLogs.calories,
+      protein: intakeLogs.protein,
+      carbs: intakeLogs.carbs,
+      fats: intakeLogs.fats,
+      fat: intakeLogs.fats, // Alias
+      fiber: intakeLogs.fiber,
+      water: intakeLogs.water,
+      hydration: intakeLogs.water, // Alias
+      zinc: intakeLogs.zinc,
+      magnesium: intakeLogs.magnesium,
+      vitaminD: intakeLogs.vitaminD,
+      vitaminC: intakeLogs.vitaminC,
+      iron: intakeLogs.iron,
+      calcium: intakeLogs.calcium,
+      potassium: intakeLogs.potassium,
       vitaminB12: intakeLogs.vitaminB12,
+      omega3: intakeLogs.omega3,
     };
+
+    if (metric === "balance") {
+      // Special case: balance (Consumed - Burned)
+      // We join with dailyState
+      const rows = await db.select({
+        date: sql<string>`DATE(${intakeLogs.date})`,
+        consumed: sql<number>`SUM(CAST(${intakeLogs.calories} AS NUMERIC))`,
+        burned: sql<number>`MAX(${dailyState.caloriesBurned})`,
+      }).from(intakeLogs)
+        .leftJoin(dailyState, and(
+          eq(dailyState.userId, intakeLogs.userId || ""), // Fallback if userId not on log
+          sql`DATE(${dailyState.date}) = DATE(${intakeLogs.date})`
+        ))
+        .where(sql`${intakeLogs.date} >= ${since.toISOString()}`)
+        .groupBy(sql`DATE(${intakeLogs.date})`)
+        .orderBy(sql`DATE(${intakeLogs.date})`);
+
+      return (rows as any[]).map(r => ({ 
+        date: r.date, 
+        value: (Number(r.consumed) || 0) - (Number(r.burned) || 2000) 
+      }));
+    }
+
+    if (metric === "score") {
+      // For score trend, we just return the calories % of goal as a proxy for now
+      // Real score calculation over time is heavy logic
+      const rows = await db.select({
+        date: sql<string>`DATE(${intakeLogs.date})`,
+        value: sql<number>`SUM(CAST(${intakeLogs.calories} AS NUMERIC))`,
+      }).from(intakeLogs)
+        .where(sql`${intakeLogs.date} >= ${since.toISOString()}`)
+        .groupBy(sql`DATE(${intakeLogs.date})`)
+        .orderBy(sql`DATE(${intakeLogs.date})`);
+        
+      return (rows as any[]).map(r => ({ 
+        date: r.date, 
+        value: Math.min(100, (Number(r.value) / 2500) * 100) 
+      }));
+    }
+
     const field = metricToField[metric];
     if (!field) return [];
+
     const rows = await db.select({
       date: sql<string>`DATE(${intakeLogs.date})`,
       value: sql<number>`SUM(CAST(${field} AS NUMERIC))`,
@@ -1127,7 +1200,8 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${intakeLogs.date} >= ${since.toISOString()}`)
       .groupBy(sql`DATE(${intakeLogs.date})`)
       .orderBy(sql`DATE(${intakeLogs.date})`);
-    return rows.map(r => ({ date: r.date, value: Number(r.value) || 0 }));
+
+    return (rows as { date: string, value: any }[]).map(r => ({ date: r.date, value: Number(r.value) || 0 }));
   }
 
   async getMealPresets(): Promise<MealPreset[]> {
@@ -2086,7 +2160,7 @@ export class MemStorage implements IStorage {
   // Body
   async getWorkouts(date: string): Promise<Workout[]> {
     return Array.from(this.workouts.values()).filter(w => {
-      const wDate = w.date instanceof Date ? w.date.toISOString().split('T')[0] : w.date;
+      const wDate = (w.date as any) instanceof Date ? (w.date as any).toISOString().split('T')[0] : w.date;
       return wDate === date;
     });
   }
@@ -2211,7 +2285,7 @@ export class MemStorage implements IStorage {
   }
   async getSupplementLogs(date: string): Promise<SupplementLog[]> {
     return Array.from(this.supplementLogs.values()).filter(l => {
-      const d = l.date instanceof Date ? l.date : new Date(l.date);
+      const d = (l.date as any) instanceof Date ? (l.date as any) : new Date(l.date);
       return d.toISOString().split('T')[0] === date;
     });
   }
@@ -2322,7 +2396,7 @@ export class MemStorage implements IStorage {
   // Activity Logs
   async getActivityLogs(date: string): Promise<ActivityLog[]> {
     return Array.from(this.activityLogsMap.values()).filter(l => {
-      const logDate = l.loggedAt instanceof Date ? l.loggedAt.toISOString().split('T')[0] : String(l.loggedAt).split('T')[0];
+      const logDate = (l.loggedAt as any) instanceof Date ? (l.loggedAt as any).toISOString().split('T')[0] : String(l.loggedAt).split('T')[0];
       return logDate === date;
     });
   }

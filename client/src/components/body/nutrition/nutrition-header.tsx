@@ -12,22 +12,24 @@ export function NutritionHeader({ onLogClick }: NutritionHeaderProps) {
   const theme = getModuleTheme("nutrition"); // Assuming 'nutrition' uses the lavender theme
 
   return (
-    <div className="flex flex-col gap-1 mb-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Nutrition</h1>
-          <p className="text-muted-foreground">Food, fuel & micronutrients</p>
+    <div className="flex flex-col gap-1 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Nutrition</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
+            Food, fuel & micronutrients
+          </p>
         </div>
         <Button 
           onClick={onLogClick}
-          className="rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-lg"
+          className="rounded-full px-6 transition-all hover:scale-105 active:scale-95 shadow-lg font-bold"
           style={{ 
             backgroundColor: `hsl(${theme.cssVar})`,
             color: 'white'
           }}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Log intake
+          + Log intake
         </Button>
       </div>
     </div>

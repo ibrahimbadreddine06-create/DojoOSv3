@@ -425,8 +425,10 @@ export const intakeLogs = pgTable("intake_logs", {
   potassium: decimal("potassium", { precision: 7, scale: 2 }), // mg
   water: decimal("water", { precision: 6, scale: 2 }), // ml
   vitaminB12: decimal("vitamin_b12", { precision: 6, scale: 2 }), // mcg
+  omega3: decimal("omega_3", { precision: 6, scale: 2 }), // g
   fuelCategories: jsonb("fuel_categories").$type<string[]>(), // Fuel Fingerprint assignments
   linkedBlockId: varchar("linked_block_id"), // optional FK to timeBlocks
+  routineId: varchar("routine_id"), // optional link to intakeRoutines for automatic logging
   notes: text("notes"),
   imageUrl: text("image_url"),
   status: intakeStatusEnum("status").notNull().default("consumed"),

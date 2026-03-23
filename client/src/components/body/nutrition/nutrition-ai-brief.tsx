@@ -24,28 +24,31 @@ export function NutritionAiBrief({ intakeLogs, bodyProfile }: NutritionAiBriefPr
     enabled: true,
   });
 
-  const briefText = data?.brief || "No intake logged yet today. Tap '+ Log intake' to get started.";
+  const briefText = intakeLogs.length > 0 
+    ? (data?.brief || briefTextFallback) 
+    : "No intake logged yet today. Tap '+ Log intake' to get started.";
 
   return (
-    <div className="rounded-xl border border-amber-200/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/30 p-4 flex items-start gap-3 shadow-sm min-h-[100px]">
-      <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40 mt-0.5 shrink-0">
-        <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+    <div className="rounded-xl border border-amber-200/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800/30 p-4 flex items-start gap-4 shadow-sm min-h-[80px]">
+      <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/40 mt-0.5 shrink-0">
+        <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 fill-amber-600/20" />
       </div>
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
-           <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/70 dark:text-amber-400/70">AI Nutrition Specialist</span>
+           <span className="text-[10px] font-black uppercase tracking-widest text-amber-600/70 dark:text-amber-400/70">Daily Insight</span>
         </div>
-        {isLoading ? (
+        {isLoading && intakeLogs.length > 0 ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full bg-amber-200/30" />
-            <Skeleton className="h-4 w-3/4 bg-amber-200/30" />
           </div>
         ) : (
-          <p className="text-sm text-amber-900/80 dark:text-amber-200/80 leading-relaxed italic">
-            "{briefText}"
+          <p className="text-sm text-amber-900/90 dark:text-amber-100/90 leading-relaxed">
+            {briefText}
           </p>
         )}
       </div>
     </div>
   );
 }
+
+const briefTextFallback = "Analyzing your nutrition data...";

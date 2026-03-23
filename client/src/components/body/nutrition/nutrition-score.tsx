@@ -4,6 +4,7 @@ import { MetricRing } from "../metric-ring";
 import { useTheme } from "@/contexts/theme-context";
 import { type IntakeLog, type BodyProfile } from "@shared/schema";
 import { calculateNutritionScore } from "@/lib/nutrition-utils";
+import { Link } from "wouter";
 
 interface NutritionScoreCardProps {
   intakeLogs: IntakeLog[];
@@ -39,33 +40,51 @@ export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCa
   }
 
   return (
-    <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 h-[180px] hover:shadow-md transition-shadow">
-      <div className="shrink-0 scale-90">
-        <MetricRing 
-          value={result.score || 0} 
-          max={100} 
-          label="SCORE" 
-          color={`hsl(${theme.cssVar})`} 
-          size="md" 
-        />
-      </div>
+    <Link href="/body/nutrition/metric/score">
+      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 h-[180px] hover:shadow-md transition-shadow cursor-pointer group">
+        <div className="shrink-0 scale-90 group-hover:scale-95 transition-transform duration-500">
+          <MetricRing 
+            value={result.score || 0} 
+            max={100} 
+            label="SCORE" 
+            color={`hsl(${theme.cssVar})`} 
+            size="md" 
+          />
+        </div>
 
-      <div className="flex-1 w-full grid grid-cols-2 gap-3">
-        <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex flex-col justify-center">
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 leading-none">Food Quality</span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black">{result.subScores?.foodQuality}</span>
-            <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+        <div className="flex-1 w-full flex flex-col gap-2">
+          <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-between group-hover:bg-muted/50 transition-colors">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5 leading-none">Food Quality</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black">{result.subScores?.foodQuality}</span>
+                <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+              </div>
+            </div>
+            <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-500" 
+                style={{ width: `${(result.subScores?.foodQuality || 0) * 10}%`, backgroundColor: `hsl(${theme.cssVar})` }}
+              />
+            </div>
           </div>
-        </div>
-        <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex flex-col justify-center">
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1 leading-none">Macro Balance</span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black">{result.subScores?.macroBalance}</span>
-            <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+          <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-between group-hover:bg-muted/50 transition-colors">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5 leading-none">Macro Balance</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black">{result.subScores?.macroBalance}</span>
+                <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+              </div>
+            </div>
+            <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-500" 
+                style={{ width: `${(result.subScores?.macroBalance || 0) * 10}%`, backgroundColor: `hsl(${theme.cssVar})` }}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
