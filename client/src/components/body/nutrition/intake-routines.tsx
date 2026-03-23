@@ -1,9 +1,9 @@
 import React from "react";
 import { CheckCircle2, Circle, Pill, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { type IntakeRoutine, type IntakeRoutineCheckin } from "@shared/schema";
+import { SectionLabel } from "../activity/section-label";
 
 interface IntakeRoutinesProps {
   date: string;
@@ -11,7 +11,7 @@ interface IntakeRoutinesProps {
 
 export function IntakeRoutines({ date }: IntakeRoutinesProps) {
   const queryClient = useQueryClient();
-  
+
   const { data: routines, isLoading: routinesLoading } = useQuery<IntakeRoutine[]>({
     queryKey: ["/api/intake-routines"],
   });
@@ -36,32 +36,30 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
   const checkedIds = new Set(checkins?.map(c => c.routineId) || []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex justify-between items-baseline px-1">
-        <div className="space-y-1">
-          <h2 className="text-xl font-bold tracking-tight">Daily Intake Routines</h2>
-          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Auto-Synced</p>
+        <div className="space-y-0.5">
+          <SectionLabel className="mb-0">Daily Intake Routines</SectionLabel>
+          <p className="text-[9px] text-muted-foreground/40 font-medium tracking-wider uppercase">Auto-synced</p>
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-[10px] font-black uppercase tracking-widest text-purple-500 hover:bg-purple-500/10"
-        >
-          Configure
-        </Button>
+        <button className="text-[10px] text-purple-500/70 hover:text-purple-500 transition-colors font-medium">
+          Configure →
+        </button>
       </div>
 
       <div className="bg-card border rounded-2xl overflow-hidden divide-y divide-border/50">
         {routineList.length === 0 ? (
-          <div className="p-12 text-center space-y-2">
-            <p className="text-muted-foreground/60 text-sm">No routines configured.</p>
-            <Button variant="ghost" size="sm" className="text-[10px] font-black uppercase text-purple-500">Add Routine</Button>
+          <div className="p-10 text-center space-y-3">
+            <p className="text-sm text-muted-foreground/50">No routines configured.</p>
+            <button className="text-[10px] border border-border rounded-full px-3 py-1 text-muted-foreground hover:text-purple-500 hover:border-purple-500/40 transition-colors font-medium">
+              Add routine
+            </button>
           </div>
         ) : (
           routineList.map(r => {
             const isTaken = checkedIds.has(r.id);
             const statusColor = r.type === "medication" ? "bg-red-500" : r.type === "supplement" ? "bg-emerald-500" : "bg-blue-500";
-            
+
             return (
               <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors group">
                 <div className="flex items-center gap-4">
@@ -76,17 +74,17 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
                     <p className={`font-black tracking-tight ${isTaken ? "line-through text-muted-foreground/40" : ""}`}>
                       {r.name}
                     </p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
-                      {r.dose} {r.unit} • {r.timeOfDay || "Anytime"}
+                    <p className="text-[10px] font-medium text-muted-foreground/50">
+                      {r.dose} {r.unit} · {r.timeOfDay || "Anytime"}
                     </p>
                   </div>
                 </div>
-                
-                <button 
+
+                <button
                   onClick={() => toggleMutation.mutate(r.id)}
                   className={`h-10 w-10 flex items-center justify-center rounded-full transition-all border-2 ${
-                    isTaken 
-                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                    isTaken
+                      ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
                       : "bg-transparent border-muted hover:border-purple-500/40 text-muted-foreground/20 hover:text-purple-500"
                   }`}
                 >
@@ -96,6 +94,15 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
             );
           })
         )}
+      </div>
+
+      <div className="px-1 flex justify-between items-center">
+        <span className="text-[10px] text-muted-foreground/40 font-medium">
+          Schedules sync to your daily planner automatically
+        </span>
+        <button className="text-[10px] text-purple-500/60 hover:text-purple-500 transition-colors font-medium">
+          Edit routines →
+        </button>
       </div>
     </div>
   );

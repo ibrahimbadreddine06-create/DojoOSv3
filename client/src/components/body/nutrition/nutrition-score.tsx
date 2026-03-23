@@ -11,29 +11,58 @@ interface NutritionScoreCardProps {
   bodyProfile?: BodyProfile;
 }
 
+function SubScoreTile({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-between">
+      <div className="flex flex-col">
+        <span className="text-[10px] font-medium tracking-wider text-muted-foreground mb-0.5 leading-none">{label}</span>
+        <div className="flex items-baseline gap-1">
+          <span className="text-xl font-black">{value}</span>
+          <span className="text-[10px] text-muted-foreground/50 font-medium uppercase">/ 10</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCardProps) {
   const { getModuleTheme } = useTheme();
   const theme = getModuleTheme("nutrition");
   const result = calculateNutritionScore(intakeLogs, bodyProfile);
 
+  const kcalLogged = intakeLogs.reduce((a, b) => a + Number(b.calories || 0), 0);
+
   if (result.locked) {
     return (
-      <div className="bg-card border rounded-xl p-6 flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden h-[180px]">
-        <div className="p-3 rounded-full bg-muted/50 text-muted-foreground/50 mb-1">
-          <Lock className="w-6 h-6" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Nutrition Score</h3>
-          <p className="text-[10px] text-muted-foreground/60">{result.reason}</p>
-        </div>
-        {/* Progress hint */}
-        <div className="w-full max-w-[120px] mt-2">
-           <div className="h-1 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-muted-foreground/30 transition-all duration-500" 
-                style={{ width: `${Math.min(100, (intakeLogs.reduce((a,b)=>a+Number(b.calories||0),0)/750)*100)}%` }}
+      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 min-h-[180px]">
+        {/* Locked ring */}
+        <div className="shrink-0 flex flex-col items-center gap-2">
+          <div className="relative" style={{ width: 88, height: 88 }}>
+            <svg width={88} height={88} viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx={44} cy={44} r={37} fill="none" stroke="#e5e7eb" strokeWidth={10} />
+              <circle
+                cx={44} cy={44} r={37} fill="none"
+                stroke={`hsl(${theme.cssVar})`} strokeWidth={10}
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 37}
+                strokeDashoffset={2 * Math.PI * 37 * (1 - Math.min(1, kcalLogged / 750))}
+                style={{ transition: "stroke-dashoffset 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
               />
-           </div>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-muted-foreground/40" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-[11px] font-medium tracking-wider text-muted-foreground">Nutrition score</p>
+            <p className="text-[10px] text-muted-foreground/50 mt-0.5">{result.reason}</p>
+          </div>
+        </div>
+
+        {/* Sub-score tiles */}
+        <div className="flex-1 w-full flex flex-col gap-2">
+          <SubScoreTile label="Food quality" value="–" />
+          <SubScoreTile label="Macro balance" value="–" />
         </div>
       </div>
     );
@@ -41,44 +70,45 @@ export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCa
 
   return (
     <Link href="/body/nutrition/metric/score">
-      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 h-[180px] hover:shadow-md transition-shadow cursor-pointer group">
+      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 min-h-[180px] hover:shadow-md transition-shadow cursor-pointer group">
         <div className="shrink-0 scale-90 group-hover:scale-95 transition-transform duration-500">
-          <MetricRing 
-            value={result.score || 0} 
-            max={100} 
-            label="SCORE" 
-            color={`hsl(${theme.cssVar})`} 
-            size="md" 
+          <MetricRing
+            value={result.score || 0}
+            max={100}
+            label="Score"
+            color={`hsl(${theme.cssVar})`}
+            size="md"
+            sublabel="tap → history"
           />
         </div>
 
         <div className="flex-1 w-full flex flex-col gap-2">
           <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-between group-hover:bg-muted/50 transition-colors">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5 leading-none">Food Quality</span>
+              <span className="text-[10px] font-medium tracking-wider text-muted-foreground mb-0.5 leading-none">Food quality</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-black">{result.subScores?.foodQuality}</span>
-                <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+                <span className="text-[10px] text-muted-foreground/50 font-medium uppercase">/ 10</span>
               </div>
             </div>
             <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-500" 
+              <div
+                className="h-full transition-all duration-500"
                 style={{ width: `${(result.subScores?.foodQuality || 0) * 10}%`, backgroundColor: `hsl(${theme.cssVar})` }}
               />
             </div>
           </div>
           <div className="p-3 bg-muted/30 rounded-lg border border-border/50 flex items-center justify-between group-hover:bg-muted/50 transition-colors">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-0.5 leading-none">Macro Balance</span>
+              <span className="text-[10px] font-medium tracking-wider text-muted-foreground mb-0.5 leading-none">Macro balance</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-black">{result.subScores?.macroBalance}</span>
-                <span className="text-[10px] text-muted-foreground/50 font-bold uppercase">/ 10</span>
+                <span className="text-[10px] text-muted-foreground/50 font-medium uppercase">/ 10</span>
               </div>
             </div>
             <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-500" 
+              <div
+                className="h-full transition-all duration-500"
                 style={{ width: `${(result.subScores?.macroBalance || 0) * 10}%`, backgroundColor: `hsl(${theme.cssVar})` }}
               />
             </div>

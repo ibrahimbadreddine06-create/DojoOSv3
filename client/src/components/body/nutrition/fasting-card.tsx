@@ -12,8 +12,7 @@ interface FastingCardProps {
 export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: FastingCardProps) {
   const isConfigured = !!bodyProfile?.fastingProgram;
   const isActive = activeLog?.status === "active";
-  
-  // Placeholder countdown logic
+
   const startTime = isActive ? new Date(activeLog.startTime) : null;
   const elapsedMs = startTime ? Date.now() - startTime.getTime() : 0;
   const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
@@ -23,22 +22,22 @@ export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: Fastin
     <div className="bg-card border rounded-xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden min-h-[180px]">
       <div className="flex justify-between items-start relative z-10">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-orange-500">
-            <Timer className="w-4 h-4" />
-            <h3 className="text-sm font-black uppercase tracking-widest">Fasting</h3>
+          <div className="flex items-center gap-2">
+            <Timer className="w-4 h-4 text-orange-500" />
+            <span className="text-[11px] font-medium tracking-wider text-muted-foreground">Fasting</span>
           </div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight">
               {!isConfigured ? "Program Off" : isActive ? "Fasting" : "Eating Window"}
             </span>
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            <span className="text-[10px] text-muted-foreground/50 font-medium">
               {isConfigured ? (typeof bodyProfile.fastingProgram === 'string' ? bodyProfile.fastingProgram : bodyProfile.fastingProgram?.preset) : "Not configured"}
             </span>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-8 w-8 text-muted-foreground/40 hover:text-orange-500 hover:bg-orange-500/10"
           onClick={onConfigureClick}
         >
@@ -49,18 +48,15 @@ export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: Fastin
       <div className="mt-4 flex flex-col items-center justify-center relative z-10">
         {isActive ? (
           <div className="flex flex-col items-center">
-             <span className="text-4xl font-black font-mono tracking-tighter">
-               {elapsedHours.toString().padStart(2, '0')}:{elapsedMinutes.toString().padStart(2, '0')}
-             </span>
-             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-500/70 mt-1">Elapsed Time</span>
+            <span className="text-4xl font-black font-mono tracking-tighter">
+              {elapsedHours.toString().padStart(2, '0')}:{elapsedMinutes.toString().padStart(2, '0')}
+            </span>
+            <span className="text-[9px] font-medium text-orange-500/70 mt-1 tracking-wider">Elapsed Time</span>
           </div>
         ) : !isConfigured ? (
-          <Button 
-            className="w-full bg-orange-500 hover:bg-orange-600 font-black uppercase tracking-widest text-[10px] py-4 rounded-lg shadow-lg"
-            onClick={onConfigureClick}
-          >
-            Configure Program
-          </Button>
+          <p className="text-sm text-muted-foreground/50 italic text-center">
+            No fasting program — tap Configure to set one up
+          </p>
         ) : (
           <div className="text-center italic text-muted-foreground/60 text-xs py-2">
             Eating window active. Next fast starts soon.

@@ -1,6 +1,5 @@
 import React from "react";
 import { Droplets, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
@@ -36,9 +35,9 @@ export function HydrationCard({ waterAmount, waterGoal = 3000 }: HydrationCardPr
       <Link href="/body/nutrition/metric/water">
         <div className="flex justify-between items-start cursor-pointer group">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-blue-500 group-hover:text-blue-600 transition-colors">
-              <Droplets className="w-4 h-4" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500">Hydration</h3>
+            <div className="flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+              <Droplets className="w-4 h-4 text-blue-500" />
+              <span className="text-[11px] font-medium tracking-wider text-muted-foreground group-hover:text-blue-500">Hydration</span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-3xl font-black tracking-tighter">{waterAmount}</span>
@@ -66,26 +65,22 @@ export function HydrationCard({ waterAmount, waterGoal = 3000 }: HydrationCardPr
         </Link>
 
         {/* Quick Add Pills */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="flex gap-2 flex-wrap">
           {[250, 500, 750].map(amt => (
-            <Button 
+            <button
               key={amt}
-              variant="outline" 
-              size="sm" 
               onClick={() => addMutation.mutate(amt)}
-              className="h-8 text-[10px] font-black hover:bg-blue-500/10 hover:text-blue-500 hover:border-blue-500/30 font-mono"
+              className="h-7 px-3 rounded-full border border-border text-[10px] font-medium text-muted-foreground bg-transparent hover:bg-blue-500/10 hover:text-blue-500 hover:border-blue-500/30 transition-colors"
             >
-              +{amt}
-            </Button>
+              +{amt}ml
+            </button>
           ))}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 p-0 hover:bg-blue-500/10 hover:text-blue-500 hover:border-blue-500/30"
+          <button
+            className="h-7 px-3 rounded-full border border-dashed border-border text-[10px] font-medium text-muted-foreground/50 hover:bg-blue-500/10 hover:text-blue-500 hover:border-blue-500/30 transition-colors flex items-center gap-1"
             onClick={() => {/* To be integrated with Log Modal */}}
           >
-            <Plus className="w-3.5 h-3.5" />
-          </Button>
+            <Plus className="w-3 h-3" /> Other
+          </button>
         </div>
       </div>
     </div>
