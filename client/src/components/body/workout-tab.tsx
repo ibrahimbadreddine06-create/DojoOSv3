@@ -89,7 +89,7 @@ export function WorkoutTab() {
     },
     onSuccess: (workoutId) => {
       toast({ title: "Session started", description: "Good luck!" });
-      setLocation(`/body/workout/active/${workoutId}`);
+      setLocation(`/body/activity/active/${workoutId}`);
     },
   });
 
@@ -132,7 +132,7 @@ export function WorkoutTab() {
               <h3 className="text-xl font-black tracking-tight">{todaysWorkout.title}</h3>
             </div>
             <button
-              onClick={() => setLocation(`/body/workout/active/${todaysWorkout.id}`)}
+              onClick={() => setLocation(`/body/activity/active/${todaysWorkout.id}`)}
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-4 py-2.5 rounded-2xl transition-colors"
             >
               <Zap className="w-4 h-4" />

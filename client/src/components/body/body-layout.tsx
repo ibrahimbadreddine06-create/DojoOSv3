@@ -8,10 +8,10 @@ interface BodyLayoutProps {
 
 const navItems = [
     { id: "hub", icon: Home, label: "Hub", path: "/body", activeColor: "#3b82f6" },
-    { id: "workout", icon: Dumbbell, label: "Activity", path: "/body/workout", activeColor: "#ef4444" },
-    { id: "intake", icon: Utensils, label: "Nutrition", path: "/body/intake", activeColor: "#f97316" },
+    { id: "activity", icon: Dumbbell, label: "Activity", path: "/body/activity", activeColor: "#ef4444" },
+    { id: "nutrition", icon: Utensils, label: "Nutrition", path: "/body/nutrition", activeColor: "#f97316" },
     { id: "sleep", icon: Moon, label: "Sleep", path: "/body/sleep", activeColor: "#6366f1" },
-    { id: "hygiene", icon: Sparkles, label: "Looks", path: "/body/hygiene", activeColor: "#8b5cf6" },
+    { id: "looks", icon: Sparkles, label: "Looks", path: "/body/looks", activeColor: "#8b5cf6" },
 ];
 
 export function BodyLayout({ children }: BodyLayoutProps) {

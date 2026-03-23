@@ -74,6 +74,93 @@ export function NutritionPage() {
         <NutritionAiBrief intakeLogs={logs} bodyProfile={profile} />
         <NutritionScoreCard intakeLogs={logs} bodyProfile={profile} />
         <CalorieMacroCard intakeLogs={logs} bodyProfile={profile} />
+
+        {/* Linked Time Blocks (Unified Daily Log) */}
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline gap-4 px-1">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold tracking-tight">Linked Time Blocks</h2>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Planned today</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+             {/* Blocks from Planner */}
+             {nutritionBlocks.map(block => {
+               const linkedLogs = logs.filter(l => l.linkedBlockId === block.id);
+               const isConsumed = linkedLogs.length > 0;
+
+               return (
+                 <div key={block.id} className={`group relative bg-card border rounded-2xl p-4 transition-all hover:shadow-md ${isConsumed ? "border-purple-500/30" : "border-dashed opacity-60 hover:opacity-100"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl ${isConsumed ? "bg-purple-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                             <Utensils className="w-4 h-4" />
+                          </div>
+                          <div>
+                             <p className="text-xs font-black uppercase tracking-widest">{block.title}</p>
+                             <p className="text-[10px] font-bold text-muted-foreground">{block.startTime} - {block.endTime}</p>
+                          </div>
+                       </div>
+                       {isConsumed ? (
+                         <CheckCircle2 className="w-5 h-5 text-purple-500" />
+                       ) : (
+                         <button 
+                          onClick={() => handleOpenLogModal(block.id)}
+                          className="text-[10px] font-black uppercase tracking-widest text-purple-500 hover:text-purple-600 px-3 py-1 rounded-full bg-purple-50 hover:bg-purple-100 transition-colors"
+                         >
+                           Log Intake
+                         </button>
+                       )}
+                    </div>
+
+                    {isConsumed && (
+                      <div className="ml-11 space-y-2 pt-1 border-t border-purple-500/10">
+                         {linkedLogs.map(l => (
+                           <div key={l.id} className="flex justify-between items-center text-sm">
+                              <span className="font-bold tracking-tight">{l.mealName}</span>
+                              <div className="text-right">
+                                 <p className="font-black font-mono text-xs">{Math.round(Number(l.calories))} kcal</p>
+                                 <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-tighter">
+                                   P: {Math.round(Number(l.protein))}g • C: {Math.round(Number(l.carbs))}g • F: {Math.round(Number(l.fats))}g
+                                 </p>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    )}
+                 </div>
+               );
+             })}
+
+             {/* Unlinked Logs (Snacks, Water, etc.) */}
+             {logs.filter(l => !l.linkedBlockId).map(log => (
+               <div key={log.id} className="p-4 bg-muted/20 border rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/5 flex items-center justify-center text-lg">
+                      {log.mealType === 'water' ? "💧" : "🍲"}
+                    </div>
+                    <div>
+                      <p className="font-black tracking-tight">{log.mealName}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
+                        {format(new Date(log.createdAt || Date.now()), "HH:mm")} • {log.mealType}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black font-mono">
+                      {log.mealType === 'water' ? `${log.water}ml` : `${Math.round(Number(log.calories))}kcal`}
+                    </p>
+                    {log.mealType !== 'water' && (
+                      <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
+                        P: {Math.round(Number(log.protein))}g • C: {Math.round(Number(log.carbs))}g • F: {Math.round(Number(log.fats))}g
+                      </p>
+                    )}
+                  </div>
+               </div>
+             ))}
+          </div>
+        </div>
         <EnergyBalanceCard intakeLogs={logs} dailyState={dailyState} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -93,104 +180,6 @@ export function NutritionPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <IntakeRoutines date={today} />
           <NutritionTrends intakeLogs={logs} />
-        </div>
-      </div>
-
-      {/* Unified Daily Log (Planned vs Consumed) */}
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline gap-4 px-1">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold tracking-tight">Intake log — today</h2>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Planned today</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {["Breakfast", "Lunch", "Dinner", "Snack"].map(meal => (
-              <button 
-                key={meal}
-                onClick={() => handleOpenLogModal()}
-                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full bg-muted/50 hover:bg-purple-500/10 hover:text-purple-500 transition-all border border-transparent hover:border-purple-500/20"
-              >
-                + {meal}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-           {/* Blocks from Planner */}
-           {nutritionBlocks.map(block => {
-             const linkedLogs = logs.filter(l => l.linkedBlockId === block.id);
-             const isConsumed = linkedLogs.length > 0;
-
-             return (
-               <div key={block.id} className={`group relative bg-card border rounded-2xl p-4 transition-all hover:shadow-md ${isConsumed ? "border-purple-500/30" : "border-dashed opacity-60 hover:opacity-100"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-xl ${isConsumed ? "bg-purple-500 text-white" : "bg-muted text-muted-foreground"}`}>
-                           <Utensils className="w-4 h-4" />
-                        </div>
-                        <div>
-                           <p className="text-xs font-black uppercase tracking-widest">{block.title}</p>
-                           <p className="text-[10px] font-bold text-muted-foreground">{block.startTime} - {block.endTime}</p>
-                        </div>
-                     </div>
-                     {isConsumed ? (
-                       <CheckCircle2 className="w-5 h-5 text-purple-500" />
-                     ) : (
-                       <button 
-                        onClick={() => handleOpenLogModal(block.id)}
-                        className="text-[10px] font-black uppercase tracking-widest text-purple-500 hover:text-purple-600 px-3 py-1 rounded-full bg-purple-50 hover:bg-purple-100 transition-colors"
-                       >
-                         Log Intake
-                       </button>
-                     )}
-                  </div>
-
-                  {isConsumed && (
-                    <div className="ml-11 space-y-2 pt-1 border-t border-purple-500/10">
-                       {linkedLogs.map(l => (
-                         <div key={l.id} className="flex justify-between items-center text-sm">
-                            <span className="font-bold tracking-tight">{l.mealName}</span>
-                            <div className="text-right">
-                               <p className="font-black font-mono text-xs">{Math.round(Number(l.calories))} kcal</p>
-                               <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-tighter">
-                                 P: {Math.round(Number(l.protein))}g • C: {Math.round(Number(l.carbs))}g • F: {Math.round(Number(l.fats))}g
-                               </p>
-                            </div>
-                         </div>
-                       ))}
-                    </div>
-                  )}
-               </div>
-             );
-           })}
-
-           {/* Unlinked Logs (Snacks, Water, etc.) */}
-           {logs.filter(l => !l.linkedBlockId).map(log => (
-             <div key={log.id} className="p-4 bg-muted/20 border rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/5 flex items-center justify-center text-lg">
-                    {log.mealType === 'water' ? "💧" : "🍲"}
-                  </div>
-                  <div>
-                    <p className="font-black tracking-tight">{log.mealName}</p>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">
-                      {format(new Date(log.createdAt || Date.now()), "HH:mm")} • {log.mealType}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-black font-mono">
-                    {log.mealType === 'water' ? `${log.water}ml` : `${Math.round(Number(log.calories))}kcal`}
-                  </p>
-                  {log.mealType !== 'water' && (
-                    <p className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tighter">
-                      P: {Math.round(Number(log.protein))}g • C: {Math.round(Number(log.carbs))}g • F: {Math.round(Number(log.fats))}g
-                    </p>
-                  )}
-                </div>
-             </div>
-           ))}
         </div>
       </div>
 

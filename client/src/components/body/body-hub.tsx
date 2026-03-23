@@ -95,7 +95,7 @@ export function BodyHub() {
                 {todayWorkout ? (
                     <motion.button
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => setLocation(`/body/workout/active/${todayWorkout.id}`)}
+                        onClick={() => setLocation(`/body/activity/active/${todayWorkout.id}`)}
                         className="w-full rounded-3xl p-5 text-left overflow-hidden relative"
                         style={{ background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', minHeight: 120 }}
                     >
@@ -123,7 +123,7 @@ export function BodyHub() {
                 ) : (
                     <motion.button
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => setLocation("/body/workout")}
+                        onClick={() => setLocation("/body/activity")}
                         className="w-full rounded-3xl p-5 text-left border-2 border-dashed border-border/60 flex items-center justify-between"
                     >
                         <div>
@@ -210,7 +210,7 @@ export function BodyHub() {
                             bg: "bg-red-500/8",
                             title: "Activity",
                             value: `${recentWorkouts.length} sessions this week`,
-                            path: "/body/workout",
+                            path: "/body/activity",
                         },
                         {
                             icon: <Utensils className="w-5 h-5" />,
@@ -218,7 +218,7 @@ export function BodyHub() {
                             bg: "bg-orange-500/8",
                             title: "Nutrition",
                             value: todayCalories > 0 ? `${Math.round(todayCalories)} / ${calorieGoal} kcal today` : "No intake logged today",
-                            path: "/body/intake",
+                            path: "/body/nutrition",
                         },
                         {
                             icon: <Moon className="w-5 h-5" />,
@@ -234,7 +234,7 @@ export function BodyHub() {
                             bg: "bg-violet-500/8",
                             title: "Looks",
                             value: totalRoutines > 0 ? `${completedToday}/${totalRoutines} routines today` : "Set up your routines",
-                            path: "/body/hygiene",
+                            path: "/body/looks",
                         },
                     ].map((m) => (
                         <motion.button

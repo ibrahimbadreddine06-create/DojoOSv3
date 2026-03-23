@@ -147,7 +147,7 @@ export default function ActivityDrilldown() {
             variant="ghost"
             size="sm"
             className="gap-1.5 mb-2 -ml-2"
-            onClick={() => navigate("/body/workout")}
+            onClick={() => navigate("/body/activity")}
           >
             <ArrowLeft className="w-4 h-4" /> Activity
           </Button>

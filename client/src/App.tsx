@@ -171,7 +171,7 @@ function FullScreenRouter() {
       <Route path="/themes/new/:type" component={ProtectedThemeNewPage} />
       <Route path="/courses/new" component={ProtectedCourseNewPage} />
       <Route path="/goals/new" component={ProtectedGoalNewPage} />
-      <Route path="/body/workout/active/:id" component={ProtectedActiveWorkoutSession} />
+      <Route path="/body/activity/active/:id" component={ProtectedActiveWorkoutSession} />
     </Switch>
   );
 }
@@ -350,7 +350,7 @@ const fullScreenPaths = [
   '/themes/new/',
   '/courses/new',
   '/goals/new',
-  '/body/workout/active/'
+  '/body/activity/active/'
 ];
 
 function isFullScreenRoute(path: string): boolean {

@@ -254,7 +254,7 @@ function FinishScreen({ workout, totalSeconds, onClose }: {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function ActiveWorkoutSession() {
-    const [match, params] = useRoute("/body/workout/active/:id");
+    const [match, params] = useRoute("/body/activity/active/:id");
     const [, setLocation] = useLocation();
     const { toast } = useToast();
     const queryClient = useQueryClient();

@@ -353,6 +353,7 @@ export const workouts = pgTable("workouts", {
   completed: boolean("completed").notNull().default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
+  linkedBlockId: varchar("linked_block_id"), // optional FK to timeBlocks
 });
 
 export const exerciseLibrary = pgTable("exercise_library", {

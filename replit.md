@@ -18,7 +18,7 @@ A comprehensive personal productivity and life-management system — an all-in-o
 ## AI Features
 
 - **AI Learning Trajectory Builder** (`server/ai.ts`, `client/src/components/ai-trajectory-builder.tsx`)
-  - Uses `gemini-2.5-flash` with Google Search grounding
+  - Uses `gemini-1.5-flash` with Google Search grounding
   - Multi-step dialog: goal → optional ToC → AI thinking → review & edit tree → accept
   - Generates complete chapter hierarchies for Second Brain, Languages, Studies, and Disciplines
   - Bulk creates all chapters via `POST /api/learn-plan-items/bulk`

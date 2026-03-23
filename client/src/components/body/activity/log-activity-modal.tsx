@@ -82,7 +82,7 @@ export function LogActivityModal({ open, onOpenChange }: LogActivityModalProps) 
     if (type === "workout") {
       // Redirect to existing workout creation flow
       onOpenChange(false);
-      navigate("/body/workout");
+      navigate("/body/activity");
       return;
     }
     setSelectedType(type);

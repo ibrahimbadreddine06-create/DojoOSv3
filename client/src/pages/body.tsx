@@ -1,5 +1,5 @@
 import { ActivityPage } from "@/components/body/activity/activity-page";
-import { NutritionPage } from "@/components/body/nutrition/nutrition-page";
+import { NutritionPage } from "../components/body/nutrition/nutrition-page";
 import { IntakeTab } from "@/components/body/intake-tab";
 import { SleepTab } from "@/components/body/sleep-tab";
 import { HygieneTab } from "@/components/body/hygiene-tab";
@@ -20,10 +20,10 @@ export default function Body() {
   return (
     <BodyLayout>
       {!subpage && <BodyHub />}
-      {subpage === "workout" && <ActivityPage />}
-      {subpage === "intake" && <NutritionPage />}
+      {subpage === "activity" && <ActivityPage />}
+      {subpage === "nutrition" && <NutritionPage />}
       {subpage === "sleep" && <SleepTab />}
-      {subpage === "hygiene" && <HygieneTab />}
+      {subpage === "looks" && <HygieneTab />}
     </BodyLayout>
   );
 }

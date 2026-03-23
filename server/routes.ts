@@ -129,9 +129,8 @@ export function registerRoutes(app: Express): Server {
     res.json(theme);
   });
 
-  app.get("/api/knowledge-topics/:type", async (req, res) => {
+  app.get("/api/linkable-items/:type", async (req, res) => {
     const type = req.params.type;
-
     const normalizedType = type.replace(/-/g, '_');
 
     // Generic hub for linkable items across modules
@@ -143,12 +142,11 @@ export function registerRoutes(app: Express): Server {
         const disciplines = await storage.getDisciplines();
         return res.json(disciplines.map(d => ({ id: d.id, name: d.name })));
       case "body":
-        // Level 2 for body is the sub-modules
         return res.json([
-          { id: "body_intake", name: "Intake & Hydration" },
-          { id: "body_sleep", name: "Sleep & Recovery" },
-          { id: "body_hygiene", name: "Hygiene & Appearance" },
-          { id: "body_workouts", name: "Workouts & Fitness" },
+          { id: "body_activity", name: "Activity" },
+          { id: "body_nutrition", name: "Nutrition" },
+          { id: "body_sleep", name: "Sleep" },
+          { id: "body_looks", name: "Looks" },
         ]);
       case "masterpieces":
         const masterpieces = await storage.getMasterpieces();
@@ -234,11 +232,11 @@ export function registerRoutes(app: Express): Server {
         const sections = await storage.getMasterpieceSections(itemId);
         return res.json(sections.map(s => ({ id: s.id, name: s.title })));
       case "body":
-        if (itemId === "body_workouts") {
+        if (itemId === "body_activity" || itemId === "body_workouts") {
           const exercises = await storage.getExerciseLibrary();
           return res.json(exercises.map(e => ({ id: e.id, name: e.name })));
         }
-        if (itemId === "body_hygiene") {
+        if (itemId === "body_looks" || itemId === "body_hygiene") {
           const routines = await storage.getHygieneRoutines();
           return res.json(routines.map((r: any) => ({ id: r.id, name: r.name || "Routine" })));
         }
