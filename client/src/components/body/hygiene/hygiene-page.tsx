@@ -240,39 +240,39 @@ export function HygienePage() {
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/looks/metric/upkeepScore")}
+            data-testid="hero-upkeep-score"
           >
-            <CardContent className="p-6 flex flex-col items-center gap-4">
-              <MetricRing value={upkeepScore ?? 0} max={100} label="Upkeep Score" color={upkeepColor} size="lg" />
-              <div className="text-center">
-                <p className="font-semibold text-sm">Upkeep Score</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">this week</p>
-              </div>
+            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+              <MetricRing
+                value={upkeepScore ?? 0} max={100}
+                label="Upkeep Score" color={upkeepColor} size="lg" sublabel="this week"
+              />
             </CardContent>
           </Card>
 
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/looks/metric/disciplineRate")}
+            data-testid="hero-discipline-rate"
           >
-            <CardContent className="p-6 flex flex-col items-center gap-4">
-              <MetricRing value={disciplineRate ?? 0} max={100} label="Discipline Rate" unit="%" color={disciplineColor} size="lg" />
-              <div className="text-center">
-                <p className="font-semibold text-sm">Discipline Rate</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">planned tasks completed</p>
-              </div>
+            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+              <MetricRing
+                value={disciplineRate ?? 0} max={100}
+                label="Discipline" unit="%" color={disciplineColor} size="lg" sublabel="consistency"
+              />
             </CardContent>
           </Card>
 
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/looks/metric/glowUpDirection")}
+            data-testid="hero-glow-direction"
           >
-            <CardContent className="p-6 flex flex-col items-center gap-4">
-              <MetricRing value={glowValue} max={100} label="Glow-up Direction" color={glowColor} size="lg" />
-              <div className="text-center">
-                <p className="font-semibold text-sm">Glow-up Direction</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">7-day trend ({glowDirection})</p>
-              </div>
+            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+              <MetricRing
+                value={glowValue} max={100}
+                label="Glow-up" color={glowColor} size="lg" sublabel={`${glowDirection} trend`}
+              />
             </CardContent>
           </Card>
         </div>
@@ -389,10 +389,16 @@ export function HygienePage() {
               {[1,2,3,4,5,6].map((i) => <div key={i} className="h-32 bg-muted animate-pulse rounded-xl" />)}
             </div>
           ) : total === 0 ? (
-            <div className="px-6 pb-8 space-y-4">
+            <div className="px-6 pb-8 space-y-5">
+              <div className="flex flex-col items-center justify-center py-6 text-center animate-pulse">
+                <p className="text-sm font-semibold text-muted-foreground">No routines tracked yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-1 max-w-[250px]">
+                  Add a routine to see your goal-linked progress and cadence populate here.
+                </p>
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 {[1,2,3,4,5,6].map((i) => (
-                  <div key={i} className="border border-dashed border-border/40 rounded-xl p-4 min-h-[100px] flex flex-col gap-2">
+                  <div key={i} className="border border-dashed border-border/40 rounded-xl p-4 min-h-[100px] flex flex-col gap-2 opacity-50">
                     <div className="h-2 bg-muted rounded w-3/4" />
                     <div className="h-2 bg-muted rounded w-full" />
                     <div className="h-2 bg-muted rounded w-5/6" />
