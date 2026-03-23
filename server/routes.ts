@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams } from "./ai";
+import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory } from "./ai";
 import { calculateRecoveryScore } from "./recovery";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
@@ -16,7 +16,8 @@ import {
   insertCourseExerciseSchema, insertBusinessSchema, insertWorkProjectSchema, insertTaskSchema,
   insertSocialActivitySchema, insertPersonSchema, insertPageSettingSchema, insertDailyMetricSchema,
   insertDisciplineSchema, insertDisciplineLogSchema, insertDailyStateSchema,
-  insertActivityLogSchema, insertWorkoutPresetSchema
+  insertActivityLogSchema, insertWorkoutPresetSchema,
+  insertIntakeRoutineSchema, insertIntakeRoutineCheckinSchema
 } from "../shared/schema";
 
 export function registerRoutes(app: Express): Server {
@@ -837,6 +838,85 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/meal-presets/:id", async (req, res) => {
     await storage.deleteMealPreset(req.params.id);
     res.json({ success: true });
+  });
+
+  // ===== INTAKE ROUTINES =====
+  app.get("/api/intake-routines", async (_req, res) => {
+    res.json(await storage.getIntakeRoutines());
+  });
+  app.post("/api/intake-routines", async (req, res) => {
+    try {
+      const data = insertIntakeRoutineSchema.parse(req.body);
+      res.json(await storage.createIntakeRoutine(data));
+    } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+  app.patch("/api/intake-routines/:id", async (req, res) => {
+    try {
+      res.json(await storage.updateIntakeRoutine(req.params.id, req.body));
+    } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+  app.delete("/api/intake-routines/:id", async (req, res) => {
+    await storage.deleteIntakeRoutine(req.params.id);
+    res.json({ success: true });
+  });
+
+  // ===== INTAKE ROUTINE CHECKINS =====
+  app.get("/api/intake-routine-checkins/:date", async (req, res) => {
+    res.json(await storage.getIntakeRoutineCheckins(req.params.date));
+  });
+  app.post("/api/intake-routine-checkins", async (req, res) => {
+    try {
+      const { routineId, date } = req.body;
+      const result = await storage.toggleIntakeRoutineCheckin(routineId, date);
+      res.json({ checked: result !== null, checkin: result });
+    } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+
+  // ===== NUTRITION AGGREGATIONS =====
+  app.get("/api/fuel-fingerprint/week", async (_req, res) => {
+    res.json(await storage.getFuelFingerprintWeek());
+  });
+  app.get("/api/nutrition/trends", async (req, res) => {
+    const metric = String(req.query.metric || "calories");
+    const rangeStr = String(req.query.range || "30d");
+    const days = rangeStr === "7d" ? 7 : rangeStr === "90d" ? 90 : rangeStr === "180d" ? 180 : rangeStr === "365d" ? 365 : 30;
+    res.json(await storage.getNutritionTrends(metric, days));
+  });
+
+  // ===== FOOD SEARCH (OpenFoodFacts proxy) =====
+  app.get("/api/food-search", async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (!q) return res.json({ products: [] });
+    try {
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&json=1&page_size=20&fields=product_name,nutriments,serving_size,brands`;
+      const r = await fetch(url);
+      const data = await r.json() as any;
+      res.json({ products: data.products || [] });
+    } catch (e: any) { res.status(500).json({ message: "Food search failed", error: e.message }); }
+  });
+  app.get("/api/food-barcode/:barcode", async (req, res) => {
+    try {
+      const url = `https://world.openfoodfacts.org/api/v2/product/${req.params.barcode}.json`;
+      const r = await fetch(url);
+      const data = await r.json() as any;
+      res.json(data);
+    } catch (e: any) { res.status(500).json({ message: "Barcode lookup failed", error: e.message }); }
+  });
+
+  // ===== NUTRITION AI ROUTES =====
+  app.post("/api/nutrition/ai-brief", async (req, res) => {
+    try {
+      const { intakeLogs: logs, bodyProfile: profile } = req.body;
+      const brief = await generateNutritionBrief(logs || [], profile || null);
+      res.json({ brief });
+    } catch (e: any) { res.status(500).json({ brief: "No intake logged yet today. Tap '+ Log intake' to get started." }); }
+  });
+  app.post("/api/nutrition/classify-fuel", async (req, res) => {
+    try {
+      const { foodName } = req.body;
+      const categories = await classifyFuelCategory(foodName || "");
+      res.json({ categories });
+    } catch (e: any) { res.status(500).json({ categories: [] }); }
   });
 
   // Body Profile
