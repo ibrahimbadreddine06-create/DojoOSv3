@@ -1134,7 +1134,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNutritionOverview(userId: string, date: string): Promise<any> {
-    this.ensureDb();
     const [logs, profile, activeFast, state, blocks] = await Promise.all([
       this.getIntakeLogs(date),
       this.getBodyProfile(),
