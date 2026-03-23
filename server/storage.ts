@@ -38,6 +38,8 @@ import {
   type PageSetting, type InsertPageSetting, type DailyMetric, type InsertDailyMetric,
   type KnowledgeMetric,
   type WorkoutPreset, type InsertWorkoutPreset,
+  type ActivityLog, type InsertActivityLog,
+  activityLogs,
   type Discipline, type InsertDiscipline, type DisciplineLog, type InsertDisciplineLog,
   disciplines, disciplineLogs,
   type Follow, type InsertFollow, type PrivacySetting, type InsertPrivacySetting, type UpdatePrivacySetting,
@@ -172,6 +174,11 @@ export interface IStorage {
   // Daily State
   getDailyState(userId: string, date: string): Promise<DailyState | undefined>;
   upsertDailyState(userId: string, date: string, data: Partial<InsertDailyState>): Promise<DailyState>;
+
+  // Activity Logs
+  getActivityLogs(date: string): Promise<ActivityLog[]>;
+  getAllActivityLogs(): Promise<ActivityLog[]>;
+  createActivityLog(data: InsertActivityLog): Promise<ActivityLog>;
 
   // Worship
   getSalahLogs(date: string): Promise<SalahLog[]>;
@@ -1079,6 +1086,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Activity Logs
+  async getActivityLogs(date: string): Promise<ActivityLog[]> {
+    this.ensureDb();
+    return await db.select().from(activityLogs).where(
+      sql`DATE(${activityLogs.loggedAt}) = ${date}`
+    ).orderBy(desc(activityLogs.loggedAt));
+  }
+
+  async getAllActivityLogs(): Promise<ActivityLog[]> {
+    this.ensureDb();
+    return await db.select().from(activityLogs).orderBy(desc(activityLogs.loggedAt));
+  }
+
+  async createActivityLog(data: InsertActivityLog): Promise<ActivityLog> {
+    this.ensureDb();
+    const [log] = await db.insert(activityLogs).values(data).returning();
+    return log;
+  }
+
   // Worship
   async getSalahLogs(date: string): Promise<SalahLog[]> {
     this.ensureDb();
@@ -1550,6 +1576,7 @@ export class MemStorage implements IStorage {
   private mealPresets: Map<string, MealPreset>;
   private bodyProfiles: Map<string, BodyProfile>;
   private dailyStates: Map<string, DailyState>;
+  private activityLogsMap: Map<string, ActivityLog>;
   private salahLogs: Map<string, SalahLog>;
   private quranLogs: Map<string, QuranLog>;
   private dhikrLogs: Map<string, DhikrLog>;
@@ -1598,6 +1625,7 @@ export class MemStorage implements IStorage {
     this.mealPresets = new Map();
     this.bodyProfiles = new Map();
     this.dailyStates = new Map();
+    this.activityLogsMap = new Map();
     this.salahLogs = new Map();
     this.quranLogs = new Map();
     this.dhikrLogs = new Map();
@@ -2180,6 +2208,23 @@ export class MemStorage implements IStorage {
       this.dailyStates.set(id, created);
       return created;
     }
+  }
+
+  // Activity Logs
+  async getActivityLogs(date: string): Promise<ActivityLog[]> {
+    return Array.from(this.activityLogsMap.values()).filter(l => {
+      const logDate = l.loggedAt instanceof Date ? l.loggedAt.toISOString().split('T')[0] : String(l.loggedAt).split('T')[0];
+      return logDate === date;
+    });
+  }
+  async getAllActivityLogs(): Promise<ActivityLog[]> {
+    return Array.from(this.activityLogsMap.values()).sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  }
+  async createActivityLog(data: InsertActivityLog): Promise<ActivityLog> {
+    const id = this.generateId();
+    const log: ActivityLog = { ...data, id, loggedAt: data.loggedAt || new Date(), createdAt: new Date() } as any;
+    this.activityLogsMap.set(id, log);
+    return log;
   }
 
   // Worship

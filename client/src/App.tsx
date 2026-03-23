@@ -52,6 +52,7 @@ import CourseNewPage from "@/pages/course-new";
 import GoalNewPage from "@/pages/goal-new";
 import NotFound from "@/pages/not-found";
 import { ActiveWorkoutSession } from "@/components/body/active-workout-session";
+import ActivityDrilldown from "@/pages/activity-drilldown";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const [location, setLocation] = useLocation();
@@ -94,6 +95,7 @@ const ProtectedLanguages = () => <ProtectedRoute component={Languages} />;
 const ProtectedDisciplines = () => <ProtectedRoute component={Disciplines} />;
 const ProtectedDisciplineDetail = () => <ProtectedRoute component={DisciplineDetail} />;
 const ProtectedBody = () => <ProtectedRoute component={Body} />;
+const ProtectedActivityDrilldown = () => <ProtectedRoute component={ActivityDrilldown} />;
 const ProtectedWorship = () => <ProtectedRoute component={Worship} />;
 const ProtectedFinances = () => <ProtectedRoute component={Finances} />;
 const ProtectedMasterpieces = () => <ProtectedRoute component={Masterpieces} />;
@@ -120,6 +122,7 @@ function AuthenticatedRouter() {
       <Route path="/disciplines" component={ProtectedDisciplines} />
       <Route path="/disciplines/:id" component={ProtectedDisciplineDetail} />
       <Route path="/body" component={ProtectedBody} />
+      <Route path="/body/activity/metric/:metricKey" component={ProtectedActivityDrilldown} />
       <Route path="/body/:subpage" component={ProtectedBody} />
       <Route path="/worship" component={ProtectedWorship} />
       <Route path="/finances" component={ProtectedFinances} />

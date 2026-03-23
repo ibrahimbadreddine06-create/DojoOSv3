@@ -1,4 +1,4 @@
-import { WorkoutTab } from "@/components/body/workout-tab";
+import { ActivityPage } from "@/components/body/activity/activity-page";
 import { IntakeTab } from "@/components/body/intake-tab";
 import { SleepTab } from "@/components/body/sleep-tab";
 import { HygieneTab } from "@/components/body/hygiene-tab";
@@ -19,7 +19,7 @@ export default function Body() {
   return (
     <BodyLayout>
       {!subpage && <BodyHub />}
-      {subpage === "workout" && <WorkoutTab />}
+      {subpage === "workout" && <ActivityPage />}
       {subpage === "intake" && <IntakeTab />}
       {subpage === "sleep" && <SleepTab />}
       {subpage === "hygiene" && <HygieneTab />}
