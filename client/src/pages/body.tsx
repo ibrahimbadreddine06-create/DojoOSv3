@@ -2,7 +2,7 @@ import { ActivityPage } from "@/components/body/activity/activity-page";
 import { NutritionPage } from "../components/body/nutrition/nutrition-page";
 import { IntakeTab } from "@/components/body/intake-tab";
 import { RestPage } from "@/components/body/rest/rest-page";
-import { HygieneTab } from "@/components/body/hygiene-tab";
+import { HygienePage } from "@/components/body/hygiene/hygiene-page";
 import { useParams } from "wouter";
 import { BodyHub } from "@/components/body/body-hub";
 import { BodyLayout } from "@/components/body/body-layout";
@@ -23,7 +23,7 @@ export default function Body() {
       {subpage === "activity" && <ActivityPage />}
       {subpage === "nutrition" && <NutritionPage />}
       {subpage === "sleep" && <RestPage />}
-      {subpage === "looks" && <HygieneTab />}
+      {subpage === "looks" && <HygienePage />}
     </BodyLayout>
   );
 }
