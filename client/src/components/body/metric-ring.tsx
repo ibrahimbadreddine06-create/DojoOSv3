@@ -129,7 +129,7 @@ export function MetricRing({
       </div>
 
       <div className="text-center">
-        <p className={`font-semibold uppercase tracking-widest text-muted-foreground leading-none ${labelSize}`}>
+        <p className={`font-semibold tracking-wide text-muted-foreground leading-none ${labelSize}`}>
           {label}
         </p>
         {sublabel && (

@@ -25,9 +25,8 @@ function TrendCard({
   const displayValue = value === null || value === undefined ? "–" : value;
   const showWearableBadge = wearableRequired && !wearableConnected;
 
-  // Generate placeholder sparkline if none provided
-  const data = (sparklineData || Array.from({ length: 14 }, () => Math.random() * 50 + 25))
-    .map((v, i) => ({ v }));
+  const hasData = sparklineData && sparklineData.length > 0;
+  const data = hasData ? sparklineData.map((v) => ({ v })) : [];
 
   return (
     <Card
@@ -62,17 +61,23 @@ function TrendCard({
             )}
           </div>
           <div className="h-8 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke={displayValue !== "–" ? color : "#d1d5db"}
-                  strokeWidth={1.5}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {hasData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke={color}
+                    strokeWidth={1.5}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center">
+                <div className="w-full h-px bg-border" />
+              </div>
+            )}
           </div>
         </CardContent>
       </div>

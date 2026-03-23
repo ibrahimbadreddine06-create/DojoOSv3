@@ -154,7 +154,7 @@ export function ActivityPage() {
                         </div>
                       </div>
                       <div className="text-center">
-                        <p className="text-[12px] font-semibold uppercase tracking-widest text-muted-foreground">Recovery</p>
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground">Recovery</p>
                         <p className="text-[12px] text-muted-foreground/60 mt-0.5">tap → learn more</p>
                       </div>
                     </div>

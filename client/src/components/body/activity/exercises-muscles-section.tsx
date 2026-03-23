@@ -73,19 +73,14 @@ export function ExercisesMusclesSection() {
   const selectedMuscle = view === "muscles" ? MUSCLE_GROUPS.find((m) => m.id === selectedItem) : null;
   const selectedExercise = view === "exercises" ? exercises?.find((e) => e.id === selectedItem) : null;
 
-  // Mock chart data (will be replaced with real data from API)
   const chartData = useMemo(() => {
-    if (view === "exercises" && exerciseProgress) {
+    if (view === "exercises" && exerciseProgress && exerciseProgress.length > 0) {
       return exerciseProgress.map((p: any) => ({
         date: p.date,
         value: chartMode === "Strength" ? p.maxWeight : p.totalVolume,
       }));
     }
-    // Placeholder data
-    return Array.from({ length: 14 }, (_, i) => ({
-      date: new Date(Date.now() - (13 - i) * 86400000).toISOString().split("T")[0],
-      value: Math.floor(Math.random() * 50) + 50,
-    }));
+    return [];
   }, [view, selectedItem, chartMode, exerciseProgress]);
 
   const chartConfig = {
@@ -242,31 +237,37 @@ export function ExercisesMusclesSection() {
 
                   {/* Chart */}
                   <div className="h-48">
-                    <ChartContainer config={chartConfig} className="h-full w-full">
-                      <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 10 }}
-                          tickLine={false}
-                          axisLine={false}
-                          tickFormatter={(v) => {
-                            const d = new Date(v);
-                            return `${d.getMonth() + 1}/${d.getDate()}`;
-                          }}
-                        />
-                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke="hsl(0 84.2% 60.2%)"
-                          strokeWidth={2}
-                          dot={{ r: 2 }}
-                          activeDot={{ r: 4 }}
-                        />
-                      </LineChart>
-                    </ChartContainer>
+                    {chartData.length > 0 ? (
+                      <ChartContainer config={chartConfig} className="h-full w-full">
+                        <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 10 }}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(v) => {
+                              const d = new Date(v);
+                              return `${d.getMonth() + 1}/${d.getDate()}`;
+                            }}
+                          />
+                          <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke="hsl(0 84.2% 60.2%)"
+                            strokeWidth={2}
+                            dot={{ r: 2 }}
+                            activeDot={{ r: 4 }}
+                          />
+                        </LineChart>
+                      </ChartContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                        No data yet — log an activity to see progress
+                      </div>
+                    )}
                   </div>
 
                   {/* Time range */}
