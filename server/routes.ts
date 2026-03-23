@@ -839,6 +839,36 @@ export function registerRoutes(app: Express): Server {
     res.json({ success: true });
   });
 
+  // ===== INTAKE LOGS =====
+  app.get("/api/intake-logs/:date", async (req, res) => {
+    try {
+      const logs = await storage.getIntakeLogs(req.params.date);
+      res.json(logs);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  app.post("/api/intake-logs", async (req, res) => {
+    try {
+      const data = insertIntakeLogSchema.parse(req.body);
+      const log = await storage.createIntakeLog(data);
+      res.json(log);
+    } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+
+  app.patch("/api/intake-logs/:id", async (req, res) => {
+    try {
+      const log = await storage.updateIntakeLog(req.params.id, req.body);
+      res.json(log);
+    } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+
+  app.delete("/api/intake-logs/:id", async (req, res) => {
+    try {
+      await storage.deleteIntakeLog(req.params.id);
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
   // ===== INTAKE ROUTINES =====
   app.get("/api/intake-routines", async (_req, res) => {
     res.json(await storage.getIntakeRoutines());

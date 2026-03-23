@@ -147,6 +147,11 @@ export interface IStorage {
   createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
   updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
   deleteIntakeLog(id: string): Promise<void>;
+  // Nutrition & Intake
+  getIntakeLogs(date: string): Promise<IntakeLog[]>;
+  createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
+  updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
+  deleteIntakeLog(id: string): Promise<void>;
   getSleepLogs(date: string): Promise<SleepLog[]>;
   getAllSleepLogs(): Promise<SleepLog[]>;
   createSleepLog(data: InsertSleepLog): Promise<SleepLog>;
