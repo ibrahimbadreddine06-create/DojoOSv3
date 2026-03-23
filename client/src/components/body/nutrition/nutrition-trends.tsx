@@ -24,6 +24,17 @@ const SECONDARY_METRICS = [
 ];
 
 export function NutritionTrends({ intakeLogs }: NutritionTrendsProps) {
+  const allMetrics = [...TOP_METRICS, ...SECONDARY_METRICS].map(m => m.key);
+  const metricsQueryString = allMetrics.join(",");
+
+  const { data: batchData, isLoading } = useQuery<Record<string, { date: string, value: number }[]>>({
+    queryKey: [`/api/nutrition/trends/batch?metrics=${metricsQueryString}&range=7d`],
+  });
+
+  if (isLoading) {
+    return <div className="h-48 bg-card border rounded-2xl animate-pulse" />;
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-baseline px-1">
@@ -33,25 +44,21 @@ export function NutritionTrends({ intakeLogs }: NutritionTrendsProps) {
 
       <div className="grid grid-cols-2 gap-3">
         {TOP_METRICS.map(m => (
-          <TrendCard key={m.key} metric={m} />
+          <TrendCard key={m.key} metric={m} data={batchData?.[m.key]} />
         ))}
       </div>
 
       <div className="space-y-2">
         {SECONDARY_METRICS.map(m => (
-          <TrendRow key={m.key} metric={m} />
+          <TrendRow key={m.key} metric={m} data={batchData?.[m.key]} />
         ))}
       </div>
     </div>
   );
 }
 
-function TrendCard({ metric }: { metric: any }) {
-  const { data: trendData } = useQuery<{ date: string, value: number }[]>({
-    queryKey: [`/api/nutrition/trends?metric=${metric.key}&days=7`],
-  });
-
-  const displayData = trendData || Array.from({ length: 7 }).map(() => ({ value: 0 }));
+function TrendCard({ metric, data }: { metric: any, data?: { date: string, value: number }[] }) {
+  const displayData = data || Array.from({ length: 7 }).map(() => ({ value: 0 }));
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (
@@ -84,12 +91,8 @@ function TrendCard({ metric }: { metric: any }) {
   );
 }
 
-function TrendRow({ metric }: { metric: any }) {
-  const { data: trendData } = useQuery<{ date: string, value: number }[]>({
-    queryKey: [`/api/nutrition/trends?metric=${metric.key}&days=7`],
-  });
-
-  const displayData = trendData || Array.from({ length: 7 }).map(() => ({ value: 0 }));
+function TrendRow({ metric, data }: { metric: any, data?: { date: string, value: number }[] }) {
+  const displayData = data || Array.from({ length: 7 }).map(() => ({ value: 0 }));
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (

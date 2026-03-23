@@ -909,6 +909,17 @@ export function registerRoutes(app: Express): Server {
     const days = rangeStr === "7d" ? 7 : rangeStr === "90d" ? 90 : rangeStr === "180d" ? 180 : rangeStr === "365d" ? 365 : 30;
     res.json(await storage.getNutritionTrends(metric, days));
   });
+  app.get("/api/nutrition/trends/batch", async (req, res) => {
+    const metricsParam = String(req.query.metrics || "");
+    const metrics = metricsParam ? metricsParam.split(",") : ["calories"];
+    const rangeStr = String(req.query.range || "7d");
+    const days = rangeStr === "7d" ? 7 : rangeStr === "90d" ? 90 : rangeStr === "180d" ? 180 : rangeStr === "365d" ? 365 : 30;
+    res.json(await storage.getNutritionTrendsBatch(metrics, days));
+  });
+  app.get("/api/nutrition/overview/:date", async (req, res) => {
+    if (!req.user) return res.status(401).send("Not authenticated");
+    res.json(await storage.getNutritionOverview(req.user.id, req.params.date));
+  });
 
   // ===== FOOD SEARCH (OpenFoodFacts proxy) =====
   app.get("/api/food-search", async (req, res) => {

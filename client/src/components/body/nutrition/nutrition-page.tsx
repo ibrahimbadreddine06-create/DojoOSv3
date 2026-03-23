@@ -25,27 +25,17 @@ export function NutritionPage() {
   const [preselectedBlockId, setPreselectedBlockId] = useState<string | null>(null);
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const { data: intakeLogs, isLoading: logsLoading } = useQuery<IntakeLog[]>({
-    queryKey: [`/api/intake-logs/${today}`],
+  const { data: overview, isLoading: overviewLoading } = useQuery<{
+    intakeLogs: IntakeLog[];
+    bodyProfile: BodyProfile;
+    activeFastingLog: FastingLog | null;
+    dailyState: DailyState;
+    nutritionBlocks: TimeBlock[];
+  }>({
+    queryKey: [`/api/nutrition/overview/${today}`],
   });
 
-  const { data: profile, isLoading: profileLoading } = useQuery<BodyProfile>({
-    queryKey: ["/api/body-profile"],
-  });
-
-  const { data: activeFastingLog } = useQuery<FastingLog>({
-    queryKey: ["/api/fasting-logs/active"],
-  });
-
-  const { data: dailyState } = useQuery<DailyState>({
-    queryKey: [`/api/daily-state/${today}`],
-  });
-
-  const { data: timeBlocks } = useQuery<TimeBlock[]>({
-    queryKey: [`/api/time-blocks/${today}`],
-  });
-
-  if (logsLoading || profileLoading) {
+  if (overviewLoading) {
     return (
       <div className="space-y-6 pb-20 p-4">
         <Skeleton className="h-20 w-full" />
@@ -58,9 +48,12 @@ export function NutritionPage() {
     );
   }
 
-  const logs = intakeLogs || [];
+  const logs = overview?.intakeLogs || [];
+  const profile = overview?.bodyProfile;
+  const activeFastingLog = overview?.activeFastingLog;
+  const dailyState = overview?.dailyState;
+  const nutritionBlocks = overview?.nutritionBlocks || [];
   const waterTotal = logs.reduce((acc, l) => acc + Number(l.water || 0), 0);
-  const nutritionBlocks = timeBlocks?.filter(b => b.linkedModule === "nutrition") || [];
 
   const handleOpenLogModal = (blockId?: string) => {
     setPreselectedBlockId(blockId || null);
@@ -88,7 +81,7 @@ export function NutritionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <HydrationCard waterAmount={waterTotal} waterGoal={profile?.waterGoal || 2500} />
           <FastingCard
-            activeLog={activeFastingLog}
+            activeLog={activeFastingLog || undefined}
             bodyProfile={profile}
             onConfigureClick={() => setIsFastingModalOpen(true)}
           />

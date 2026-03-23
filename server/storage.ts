@@ -182,6 +182,14 @@ export interface IStorage {
   // Nutrition Aggregations
   getFuelFingerprintWeek(): Promise<Record<string, number>>;
   getNutritionTrends(metric: string, days: number): Promise<{ date: string; value: number }[]>;
+  getNutritionTrendsBatch(metrics: string[], days: number): Promise<Record<string, { date: string; value: number }[]>>;
+  getNutritionOverview(userId: string, date: string): Promise<{
+    intakeLogs: IntakeLog[];
+    bodyProfile?: BodyProfile;
+    activeFastingLog?: FastingLog | null;
+    dailyState?: DailyState;
+    nutritionBlocks: TimeBlock[];
+  }>;
   // Meal Presets
   getMealPresets(): Promise<MealPreset[]>;
   createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
@@ -1160,7 +1168,6 @@ export class DatabaseStorage implements IStorage {
         burned: sql<number>`MAX(${dailyState.caloriesBurned})`,
       }).from(intakeLogs)
         .leftJoin(dailyState, and(
-          eq(dailyState.userId, intakeLogs.userId || ""), // Fallback if userId not on log
           sql`DATE(${dailyState.date}) = DATE(${intakeLogs.date})`
         ))
         .where(sql`${intakeLogs.date} >= ${since.toISOString()}`)
@@ -1202,6 +1209,49 @@ export class DatabaseStorage implements IStorage {
       .orderBy(sql`DATE(${intakeLogs.date})`);
 
     return (rows as { date: string, value: any }[]).map(r => ({ date: r.date, value: Number(r.value) || 0 }));
+  }
+
+  async getNutritionTrendsBatch(metrics: string[], days: number): Promise<Record<string, { date: string; value: number }[]>> {
+    this.ensureDb();
+    const results: Record<string, { date: string; value: number }[]> = {};
+    
+    // Fetch each metric's trend. While we could try one massive complex query, 
+    // these are simple enough that parallel local queries are fast in SQLite, 
+    // and batching the response solves the 8 concurrent network requests problem.
+    await Promise.all(metrics.map(async (m) => {
+      results[m] = await this.getNutritionTrends(m, days);
+    }));
+
+    return results;
+  }
+
+  async getNutritionOverview(userId: string, date: string): Promise<{
+    intakeLogs: IntakeLog[];
+    bodyProfile?: BodyProfile;
+    activeFastingLog?: FastingLog | null;
+    dailyState?: DailyState;
+    nutritionBlocks: TimeBlock[];
+  }> {
+    this.ensureDb();
+    
+    const [logs, profile, activeFasting, dailyStateRow, nBlocks] = await Promise.all([
+      this.getIntakeLogs(date),
+      this.getBodyProfile(),
+      this.getActiveFastingLog(),
+      this.getDailyState(userId, date),
+      db.select().from(timeBlocks).where(and(
+        eq(timeBlocks.linkedModule, "nutrition"),
+        sql`DATE(${timeBlocks.startTime}) = ${date}`
+      ))
+    ]);
+
+    return {
+      intakeLogs: logs,
+      bodyProfile: profile,
+      activeFastingLog: activeFasting || null,
+      dailyState: dailyStateRow,
+      nutritionBlocks: nBlocks as any[],
+    };
   }
 
   async getMealPresets(): Promise<MealPreset[]> {
@@ -2347,6 +2397,36 @@ export class MemStorage implements IStorage {
   async toggleIntakeRoutineCheckin(_routineId: string, _date: string): Promise<IntakeRoutineCheckin | null> { return null; }
   async getFuelFingerprintWeek(): Promise<Record<string, number>> { return {}; }
   async getNutritionTrends(_metric: string, _days: number): Promise<{ date: string; value: number }[]> { return []; }
+  async getNutritionTrendsBatch(metrics: string[], days: number): Promise<Record<string, { date: string; value: number }[]>> {
+    const results: Record<string, { date: string; value: number }[]> = {};
+    for (const m of metrics) {
+      results[m] = await this.getNutritionTrends(m, days);
+    }
+    return results;
+  }
+  async getNutritionOverview(userId: string, date: string): Promise<{
+    intakeLogs: IntakeLog[];
+    bodyProfile?: BodyProfile;
+    activeFastingLog?: FastingLog | null;
+    dailyState?: DailyState;
+    nutritionBlocks: TimeBlock[];
+  }> {
+    const intakeLogs = await this.getIntakeLogs(date);
+    const bodyProfile = await this.getBodyProfile();
+    const activeFastingLog = await this.getActiveFastingLog();
+    const dailyState = await this.getDailyState(userId, date);
+    const nutritionBlocks = Array.from(this.timeBlocks.values()).filter(b => 
+      b.date === date && b.linkedModule === "nutrition"
+    );
+
+    return {
+      intakeLogs,
+      bodyProfile,
+      activeFastingLog: activeFastingLog || null,
+      dailyState,
+      nutritionBlocks,
+    };
+  }
   async getMealPresets(): Promise<MealPreset[]> {
     return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
