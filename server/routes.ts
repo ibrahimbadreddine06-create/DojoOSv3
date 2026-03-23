@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory } from "./ai";
+import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory, analyzeMealDescription, analyzeMealPhoto } from "./ai";
 import { calculateRecoveryScore } from "./recovery";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
@@ -239,9 +239,8 @@ export function registerRoutes(app: Express): Server {
           return res.json(exercises.map(e => ({ id: e.id, name: e.name })));
         }
         if (itemId === "body_hygiene") {
-          const today = new Date().toISOString().split('T')[0];
-          const routines = await storage.getHygieneRoutines(today);
-          return res.json(routines.map(r => ({ id: r.id, name: r.name || "Routine" })));
+          const routines = await storage.getHygieneRoutines();
+          return res.json(routines.map((r: any) => ({ id: r.id, name: r.name || "Routine" })));
         }
         return res.json([]);
       case "business":
@@ -917,6 +916,22 @@ export function registerRoutes(app: Express): Server {
       const categories = await classifyFuelCategory(foodName || "");
       res.json({ categories });
     } catch (e: any) { res.status(500).json({ categories: [] }); }
+  });
+
+  app.post("/api/nutrition/analyze-description", async (req, res) => {
+    try {
+      const { description } = req.body;
+      const analysis = await analyzeMealDescription(description);
+      res.json(analysis);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
+  });
+
+  app.post("/api/nutrition/analyze-photo", async (req, res) => {
+    try {
+      const { image } = req.body; // base64
+      const analysis = await analyzeMealPhoto(image);
+      res.json(analysis);
+    } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
 
   // Body Profile

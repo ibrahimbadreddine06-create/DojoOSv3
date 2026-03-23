@@ -879,7 +879,7 @@ export async function classifyFuelCategory(foodName: string): Promise<string[]> 
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
-  const match = text.match(/\[.*?\]/s);
+  const match = text.match(/\[[\s\S]*?\]/);
   if (!match) return [];
   try {
     const parsed = JSON.parse(match[0]);
@@ -888,3 +888,78 @@ export async function classifyFuelCategory(foodName: string): Promise<string[]> 
     return [];
   }
 }
+
+// ─── AI Meal Analysis ─────────────────────────────────────────────────────────
+
+export async function analyzeMealDescription(description: string): Promise<any> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not found");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Analyze this meal description and provide estimated nutritional values. 
+    Meal: "${description}"
+    
+    Return ONLY a JSON object with: 
+    - mealName (string)
+    - calories (number)
+    - protein (number, grams)
+    - carbs (number, grams)
+    - fats (number, grams)
+    - fiber (number, grams)
+    - fuelCategories (string array matching: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat)
+    
+    Example: {"mealName": "Chicken Salad", "calories": 350, "protein": 30, "carbs": 10, " fats": 20, "fiber": 5, "fuelCategories": ["plants", "quality-protein"]}
+    If you cannot estimate, return null.`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+  const match = text.match(/\{[\s\S]*?\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+export async function analyzeMealPhoto(base64Image: string): Promise<any> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not found");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Analyze this meal photo and provide estimated nutritional values. 
+    
+    Return ONLY a JSON object with: 
+    - mealName (string)
+    - calories (number)
+    - protein (number, grams)
+    - carbs (number, grams)
+    - fats (number, grams)
+    - fiber (number, grams)
+    - fuelCategories (string array matching: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat)
+    
+    Example: {"mealName": "Steak and Veggies", "calories": 500, "protein": 40, "carbs": 15, "fats": 30, "fiber": 8, "fuelCategories": ["quality-protein", "plants"]}
+    If you cannot identify the food, return null.`;
+
+  const imagePart = {
+    inlineData: {
+      data: base64Image.split(',')[1] || base64Image,
+      mimeType: "image/jpeg",
+    },
+  };
+
+  const result = await model.generateContent([prompt, imagePart]);
+  const text = result.response.text().trim();
+  const match = text.match(/\{[\s\S]*?\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
