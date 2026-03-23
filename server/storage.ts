@@ -43,7 +43,10 @@ import {
   type Discipline, type InsertDiscipline, type DisciplineLog, type InsertDisciplineLog,
   disciplines, disciplineLogs,
   type Follow, type InsertFollow, type PrivacySetting, type InsertPrivacySetting, type UpdatePrivacySetting,
-  follows, privacySettings
+  follows, privacySettings,
+  type IntakeRoutine, type InsertIntakeRoutine,
+  type IntakeRoutineCheckin, type InsertIntakeRoutineCheckin,
+  intakeRoutines, intakeRoutineCheckins,
 } from "../shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, ilike, or } from "drizzle-orm"; // Added sql import
@@ -164,6 +167,16 @@ export interface IStorage {
   stopFastingLog(id: string): Promise<FastingLog>;
   completeFastingLog(id: string): Promise<FastingLog>;
   deleteFastingLog(id: string): Promise<void>;
+  // Intake Routines
+  getIntakeRoutines(): Promise<IntakeRoutine[]>;
+  createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine>;
+  updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine>;
+  deleteIntakeRoutine(id: string): Promise<void>;
+  getIntakeRoutineCheckins(date: string): Promise<IntakeRoutineCheckin[]>;
+  toggleIntakeRoutineCheckin(routineId: string, date: string): Promise<IntakeRoutineCheckin | null>;
+  // Nutrition Aggregations
+  getFuelFingerprintWeek(): Promise<Record<string, number>>;
+  getNutritionTrends(metric: string, days: number): Promise<{ date: string; value: number }[]>;
   // Meal Presets
   getMealPresets(): Promise<MealPreset[]>;
   createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
@@ -1031,6 +1044,85 @@ export class DatabaseStorage implements IStorage {
   async deleteFastingLog(id: string): Promise<void> {
     this.ensureDb();
     await db.delete(fastingLogs).where(eq(fastingLogs.id, id));
+  }
+
+  async getIntakeRoutines(): Promise<IntakeRoutine[]> {
+    this.ensureDb();
+    return await db.select().from(intakeRoutines).orderBy(asc(intakeRoutines.name));
+  }
+
+  async createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine> {
+    this.ensureDb();
+    const [routine] = await db.insert(intakeRoutines).values(data).returning();
+    return routine;
+  }
+
+  async updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
+    this.ensureDb();
+    const [routine] = await db.update(intakeRoutines).set(data).where(eq(intakeRoutines.id, id)).returning();
+    return routine;
+  }
+
+  async deleteIntakeRoutine(id: string): Promise<void> {
+    this.ensureDb();
+    await db.delete(intakeRoutines).where(eq(intakeRoutines.id, id));
+  }
+
+  async getIntakeRoutineCheckins(date: string): Promise<IntakeRoutineCheckin[]> {
+    this.ensureDb();
+    return await db.select().from(intakeRoutineCheckins).where(eq(intakeRoutineCheckins.date, date));
+  }
+
+  async toggleIntakeRoutineCheckin(routineId: string, date: string): Promise<IntakeRoutineCheckin | null> {
+    this.ensureDb();
+    const [existing] = await db.select().from(intakeRoutineCheckins)
+      .where(and(eq(intakeRoutineCheckins.routineId, routineId), eq(intakeRoutineCheckins.date, date)));
+    if (existing) {
+      await db.delete(intakeRoutineCheckins).where(eq(intakeRoutineCheckins.id, existing.id));
+      return null;
+    }
+    const [checkin] = await db.insert(intakeRoutineCheckins).values({ routineId, date }).returning();
+    return checkin;
+  }
+
+  async getFuelFingerprintWeek(): Promise<Record<string, number>> {
+    this.ensureDb();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const logs = await db.select({ fuelCategories: intakeLogs.fuelCategories })
+      .from(intakeLogs)
+      .where(sql`${intakeLogs.date} >= ${sevenDaysAgo.toISOString()}`);
+    const counts: Record<string, number> = {};
+    for (const log of logs) {
+      for (const cat of (log.fuelCategories || [])) {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  async getNutritionTrends(metric: string, days: number): Promise<{ date: string; value: number }[]> {
+    this.ensureDb();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const metricToField: Record<string, any> = {
+      calories: intakeLogs.calories, protein: intakeLogs.protein,
+      carbs: intakeLogs.carbs, fat: intakeLogs.fats, fiber: intakeLogs.fiber,
+      hydration: intakeLogs.water, vitaminD: intakeLogs.vitaminD,
+      vitaminC: intakeLogs.vitaminC, iron: intakeLogs.iron, calcium: intakeLogs.calcium,
+      potassium: intakeLogs.potassium, zinc: intakeLogs.zinc, magnesium: intakeLogs.magnesium,
+      vitaminB12: intakeLogs.vitaminB12,
+    };
+    const field = metricToField[metric];
+    if (!field) return [];
+    const rows = await db.select({
+      date: sql<string>`DATE(${intakeLogs.date})`,
+      value: sql<number>`SUM(CAST(${field} AS NUMERIC))`,
+    }).from(intakeLogs)
+      .where(sql`${intakeLogs.date} >= ${since.toISOString()}`)
+      .groupBy(sql`DATE(${intakeLogs.date})`)
+      .orderBy(sql`DATE(${intakeLogs.date})`);
+    return rows.map(r => ({ date: r.date, value: Number(r.value) || 0 }));
   }
 
   async getMealPresets(): Promise<MealPreset[]> {
@@ -2164,6 +2256,18 @@ export class MemStorage implements IStorage {
   async deleteFastingLog(id: string): Promise<void> {
     this.fastingLogs.delete(id);
   }
+  async getIntakeRoutines(): Promise<IntakeRoutine[]> { return []; }
+  async createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine> {
+    return { ...data, id: this.generateId(), createdAt: new Date() } as any;
+  }
+  async updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
+    return { id, ...data } as any;
+  }
+  async deleteIntakeRoutine(_id: string): Promise<void> {}
+  async getIntakeRoutineCheckins(_date: string): Promise<IntakeRoutineCheckin[]> { return []; }
+  async toggleIntakeRoutineCheckin(_routineId: string, _date: string): Promise<IntakeRoutineCheckin | null> { return null; }
+  async getFuelFingerprintWeek(): Promise<Record<string, number>> { return {}; }
+  async getNutritionTrends(_metric: string, _days: number): Promise<{ date: string; value: number }[]> { return []; }
   async getMealPresets(): Promise<MealPreset[]> {
     return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
   }

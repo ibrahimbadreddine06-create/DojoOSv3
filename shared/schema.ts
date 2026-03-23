@@ -424,6 +424,9 @@ export const intakeLogs = pgTable("intake_logs", {
   calcium: decimal("calcium", { precision: 7, scale: 2 }), // mg
   potassium: decimal("potassium", { precision: 7, scale: 2 }), // mg
   water: decimal("water", { precision: 6, scale: 2 }), // ml
+  vitaminB12: decimal("vitamin_b12", { precision: 6, scale: 2 }), // mcg
+  fuelCategories: jsonb("fuel_categories").$type<string[]>(), // Fuel Fingerprint assignments
+  linkedBlockId: varchar("linked_block_id"), // optional FK to timeBlocks
   notes: text("notes"),
   imageUrl: text("image_url"),
   status: intakeStatusEnum("status").notNull().default("consumed"),
@@ -480,6 +483,28 @@ export const fastingLogs = pgTable("fasting_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ===== INTAKE ROUTINES (supplements & medications with schedules) =====
+export const intakeRoutines = pgTable("intake_routines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  dose: decimal("dose", { precision: 7, scale: 2 }),
+  unit: text("unit"), // mg, mcg, g, IU, ml, capsule, tablet
+  type: text("type").notNull().default("supplement"), // supplement | medication
+  frequency: text("frequency").notNull().default("daily"), // daily | weekdays | custom
+  daysOfWeek: jsonb("days_of_week").$type<string[]>(), // ["Mon","Tue",...] for custom
+  timeOfDay: text("time_of_day"), // morning | evening | with-meals | HH:MM
+  micronutrientField: text("micronutrient_field"), // e.g. "vitaminD"
+  micronutrientAmount: decimal("micronutrient_amount", { precision: 6, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const intakeRoutineCheckins = pgTable("intake_routine_checkins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  routineId: varchar("routine_id").notNull(),
+  date: date("date").notNull(),
+  checkedAt: timestamp("checked_at").defaultNow(),
+});
+
 // ===== MEAL PRESETS =====
 export const mealPresets = pgTable("meal_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -521,6 +546,14 @@ export const bodyProfile = pgTable("body_profile", {
   weeklyEffortTarget: integer("weekly_effort_target").default(500),
   dailyEnergyGoal: integer("daily_energy_goal"), // kcal burn goal
   activeTimeGoal: integer("active_time_goal").default(45), // minutes
+  fiberGoal: integer("fiber_goal").default(30), // grams
+  waterGoal: integer("water_goal").default(2500), // ml
+  fastingProgram: jsonb("fasting_program").$type<{
+    preset: "16:8" | "18:6" | "20:4" | "OMAD" | "custom";
+    fastingHours: number;
+    eatingWindowStart: string; // HH:MM
+    activeDays: string[]; // ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] or subset
+  }>(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -888,6 +921,8 @@ export const insertFastingLogSchema = createInsertSchema(fastingLogs, {
   startTime: z.coerce.date(),
   endTime: z.coerce.date().optional().nullable(),
 }).omit({ id: true, createdAt: true });
+export const insertIntakeRoutineSchema = createInsertSchema(intakeRoutines).omit({ id: true, createdAt: true });
+export const insertIntakeRoutineCheckinSchema = createInsertSchema(intakeRoutineCheckins).omit({ id: true });
 export const insertMealPresetSchema = createInsertSchema(mealPresets).omit({ id: true, createdAt: true });
 export const insertBodyProfileSchema = createInsertSchema(bodyProfile).omit({ id: true, updatedAt: true });
 export const insertDailyStateSchema = createInsertSchema(dailyState).omit({ id: true, updatedAt: true });
@@ -957,6 +992,10 @@ export type SupplementLog = typeof supplementLogs.$inferSelect;
 export type InsertSupplementLog = z.infer<typeof insertSupplementLogSchema>;
 export type FastingLog = typeof fastingLogs.$inferSelect;
 export type InsertFastingLog = z.infer<typeof insertFastingLogSchema>;
+export type IntakeRoutine = typeof intakeRoutines.$inferSelect;
+export type InsertIntakeRoutine = z.infer<typeof insertIntakeRoutineSchema>;
+export type IntakeRoutineCheckin = typeof intakeRoutineCheckins.$inferSelect;
+export type InsertIntakeRoutineCheckin = z.infer<typeof insertIntakeRoutineCheckinSchema>;
 export type MealPreset = typeof mealPresets.$inferSelect;
 export type InsertMealPreset = z.infer<typeof insertMealPresetSchema>;
 export type BodyProfile = typeof bodyProfile.$inferSelect;

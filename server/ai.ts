@@ -836,3 +836,55 @@ export async function generateActivityBrief(dailyData: any): Promise<string> {
   const text = result.response.text();
   return text.trim();
 }
+
+// ─── Nutrition Brief ─────────────────────────────────────────────────────────
+
+export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "No intake logged yet today. Tap '+ Log intake' to get started.";
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const totals = intakeLogs.reduce((acc: any, log: any) => {
+    acc.calories = (acc.calories || 0) + (parseFloat(log.calories) || 0);
+    acc.protein = (acc.protein || 0) + (parseFloat(log.protein) || 0);
+    acc.carbs = (acc.carbs || 0) + (parseFloat(log.carbs) || 0);
+    acc.fat = (acc.fat || 0) + (parseFloat(log.fats) || 0);
+    return acc;
+  }, {});
+
+  const goals = {
+    calories: bodyProfile?.dailyCalorieGoal || 2500,
+    protein: bodyProfile?.dailyProteinGoal || 150,
+  };
+
+  const dataStr = JSON.stringify({ totals, goals });
+  const prompt = `In 1-2 sentences, summarize the user's nutrition status for today. Be factual and specific. Use this data: ${dataStr}. Example: "Protein on track — 142g of 188g consumed. 860 kcal remaining toward your 2500 kcal goal." No motivational language. No markdown.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}
+
+// ─── Fuel Category Classification ────────────────────────────────────────────
+
+export async function classifyFuelCategory(foodName: string): Promise<string[]> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return [];
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const prompt = `Classify this food into one or more of these categories: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat. Food: "${foodName}". Return ONLY a JSON array of strings. Example: ["plants","quality-protein"]`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text().trim();
+  const match = text.match(/\[.*?\]/s);
+  if (!match) return [];
+  try {
+    const parsed = JSON.parse(match[0]);
+    return Array.isArray(parsed) ? parsed.filter((s: any) => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
