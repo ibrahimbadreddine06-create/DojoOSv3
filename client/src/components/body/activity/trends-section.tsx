@@ -30,57 +30,54 @@ function TrendCard({
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+      className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/body/activity/metric/${metricKey}`)}
     >
-      <div className="flex h-full">
-        <div className="w-1 shrink-0" style={{ backgroundColor: color }} />
-        <CardContent className="p-3 flex-1 flex flex-col justify-between min-h-[120px]">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
-              {showWearableBadge && (
-                <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">
-                  <Watch className="w-2 h-2" />
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-xl font-bold tabular-nums">{displayValue}</span>
-              {displayValue !== "–" && unit && (
-                <span className="text-[10px] text-muted-foreground">{unit}</span>
-              )}
-            </div>
-            {trend && displayValue !== "–" && (
-              <div className={`flex items-center gap-0.5 text-[10px] mt-0.5 ${
-                trend.direction === "up" ? "text-green-500" : trend.direction === "down" ? "text-red-500" : "text-muted-foreground"
-              }`}>
-                {trend.direction === "up" ? <ArrowUp className="w-2.5 h-2.5" /> : trend.direction === "down" ? <ArrowDown className="w-2.5 h-2.5" /> : null}
-                {trend.percent > 0 ? `${trend.direction === "up" ? "↑" : "↓"} ${trend.percent}% vs last week` : "no change"}
-              </div>
+      <CardContent className="p-4 flex flex-col justify-between min-h-[120px]">
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+            {showWearableBadge && (
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">
+                <Watch className="w-2 h-2" />
+              </Badge>
             )}
           </div>
-          <div className="h-8 mt-2">
-            {hasData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data}>
-                  <Line
-                    type="monotone"
-                    dataKey="v"
-                    stroke={color}
-                    strokeWidth={1.5}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center">
-                <div className="w-full h-px bg-border" />
-              </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-xl font-bold tabular-nums">{displayValue}</span>
+            {displayValue !== "–" && unit && (
+              <span className="text-[10px] text-muted-foreground">{unit}</span>
             )}
           </div>
-        </CardContent>
-      </div>
+          {trend && displayValue !== "–" && (
+            <div className={`flex items-center gap-0.5 text-[10px] mt-0.5 ${
+              trend.direction === "up" ? "text-green-500" : trend.direction === "down" ? "text-red-500" : "text-muted-foreground"
+            }`}>
+              {trend.direction === "up" ? <ArrowUp className="w-2.5 h-2.5" /> : trend.direction === "down" ? <ArrowDown className="w-2.5 h-2.5" /> : null}
+              {trend.percent > 0 ? `${trend.direction === "up" ? "↑" : "↓"} ${trend.percent}% vs last week` : "no change"}
+            </div>
+          )}
+        </div>
+        <div className="h-8 mt-2">
+          {hasData ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <Line
+                  type="monotone"
+                  dataKey="v"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex items-center">
+              <div className="w-full h-px bg-border" />
+            </div>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }
@@ -108,7 +105,6 @@ function TrendRow({ label, value, unit, color, metricKey, wearableRequired, wear
     >
       <CardContent className="p-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-sm font-medium">{label}</span>
           {showWearableBadge && (
             <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">

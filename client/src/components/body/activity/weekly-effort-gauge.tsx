@@ -18,7 +18,7 @@ export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugePr
       onClick={() => navigate("/body/activity/metric/weeklyEffort")}
     >
       <CardContent className="p-5">
-        <div className="flex items-start gap-6">
+        <div className="flex items-center gap-6">
           {/* Left: percentage */}
           <div className="shrink-0">
             <span className="text-4xl font-bold tabular-nums text-foreground">
@@ -28,7 +28,7 @@ export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugePr
           </div>
 
           {/* Right: gauge track */}
-          <div className="flex-1 pt-2">
+          <div className="flex-1">
             <div className="relative h-6 rounded-full bg-muted overflow-hidden">
               <div
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"

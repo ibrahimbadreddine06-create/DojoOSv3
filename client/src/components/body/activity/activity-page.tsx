@@ -95,8 +95,7 @@ export function ActivityPage() {
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/activity/metric/effortScore")}
           >
-            <div className="h-[3px] rounded-t-xl" style={{ backgroundColor: "#f59e0b" }} />
-            <CardContent className="p-4 flex flex-col items-center">
+            <CardContent className="p-5 flex items-center justify-center">
               <MetricRing
                 value={effortScore ?? 0}
                 max={100}
@@ -113,8 +112,7 @@ export function ActivityPage() {
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/activity/metric/energyBurned")}
           >
-            <div className="h-[3px] rounded-t-xl" style={{ backgroundColor: "hsl(0 84.2% 60.2%)" }} />
-            <CardContent className="p-4 flex flex-col items-center">
+            <CardContent className="p-5 flex items-center justify-center">
               <MetricRing
                 value={caloriesBurned ?? 0}
                 max={dailyEnergyGoal}
@@ -131,8 +129,7 @@ export function ActivityPage() {
           <Popover>
             <PopoverTrigger asChild>
               <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <div className="h-[3px] rounded-t-xl" style={{ backgroundColor: recoveryScore != null ? "#14b8a6" : "#d1d5db" }} />
-                <CardContent className="p-4 flex flex-col items-center">
+                <CardContent className="p-5 flex items-center justify-center">
                   {recoveryScore != null ? (
                     <MetricRing
                       value={recoveryScore}
@@ -183,19 +180,15 @@ export function ActivityPage() {
             label="Active time"
             value={activeMinutes || null}
             unit="min"
-            color="hsl(0, 84.2%, 60.2%)"
             goal={activeTimeGoal}
             goalUnit="min"
-            progress={activeTimeGoal > 0 ? ((activeMinutes || 0) / activeTimeGoal) * 100 : 0}
             metricKey="activeTime"
           />
           <KpiTile
             label="Steps"
             value={steps}
             unit="steps"
-            color="#6b7280"
             goal={8000}
-            progress={steps ? (steps / 8000) * 100 : 0}
             wearableRequired
             metricKey="steps"
           />
@@ -203,10 +196,8 @@ export function ActivityPage() {
             label="Distance"
             value={distanceKm}
             unit="km"
-            color="#3b82f6"
             goal={5}
             goalUnit="km"
-            progress={distanceKm ? (distanceKm / 5) * 100 : 0}
             wearableRequired
             metricKey="distance"
           />
@@ -214,7 +205,6 @@ export function ActivityPage() {
             label="Avg HR today"
             value={avgHeartRate}
             unit="bpm"
-            color="#ef4444"
             wearableRequired
             metricKey="avgHR"
             subtitle="FC en journée"
