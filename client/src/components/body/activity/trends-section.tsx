@@ -30,27 +30,27 @@ function TrendCard({
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col"
       onClick={() => navigate(`/body/activity/metric/${metricKey}`)}
     >
-      <CardContent className="p-4 flex flex-col justify-between min-h-[120px]">
-        <div>
-          <div className="flex items-center justify-between">
+      <CardContent className="p-4 flex flex-col justify-between flex-1 min-h-[120px]">
+        <div className="flex flex-col flex-1">
+          <div className="flex items-start justify-between flex-wrap gap-1">
             <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
             {showWearableBadge && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0">
                 <Watch className="w-2 h-2" />
               </Badge>
             )}
           </div>
-          <div className="flex items-baseline gap-1 mt-1">
-            <span className="text-xl font-bold tabular-nums">{displayValue}</span>
+          <div className="flex items-baseline gap-1 mt-1.5 flex-1">
+            <span className="text-xl font-bold tabular-nums leading-none">{displayValue}</span>
             {displayValue !== "–" && unit && (
-              <span className="text-[10px] text-muted-foreground">{unit}</span>
+              <span className="text-[10px] text-muted-foreground leading-none">{unit}</span>
             )}
           </div>
           {trend && displayValue !== "–" && (
-            <div className={`flex items-center gap-0.5 text-[10px] mt-0.5 ${
+            <div className={`flex items-center gap-0.5 text-[10px] mt-1 ${
               trend.direction === "up" ? "text-green-500" : trend.direction === "down" ? "text-red-500" : "text-muted-foreground"
             }`}>
               {trend.direction === "up" ? <ArrowUp className="w-2.5 h-2.5" /> : trend.direction === "down" ? <ArrowDown className="w-2.5 h-2.5" /> : null}
@@ -104,10 +104,10 @@ function TrendRow({ label, value, unit, color, metricKey, wearableRequired, wear
       onClick={() => navigate(`/body/activity/metric/${metricKey}`)}
     >
       <CardContent className="p-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{label}</span>
+        <div className="flex items-start gap-2 max-w-[60%]">
+          <span className="text-sm font-medium leading-tight">{label}</span>
           {showWearableBadge && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 mt-px">
               <Watch className="w-2 h-2" />
             </Badge>
           )}

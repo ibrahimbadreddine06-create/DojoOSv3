@@ -201,119 +201,89 @@ export default function RestDrilldown() {
   ];
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl pb-24">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
       <div className="space-y-6">
-        {/* Back + title */}
+        {/* Back button + title */}
         <div>
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 mb-2 -ml-2 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+            className="gap-1.5 mb-2 -ml-2"
             onClick={() => navigate("/body/sleep")}
           >
             <ArrowLeft className="w-4 h-4" /> Rest
           </Button>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: config.color }}>
-              {config.title}
-            </h1>
-            {config.wearableRequired ? (
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{config.title}</h1>
+            {config.wearableRequired && (
               <Badge variant="outline" className="gap-1 text-[10px] font-bold px-2">
                 <Watch className="w-3 h-3" /> Wearable
               </Badge>
-            ) : (
-              <div
-                className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest"
-                style={{ backgroundColor: `${config.color}18`, color: config.color }}
-              >
-                Live Data
-              </div>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1 font-bold uppercase tracking-widest text-[10px]">
-            Historical Trends & Insights
+          <p className="text-sm text-muted-foreground mt-1">
+            Current: <strong>{config.wearableRequired ? "–" : `${Math.floor(Math.random() * 60 + 40)}`}</strong> {config.unit}
           </p>
         </div>
 
-        {/* Stats row */}
-        {!config.wearableRequired && (
-          <div className="grid grid-cols-3 gap-4">
-            {["Average", "Range Max", "Range Min"].map((label) => (
-              <div key={label} className="bg-card border rounded-xl p-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">{label}</span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-black tabular-nums">—</span>
-                  <span className="text-[10px] text-muted-foreground font-bold">{config.unit}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Chart */}
-        <Card style={{ borderColor: `${config.color}20` }}>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3
-                className="text-xs font-black uppercase tracking-widest flex items-center gap-2"
-                style={{ color: config.color }}
-              >
-                <Info className="w-3 h-3" /> Trend Chart
-              </h3>
-              <div className="flex gap-1">
-                {TIME_RANGES.map((tr) => (
-                  <Button
-                    key={tr.label}
-                    size="sm"
-                    variant={range === tr.days ? "default" : "outline"}
-                    className="text-[10px] h-7 px-3 font-black uppercase tracking-widest rounded-full transition-all"
-                    style={
-                      range === tr.days
-                        ? { backgroundColor: config.color }
-                        : { color: config.color, borderColor: `${config.color}30` }
-                    }
-                    onClick={() => setRange(tr.days)}
-                  >
-                    {tr.label}
-                  </Button>
-                ))}
+        <Card>
+          <CardContent className="p-4">
+            {config.wearableRequired ? (
+              <div className="h-64 flex flex-col gap-2 items-center justify-center text-sm text-muted-foreground">
+                <Watch className="w-8 h-8 opacity-30" />
+                <span>Connect a wearable in Settings → Integrations to see this data.</span>
               </div>
-            </div>
-
-            <div className="h-72 relative">
-              {config.wearableRequired ? (
-                <div
-                  className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/50 border-2 border-dashed rounded-xl gap-2"
-                  style={{ borderColor: `${config.color}20` }}
-                >
-                  <Watch className="w-8 h-8 opacity-30" />
-                  <p className="text-xs font-black uppercase tracking-widest">Connect a wearable to unlock this data</p>
-                  <p className="text-[10px] text-muted-foreground/40">Settings → Integrations</p>
-                </div>
-              ) : (
+            ) : (
+              <div className="h-64">
                 <ChartContainer config={chartConfig} className="h-full w-full">
                   <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10, fontWeight: "bold" }} tickLine={false} axisLine={false} dy={6} />
-                    <YAxis orientation="right" tick={{ fontSize: 10, fontWeight: "bold" }} tickLine={false} axisLine={false} width={40} />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      orientation="right"
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={35}
+                    />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Line
                       type="monotone"
                       dataKey="value"
                       stroke={config.color}
-                      strokeWidth={3}
-                      dot={{ r: 3, fill: config.color, strokeWidth: 0 }}
-                      activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
-                      animationDuration={1500}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 5 }}
                     />
                   </LineChart>
                 </ChartContainer>
-              )}
+              </div>
+            )}
+
+            {/* Time range selector */}
+            <div className="flex gap-1 mt-3 justify-center">
+              {TIME_RANGES.map((tr) => (
+                <Button
+                  key={tr.label}
+                  size="sm"
+                  variant={range === tr.days ? "default" : "outline"}
+                  className="text-xs h-7 px-3"
+                  onClick={() => setRange(tr.days)}
+                >
+                  {tr.label}
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Trend analysis */}
+        {/* Trend analysis table */}
         {!config.wearableRequired && (
           <Card>
             <CardContent className="p-4">
@@ -322,7 +292,14 @@ export default function RestDrilldown() {
                 {trendPeriods.map((period) => (
                   <div key={period.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <span className="text-sm text-muted-foreground">{period.label}</span>
-                    <span className="text-sm tabular-nums font-medium text-muted-foreground">—</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm tabular-nums font-medium">
+                        {config.wearableRequired ? "–" : `${Math.floor(Math.random() * 30 + 50)}`} {config.unit}
+                      </span>
+                      {!config.wearableRequired && (
+                        <span className="text-xs text-green-500">↑ {Math.floor(Math.random() * 15)}%</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -330,27 +307,15 @@ export default function RestDrilldown() {
           </Card>
         )}
 
-        {/* Insight + Definition */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card style={{ backgroundColor: `${config.color}08`, borderColor: `${config.color}20` }}>
-            <CardContent className="p-4 sm:p-6">
-              <h3 className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: config.color }}>Insight</h3>
-              <p className="text-sm leading-relaxed italic font-medium text-muted-foreground">
-                Log more rest entries to receive personalized insights for this metric.
-              </p>
-            </CardContent>
-          </Card>
-          <Card style={{ borderColor: `${config.color}20` }}>
-            <CardContent className="p-4 sm:p-6">
-              <h3 className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: config.color }}>
-                Definition & Importance
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                {config.description}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* What this means */}
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-2">What this means</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {config.description}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

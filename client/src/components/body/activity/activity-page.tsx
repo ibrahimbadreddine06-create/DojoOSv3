@@ -68,7 +68,7 @@ export function ActivityPage() {
   const totalVolume = dailyState?.totalVolume ?? null;
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl pb-24 animate-in fade-in duration-700">
       <div className="space-y-6">
         {/* 1. Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -140,8 +140,13 @@ export function ActivityPage() {
                       sublabel="tap → history"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-1.5">
-                      {/* Empty gray ring */}
+                    <div className="flex flex-col items-center relative">
+                      {/* Invisible spacer to geometrically perfectly balance the text height at the bottom */}
+                      <div className="invisible pointer-events-none select-none text-center mb-1.5">
+                        <p className="text-[12px] font-semibold tracking-wide leading-none">Recovery</p>
+                        <p className="text-[12px] leading-none mt-0.5">tap → learn more</p>
+                      </div>
+
                       <div className="relative" style={{ width: 140, height: 140 }}>
                         <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
                           <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
@@ -150,9 +155,10 @@ export function ActivityPage() {
                           <span className="text-3xl font-mono font-black text-muted-foreground">–</span>
                         </div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground">Recovery</p>
-                        <p className="text-[12px] text-muted-foreground/60 mt-0.5">tap → learn more</p>
+                      
+                      <div className="text-center mt-1.5">
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground leading-none">Recovery</p>
+                        <p className="text-[12px] text-muted-foreground/60 leading-none mt-0.5">tap → learn more</p>
                       </div>
                     </div>
                   )}

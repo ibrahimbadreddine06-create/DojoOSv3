@@ -135,141 +135,120 @@ export default function NutritionDrilldown() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl pb-24">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
       <div className="space-y-6">
+        {/* Back button + title */}
         <div>
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 mb-2 -ml-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            className="gap-1.5 mb-2 -ml-2"
             onClick={() => navigate("/body/nutrition")}
           >
             <ArrowLeft className="w-4 h-4" /> Nutrition
           </Button>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: theme.color }}>{config.title}</h1>
-            <div className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${theme.cssVar}15`, color: theme.color }}>
-              Live Data
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1 font-bold uppercase tracking-widest text-[10px]">
-            Historical Trends & Insights
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">{config.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Current: <strong>{stats.avg > 0 ? stats.avg : "—"}</strong> {config.unit}
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-           <div className="bg-card border rounded-xl p-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Average</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black tabular-nums">{stats.avg}</span>
-                <span className="text-[10px] text-muted-foreground font-bold">{config.unit}</span>
+        {/* Chart */}
+        <Card>
+          <CardContent className="p-4">
+            {isLoading ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/30" />
               </div>
-           </div>
-           <div className="bg-card border rounded-xl p-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Range Max</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black tabular-nums">{stats.max}</span>
-                <span className="text-[10px] text-muted-foreground font-bold">{config.unit}</span>
+            ) : chartData.length > 0 ? (
+              <div className="h-64">
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      orientation="right"
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={35}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={config.color}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
               </div>
-           </div>
-           <div className="bg-card border rounded-xl p-4">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Range Min</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black tabular-nums">{stats.min}</span>
-                <span className="text-[10px] text-muted-foreground font-bold">{config.unit}</span>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+                No data logged for this period.
               </div>
-           </div>
-        </div>
+            )}
 
-        <Card className="border-purple-100 shadow-sm overflow-hidden">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex justify-between items-center mb-6">
-               <h3 className="text-xs font-black uppercase tracking-widest text-purple-600 flex items-center gap-2" style={{ color: theme.color }}>
-                 <Info className="w-3 h-3" /> Trend Chart
-               </h3>
-               <div className="flex gap-1">
-                {TIME_RANGES.map((tr) => (
-                  <Button
-                    key={tr.label}
-                    size="sm"
-                    variant={range === tr.days ? "default" : "outline"}
-                    className={`text-[10px] h-7 px-3 font-black uppercase tracking-widest rounded-full transition-all ${range === tr.days ? "bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20 text-white" : "border-purple-100 text-purple-600 hover:bg-purple-50"}`}
-                    style={range === tr.days ? { backgroundColor: theme.color } : { color: theme.color, borderColor: `${theme.cssVar}30` }}
-                    onClick={() => setRange(tr.days)}
-                  >
-                    {tr.label}
-                  </Button>
-                ))}
-              </div>
+            {/* Time range selector */}
+            <div className="flex gap-1 mt-3 justify-center">
+              {TIME_RANGES.map((tr) => (
+                <Button
+                  key={tr.label}
+                  size="sm"
+                  variant={range === tr.days ? "default" : "outline"}
+                  className="text-xs h-7 px-3"
+                  onClick={() => setRange(tr.days)}
+                >
+                  {tr.label}
+                </Button>
+              ))}
             </div>
-
-            <div className="h-72 relative">
-                {isLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-500/50" style={{ color: theme.color }} />
-                  </div>
-                ) : chartData.length > 0 ? (
-                  <ChartContainer config={chartConfig} className="h-full w-full">
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted/50" vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 10, fontWeight: 'bold' }}
-                        tickLine={false}
-                        axisLine={false}
-                        dy={6}
-                      />
-                      <YAxis
-                        orientation="right"
-                        tick={{ fontSize: 10, fontWeight: 'bold' }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={40}
-                      />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={config.color}
-                        strokeWidth={3}
-                        dot={{ r: 3, fill: config.color, strokeWidth: 0 }}
-                        activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-                        animationDuration={1500}
-                      />
-                    </LineChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/50 border-2 border-dashed rounded-xl" style={{ borderColor: `${theme.cssVar}20` }}>
-                    <p className="text-xs font-black uppercase tracking-widest">No data for this period</p>
-                  </div>
-                )}
-              </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-purple-100 shadow-sm transition-colors" style={{ backgroundColor: `${theme.cssVar}10`, borderColor: `${theme.cssVar}20` }}>
-                <CardContent className="p-4 sm:p-6">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-purple-600 mb-2" style={{ color: theme.color }}>Insight</h3>
-                    <p className="text-sm text-purple-900/80 leading-relaxed italic font-medium">
-                        {trends && trends.length > 0 ? (
-                          `Based on your ${range}-day trend, your ${config.title.toLowerCase()} is ${stats.avg < stats.max * 0.7 ? 'slightly below optimal levels' : 'looking very consistent'}.`
-                        ) : (
-                          "Log more entries to receive personalized insights about this metric."
-                        )}
-                    </p>
-                </CardContent>
-            </Card>
+        {/* Trend analysis table */}
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-3">Trend Analysis</h3>
+            <div className="space-y-0">
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-sm text-muted-foreground">Period Average</span>
+                <span className="text-sm tabular-nums font-medium">
+                  {stats.avg > 0 ? stats.avg : "—"} {config.unit}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <span className="text-sm text-muted-foreground">Highest Logged</span>
+                <span className="text-sm tabular-nums font-medium">
+                  {stats.max > 0 ? stats.max : "—"} {config.unit}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-muted-foreground">Lowest Logged</span>
+                <span className="text-sm tabular-nums font-medium">
+                  {stats.min > 0 ? stats.min : "—"} {config.unit}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card className="border-purple-100 shadow-sm" style={{ borderColor: `${theme.cssVar}20` }}>
-                <CardContent className="p-4 sm:p-6">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-purple-600 mb-2 font-black" style={{ color: theme.color }}>Definition & Importance</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                      {config.description}
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
+        {/* What this means */}
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold mb-2">What this means</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {config.description}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -1147,7 +1147,7 @@ export class DatabaseStorage implements IStorage {
       bodyProfile: profile,
       activeFastingLog: activeFast,
       dailyState: state,
-      timeBlocks: blocks
+      nutritionBlocks: blocks
     };
   }
 
@@ -2226,7 +2226,10 @@ export class MemStorage implements IStorage {
     }
   }
   async getIntakeLogs(date: string): Promise<IntakeLog[]> {
-    return Array.from(this.intakeLogs.values()).filter(l => l.date.toISOString().split('T')[0] === date);
+    return Array.from(this.intakeLogs.values()).filter(l => {
+      const d = l.date instanceof Date ? l.date : new Date(l.date);
+      return d.toISOString().split('T')[0] === date;
+    });
   }
   async createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog> {
     const id = this.generateId();
@@ -2656,13 +2659,12 @@ export class MemStorage implements IStorage {
     const activeFast = await this.getActiveFastingLog();
     const state = await this.getDailyState(userId, date);
     const blocks = await this.getLinkedTimeBlocks(date, "nutrition");
-
     return {
       intakeLogs: logs,
       bodyProfile: profile,
       activeFastingLog: activeFast,
       dailyState: state,
-      timeBlocks: blocks
+      nutritionBlocks: blocks
     };
   }
 

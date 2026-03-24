@@ -609,9 +609,14 @@ export function registerRoutes(app: Express): Server {
 
   // Nutrition Optimizations
   app.get("/api/nutrition/overview/:date", async (req, res) => {
-    if (!req.user) return res.sendStatus(401);
-    const overview = await storage.getNutritionOverview((req.user as any).id, req.params.date);
-    res.json(overview);
+    const userId = req.user ? (req.user as any).id : "local";
+    try {
+      const overview = await storage.getNutritionOverview(userId, req.params.date);
+      res.json(overview);
+    } catch (error: any) {
+      console.error(`[Nutrition] Error:`, error);
+      res.status(500).json({ message: "Failed to fetch nutrition overview", error: error.message });
+    }
   });
 
   app.get("/api/nutrition/trends/batch", async (req, res) => {

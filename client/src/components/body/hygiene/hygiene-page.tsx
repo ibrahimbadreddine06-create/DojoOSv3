@@ -236,13 +236,13 @@ export function HygienePage() {
         </div>
 
         {/* ── 3. Hero Metrics Row ── */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/body/looks/metric/upkeepScore")}
             data-testid="hero-upkeep-score"
           >
-            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+            <CardContent className="p-5 flex items-center justify-center">
               <MetricRing
                 value={upkeepScore ?? 0} max={100}
                 label="Upkeep Score" color={upkeepColor} size="lg" sublabel="this week"
@@ -255,7 +255,7 @@ export function HygienePage() {
             onClick={() => navigate("/body/looks/metric/disciplineRate")}
             data-testid="hero-discipline-rate"
           >
-            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+            <CardContent className="p-5 flex items-center justify-center">
               <MetricRing
                 value={disciplineRate ?? 0} max={100}
                 label="Discipline" unit="%" color={disciplineColor} size="lg" sublabel="consistency"
@@ -268,7 +268,7 @@ export function HygienePage() {
             onClick={() => navigate("/body/looks/metric/glowUpDirection")}
             data-testid="hero-glow-direction"
           >
-            <CardContent className="p-5 flex items-center justify-center min-h-[160px]">
+            <CardContent className="p-5 flex items-center justify-center">
               <MetricRing
                 value={glowValue} max={100}
                 label="Glow-up" color={glowColor} size="lg" sublabel={`${glowDirection} trend`}

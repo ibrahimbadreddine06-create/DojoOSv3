@@ -365,6 +365,10 @@ export const exerciseLibrary = pgTable("exercise_library", {
   instructions: text("instructions"),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"),
+  // Legacy columns kept for DB compatibility (do not remove)
+  difficulty: text("difficulty"),
+  met: text("met"),
+  recommendedReps: text("recommended_reps"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

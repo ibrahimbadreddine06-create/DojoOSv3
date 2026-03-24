@@ -164,18 +164,25 @@ export function RestPage() {
                       sublabel="recovery"
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="relative" style={{ width: 130, height: 130 }}>
-                        <svg width={130} height={130} viewBox="0 0 130 130" style={{ transform: "rotate(-90deg)" }}>
-                          <circle cx={65} cy={65} r={58} fill="none" stroke="#e5e7eb" strokeWidth={12} />
+                    <div className="flex flex-col items-center relative">
+                      {/* Invisible spacer to perfectly balance the text height at the bottom */}
+                      <div className="invisible pointer-events-none select-none text-center mb-1.5">
+                        <p className="text-[12px] font-semibold tracking-wide leading-none">Readiness</p>
+                        <p className="text-[11px] leading-none mt-0.5">wearable needed</p>
+                      </div>
+
+                      <div className="relative" style={{ width: 140, height: 140 }}>
+                        <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
+                          <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
                           <span className="text-3xl font-mono font-black text-muted-foreground">–</span>
                         </div>
                       </div>
-                      <div className="text-center">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground">Readiness</p>
-                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">wearable needed</p>
+
+                      <div className="text-center mt-1.5">
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground leading-none">Readiness</p>
+                        <p className="text-[11px] text-muted-foreground/60 leading-none mt-0.5">wearable needed</p>
                       </div>
                     </div>
                   )}

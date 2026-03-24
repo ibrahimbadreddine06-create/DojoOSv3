@@ -37,24 +37,24 @@ export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCa
       <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 min-h-[180px]">
         {/* Locked ring */}
         <div className="shrink-0 flex flex-col items-center gap-2">
-          <div className="relative" style={{ width: 88, height: 88 }}>
-            <svg width={88} height={88} viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
-              <circle cx={44} cy={44} r={37} fill="none" stroke="#e5e7eb" strokeWidth={10} />
+          <div className="relative" style={{ width: 140, height: 140 }}>
+            <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
               <circle
-                cx={44} cy={44} r={37} fill="none"
-                stroke={`hsl(${theme.cssVar})`} strokeWidth={10}
+                cx={70} cy={70} r={63.5} fill="none"
+                stroke={`hsl(${theme.cssVar})`} strokeWidth={13}
                 strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 37}
-                strokeDashoffset={2 * Math.PI * 37 * (1 - Math.min(1, kcalLogged / 750))}
+                strokeDasharray={2 * Math.PI * 63.5}
+                strokeDashoffset={2 * Math.PI * 63.5 * (1 - Math.min(1, kcalLogged / 750))}
                 style={{ transition: "stroke-dashoffset 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-muted-foreground/40" />
+              <Lock className="w-6 h-6 text-muted-foreground/40" />
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-[11px] font-medium tracking-wider text-muted-foreground">Nutrition score</p>
+          <div className="text-center mt-1">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground">Nutrition score</p>
             <p className="text-[10px] text-muted-foreground/50 mt-0.5">{result.reason}</p>
           </div>
         </div>
@@ -70,14 +70,14 @@ export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCa
 
   return (
     <Link href="/body/nutrition/metric/score">
-      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 min-h-[180px] hover:shadow-md transition-shadow cursor-pointer group">
-        <div className="shrink-0 scale-90 group-hover:scale-95 transition-transform duration-500">
+      <div className="bg-card border rounded-xl p-6 flex flex-col md:flex-row items-center gap-8 min-h-[180px] hover:shadow-md transition-shadow cursor-pointer group">
+        <div className="shrink-0 transition-transform duration-500">
           <MetricRing
             value={result.score || 0}
             max={100}
             label="Score"
             color={`hsl(${theme.cssVar})`}
-            size="md"
+            size="lg"
             sublabel="tap → history"
           />
         </div>

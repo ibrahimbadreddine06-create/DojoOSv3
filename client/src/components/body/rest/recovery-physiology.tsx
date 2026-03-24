@@ -22,26 +22,35 @@ function PhysiologyRow({ label, value, unit, color, metricKey, normal }: Physiol
       className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ backgroundColor: color }}
-          />
-          <div>
-            <p className="text-sm font-medium">{label}</p>
-            {normal && <p className="text-[10px] text-muted-foreground">normal: {normal}</p>}
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between w-full">
+          {/* L: Label + Badge */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: color }}
+            />
+            <p className="text-sm font-medium truncate">{label}</p>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0">
+              <Watch className="w-2 h-2" />
+            </Badge>
           </div>
-          <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 ml-1">
-            <Watch className="w-2 h-2" />
-          </Badge>
+
+          {/* R: Value + Chevron */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm tabular-nums font-semibold" style={displayValue !== "–" ? { color } : undefined}>
+              {displayValue}{displayValue !== "–" && unit ? ` ${unit}` : ""}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm tabular-nums font-semibold" style={displayValue !== "–" ? { color } : undefined}>
-            {displayValue}{displayValue !== "–" && unit ? ` ${unit}` : ""}
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-        </div>
+
+        {/* Bottom edge label if normal exists */}
+        {normal && (
+          <div className="flex mt-1 pl-4">
+            <p className="text-[10px] text-muted-foreground">normal: {normal}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -60,7 +60,19 @@ export function MetricRing({
   const filterId = `ring-glow-${label.replace(/\W/g, "")}`;
 
   return (
-    <div className="flex flex-col items-center gap-1.5">
+    <div className="flex flex-col items-center relative">
+      {/* Invisible spacer to perfectly balance the text height at the bottom, centering the ring geometrically */}
+      <div className="invisible pointer-events-none select-none text-center mb-1.5">
+        <p className={`font-semibold tracking-wide leading-none ${labelSize}`}>
+          {label}
+        </p>
+        {sublabel && (
+          <p className={`leading-none mt-0.5 ${labelSize}`}>
+            {sublabel}
+          </p>
+        )}
+      </div>
+
       <div
         className="relative rounded-full"
         style={{
@@ -128,7 +140,7 @@ export function MetricRing({
         </div>
       </div>
 
-      <div className="text-center">
+      <div className="text-center mt-1.5">
         <p className={`font-semibold tracking-wide text-muted-foreground leading-none ${labelSize}`}>
           {label}
         </p>
