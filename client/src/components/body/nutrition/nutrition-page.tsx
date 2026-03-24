@@ -14,7 +14,7 @@ import { IntakeRoutines } from "./intake-routines";
 import { NutritionTrends } from "./nutrition-trends";
 import { LogIntakeModal } from "./log-intake-modal";
 import { FastingProgramModal } from "./fasting-program-modal";
-import { LinkedNutritionBlocks } from "./linked-nutrition-blocks";
+import { TodaySessions } from "@/components/today-sessions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircle2, Utensils, Droplets, Plus } from "lucide-react";
 import { SectionLabel } from "../activity/section-label";
@@ -89,7 +89,7 @@ export function NutritionPage() {
         </div>
 
         {/* 6. Linked Time Blocks */}
-        <LinkedNutritionBlocks />
+        <TodaySessions module="nutrition" />
 
         {/* 7. Fuel Fingerprint + Micronutrients */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
