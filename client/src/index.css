@@ -119,6 +119,11 @@ html {
   --module-second-brain: 24 95% 53%;
   --module-languages: 262 83% 58%;
   --module-studies: 4 80% 56%;
+  --module-disciplines: 199 89% 48%;
+  --module-activity: 0 84% 60%;
+  --module-nutrition: 25 95% 53%;
+  --module-rest: 239 84% 67%;
+  --module-hygiene: 263 70% 65%;
 
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: Georgia, serif;
@@ -245,6 +250,11 @@ html {
   --module-second-brain: 24 95% 60%;
   --module-languages: 262 83% 68%;
   --module-studies: 4 80% 62%;
+  --module-disciplines: 199 89% 55%;
+  --module-activity: 0 84% 65%;
+  --module-nutrition: 25 95% 60%;
+  --module-rest: 239 84% 72%;
+  --module-hygiene: 263 70% 70%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(240 10% 3% / 0.30);
   --shadow-xs: 0px 1px 2px 0px hsl(240 10% 3% / 0.40);

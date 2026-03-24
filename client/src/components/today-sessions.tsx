@@ -26,7 +26,7 @@ function getBlockHeight(block: TimeBlock): number {
 }
 
 interface TodaySessionsProps {
-  module: "second_brain" | "languages" | "studies" | "body" | "disciplines";
+  module: "second_brain" | "languages" | "studies" | "body" | "disciplines" | "activity" | "nutrition" | "rest" | "hygiene";
   itemId?: string;
 }
 
@@ -41,6 +41,16 @@ function getModuleColorVar(linkedModule?: string | null): string {
     'disciplines': '--module-disciplines',
     'planner': '--module-planner',
     'daily_planner': '--module-planner',
+    'activity': '--module-activity',
+    'workout': '--module-activity',
+    'sport': '--module-activity',
+    'nutrition': '--module-nutrition',
+    'meal': '--module-nutrition',
+    'food': '--module-nutrition',
+    'rest': '--module-rest',
+    'sleep': '--module-rest',
+    'hygiene': '--module-hygiene',
+    'looks': '--module-hygiene',
   };
   return moduleColorMap[linkedModule] || '--primary';
 }

@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MetricRing } from "@/components/body/metric-ring";
-import { LinkedHygieneBlocks } from "./linked-hygiene-blocks";
+import { TodaySessions } from "@/components/today-sessions";
 import { HygieneTrends } from "./hygiene-trends";
 
 const TODAY = format(new Date(), "yyyy-MM-dd");
@@ -359,7 +359,7 @@ export function HygienePage() {
 
           {blockTab === "linked" ? (
             <div className="px-6 pb-6 pt-4">
-              <LinkedHygieneBlocks />
+              <TodaySessions module="hygiene" />
             </div>
           ) : (
             <div className="px-6 pb-6 pt-4 space-y-4">

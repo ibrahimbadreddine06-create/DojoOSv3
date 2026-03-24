@@ -11,7 +11,7 @@ import { MetricRing } from "@/components/body/metric-ring";
 import { SectionLabel } from "./section-label";
 import { LogRestDialog } from "./log-rest-dialog";
 import { TonightRhythmCard } from "./tonight-rhythm-card";
-import { LinkedRestBlocks } from "./linked-rest-blocks";
+import { TodaySessions } from "@/components/today-sessions";
 import { LastNightBreakdown } from "./last-night-breakdown";
 import { RecoveryPhysiology } from "./recovery-physiology";
 import { TodaysRestImpact } from "./todays-rest-impact";
@@ -217,7 +217,7 @@ export function RestPage() {
         />
 
         {/* ── 5. Linked Time Blocks ── */}
-        <LinkedRestBlocks />
+        <TodaySessions module="rest" />
 
         {/* ── 6. Last Night Breakdown ── */}
         <LastNightBreakdown
