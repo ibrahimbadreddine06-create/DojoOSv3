@@ -19,6 +19,7 @@ import { HrZonesSection } from "./hr-zones-section";
 import { TrendsSection } from "./trends-section";
 import { LogActivityModal } from "./log-activity-modal";
 import { SectionLabel } from "./section-label";
+import { LinkedActivityBlocks } from "./linked-activity-blocks";
 
 import type { Workout, BodyProfile, DailyState } from "@shared/schema";
 
@@ -220,10 +221,13 @@ export function ActivityPage() {
         {/* 4. Weekly Effort Gauge */}
         <WeeklyEffortGauge currentEffort={weeklyEffort} target={weeklyEffortTarget} />
 
-        {/* 5. Planned Activities */}
+        {/* 5. Linked Time Blocks */}
+        <LinkedActivityBlocks />
+
+        {/* 6. Planned Activities */}
         <PlannedActivities />
 
-        {/* 6. Activity Log Calendar */}
+        {/* 7. Activity Log Calendar */}
         <ActivityLogCalendar />
 
         {/* 7. Exercises & Muscles */}
