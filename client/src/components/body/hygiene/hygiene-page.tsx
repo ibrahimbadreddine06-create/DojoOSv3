@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { StatusBanner } from "../status-banner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -13,7 +14,9 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MetricRing } from "@/components/body/metric-ring";
+import { SectionHeader } from "../section-header";
 import { TodaySessions } from "@/components/today-sessions";
+import { ModuleBriefing } from "../module-briefing";
 import { HygieneTrends } from "./hygiene-trends";
 
 const TODAY = format(new Date(), "yyyy-MM-dd");
@@ -66,8 +69,12 @@ function AddRoutineDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-2 bg-red-500 hover:bg-red-600 text-white" data-testid="button-log-care">
-          <Plus className="w-4 h-4" /> Log Care
+        <Button
+          size="sm"
+          className="gap-1.5 shrink-0 shadow-sm rounded-xl bg-violet-500 hover:bg-violet-600 border-none text-white transition-colors"
+          data-testid="button-log-care"
+        >
+          <Plus className="w-4 h-4" /> Log care
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -78,11 +85,10 @@ function AddRoutineDialog() {
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
               {PRESET_HABITS.map((h) => (
                 <button key={h} type="button" onClick={() => setName(h)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                    name === h
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${name === h
                       ? "bg-violet-500 text-white border-violet-500"
                       : "border-border text-muted-foreground hover:border-violet-400 hover:text-violet-500"
-                  }`}
+                    }`}
                 >{h}</button>
               ))}
             </div>
@@ -107,7 +113,7 @@ function AddRoutineDialog() {
               <option value="monthly">Monthly</option>
             </select>
           </div>
-          <Button className="w-full rounded-xl" onClick={() => addMutation.mutate()} disabled={!name.trim() || addMutation.isPending}>
+          <Button className="w-full rounded-xl bg-violet-500 hover:bg-violet-600 border-none text-white transition-colors" onClick={() => addMutation.mutate()} disabled={!name.trim() || addMutation.isPending}>
             {addMutation.isPending ? "Adding..." : "Add routine"}
           </Button>
         </div>
@@ -159,7 +165,7 @@ export function HygienePage() {
 
   const upkeepColor = upkeepScore === null ? "#9ca3af" : upkeepScore >= 70 ? "#8b5cf6" : upkeepScore >= 40 ? "#f59e0b" : "#ef4444";
   const disciplineColor = disciplineRate === null ? "#9ca3af" : disciplineRate >= 70 ? "#60a5fa" : disciplineRate >= 40 ? "#f59e0b" : "#ef4444";
-  
+
   const glowColor = glowDirection === "Up" ? "#f97316" : glowDirection === "Down" ? "#ef4444" : "#9ca3af";
   const glowValue = glowDirection === "Up" ? 80 : glowDirection === "Down" ? 30 : 50;
 
@@ -186,63 +192,52 @@ export function HygienePage() {
 
   const crossBodySignals = [
     {
-      label: "Sleep support",
+      label: "Sleep",
       statement: dailyState?.recoveryScore
         ? dailyState.recoveryScore >= 70
-          ? "Good recovery supporting overnight skin repair"
-          : "Low sleep is hurting appearance recovery"
-        : "Low sleep is hurting appearance recovery",
+          ? "Good recovery supporting repair"
+          : "Low sleep is hurting appearance"
+        : "Low sleep is hurting appearance",
       path: "/body/sleep",
     },
-    {
-      label: "Nutrition support",
-      statement: "Iron intake may be affecting vitality",
-      path: "/body/nutrition",
-    },
-    {
-      label: "Activity support",
-      statement: "You are missing body-composition goals",
-      path: "/body/activity",
-    },
-    {
-      label: "Discipline support",
-      statement: "You skip self-care more on late days",
-      path: "/planner",
-    },
+    { label: "Nutrition", statement: "Iron intake affects vitality", path: "/body/nutrition" },
+    { label: "Activity", statement: "Missing composition goals", path: "/body/activity" },
+    { label: "Discipline", statement: "Higher skip rate on late days", path: "/planner" },
   ];
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl animate-in fade-in duration-700">
-      <div className="space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700 pb-24">
+      <div className="space-y-8">
 
         {/* ── 1. Header ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Hygiene & Looks</h1>
-            <p className="text-sm text-muted-foreground mt-1">Self-care, grooming & glow-up execution</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Hygiene & Looks</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Self-care, grooming & glow-up</p>
           </div>
           <AddRoutineDialog />
         </div>
 
         {/* ── 2. Banner ── */}
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl px-5 py-4">
-          <p className="text-sm text-amber-700 dark:text-amber-400 leading-snug">
-            {showNoDataBanner
-              ? "Add your first care routine to start tracking your cadence and glow-up execution."
-              : recommended.length > 0
-              ? "Some care routines are reaching their recommended interval again. Surfaced here as gentle alerts based on your own cadence and goals, not as hard overdue states."
-              : "All care routines are on track based on your personal cadence and goals."}
-          </p>
-        </div>
+        <ModuleBriefing
+          title="Briefing"
+          kicker="Sensei AI"
+          content={showNoDataBanner
+            ? "No care routines added yet. Start building your hygiene and looks protocol by adding your first routine above."
+            : (recommended.length > 0
+              ? "Some care routines are reaching their recommended interval. Surfaced here as gentle alerts based on your cadence, not as hard overdue states."
+              : "All care routines are on track based on your personal cadence and goals.")
+          }
+          accentColor="bg-violet-500/10"
+        />
 
         {/* ── 3. Hero Metrics Row ── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/looks/metric/upkeepScore")}
-            data-testid="hero-upkeep-score"
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={upkeepScore ?? 0} max={100}
                 label="Upkeep Score" color={upkeepColor} size="lg" sublabel="this week"
@@ -251,11 +246,10 @@ export function HygienePage() {
           </Card>
 
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/looks/metric/disciplineRate")}
-            data-testid="hero-discipline-rate"
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={disciplineRate ?? 0} max={100}
                 label="Discipline" unit="%" color={disciplineColor} size="lg" sublabel="consistency"
@@ -264,11 +258,10 @@ export function HygienePage() {
           </Card>
 
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/looks/metric/glowUpDirection")}
-            data-testid="hero-glow-direction"
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={glowValue} max={100}
                 label="Glow-up" color={glowColor} size="lg" sublabel={`${glowDirection} trend`}
@@ -277,16 +270,23 @@ export function HygienePage() {
           </Card>
         </div>
 
-        {/* ── 4. Recommended Now (Glow-up Execution) ── */}
+        {/* ── 4. Recommended Now ── */}
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-          <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4 border-b border-border/40">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Glow-up Execution</p>
-              <h2 className="text-xl font-bold mt-1">Recommended now based on recency</h2>
-            </div>
-            <button className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-              View all routines
-            </button>
+          <div className="px-6 pt-6 pb-4 border-b border-border/40">
+            <SectionHeader
+              title="Recommended now"
+              kicker="Execution"
+              className="mb-0"
+            >
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-xl border-dashed border-border/60 text-muted-foreground hover:text-indigo-500 hover:border-indigo-500/40 transition-colors"
+                onClick={() => setBlockTab("presets")}
+              >
+                View all routines
+              </Button>
+            </SectionHeader>
           </div>
 
           {recommended.length === 0 ? (
@@ -298,123 +298,52 @@ export function HygienePage() {
                 <p className="text-sm font-semibold">All routines on track</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Nothing is falling behind based on your personal cadence.</p>
               </div>
-              {showNoDataBanner && <AddRoutineDialog />}
             </div>
           ) : (
             <div className="divide-y divide-border/40">
-              {recommended.map((routine) => {
-                const d = daysSinceFor(routine);
-                let lastLabel = "Never done";
-                if (d !== null) {
-                  if (d === 0) lastLabel = "last done today";
-                  else if (d < 2) lastLabel = `last done ${d === 1 ? "yesterday" : `${d} days ago`}`;
-                  else lastLabel = `last done ${d} days ago`;
-                  const hrs = Math.round(differenceInDays(new Date(), new Date(routine.lastCompletedDate)) * 24);
-                  if (d === 0 && hrs > 0) lastLabel = `last done ${hrs}h ago`;
-                }
-
-                return (
-                  <div key={routine.id} className="px-6 py-5 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{routine.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{lastLabel}</p>
-                      <p className="text-[11px] mt-0.5 text-indigo-500">{contextMessage(routine.score)}</p>
-                    </div>
-                    <button
-                      onClick={() => navigate("/planner")}
-                      className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors"
-                    >
-                      Add to planner
-                    </button>
+              {recommended.map((routine) => (
+                <div key={routine.id} className="px-6 py-5 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{routine.name}</p>
+                    <p className="text-sm font-medium mt-1 text-indigo-500 leading-tight">{contextMessage(routine.score)}</p>
                   </div>
-                );
-              })}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate("/planner")}
+                    className="rounded-xl"
+                  >
+                    Planner
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* ── 5. Toggle (Moved here, just above Planner Connection) ── */}
-        <div className="flex items-center gap-1 p-1 bg-muted rounded-xl w-fit">
-          {(["linked", "presets"] as BlockTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setBlockTab(tab)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                blockTab === tab ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab === "linked" ? "Linked time blocks" : "Presets"}
-            </button>
-          ))}
-        </div>
+        <TodaySessions module="hygiene" />
 
-        {/* ── 6. Planner Connection ── */}
-        <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
-          <div className="px-6 pt-6 pb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Planner Connection</p>
-            <h2 className="text-xl font-bold mt-1">
-              {blockTab === "linked" ? "Linked blocks / presets pattern" : "Presets"}
-            </h2>
-          </div>
-
-          {blockTab === "linked" ? (
-            <div className="px-6 pb-6 pt-4">
-              <TodaySessions module="hygiene" />
-            </div>
-          ) : (
-            <div className="px-6 pb-6 pt-4 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {["Morning care", "Evening skincare", "Weekly grooming", "Deep care session"].map((p) => (
-                  <div key={p} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-border/60 text-sm text-muted-foreground/60">
-                    <Plus className="w-3.5 h-3.5" /> {p}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => navigate("/planner")} className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-violet-500/70 hover:text-violet-500 transition-colors">
-                <Calendar className="w-3.5 h-3.5" /> Manage presets in planner
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* ── 7. Progress ── */}
+        {/* ── 6. Progress ── */}
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
           <div className="px-6 pt-6 pb-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Progress</p>
-            <h2 className="text-xl font-bold mt-1">Goal-linked progress</h2>
+            <SectionHeader title="Goal-linked progress" kicker="Progress" className="mb-0" />
           </div>
 
-          {isLoading ? (
-            <div className="px-6 pb-6 grid grid-cols-3 gap-3">
-              {[1,2,3,4,5,6].map((i) => <div key={i} className="h-32 bg-muted animate-pulse rounded-xl" />)}
-            </div>
-          ) : total === 0 ? (
-            <div className="px-6 pb-8 space-y-5">
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <p className="text-sm font-semibold text-muted-foreground">No routines tracked yet</p>
-                <p className="text-xs text-muted-foreground/60 mt-1 max-w-[250px]">
-                  Add a routine to see your goal-linked progress and cadence populate here.
-                </p>
-              </div>
-              <div className="flex justify-center pt-2">
-                <AddRoutineDialog />
-              </div>
-            </div>
-          ) : (
+          {!isLoading && total > 0 ? (
             <div className="px-6 pb-6 space-y-4">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {progressCards.map(({ routine, daysSince: d, pct }) => {
                   const fillColor = isCompletedToday(routine) ? "#8b5cf6" : pct >= 90 ? "#ef4444" : pct >= 60 ? "#f59e0b" : "#22c55e";
                   return (
-                    <div key={routine.id} className="border border-border/60 rounded-xl p-4 space-y-3 bg-card hover:shadow-sm transition-all cursor-pointer" onClick={() => navigate(`/body/looks/metric/${routine.id}`)}>
+                    <div key={routine.id} className="border border-border/60 rounded-2xl p-5 space-y-4 bg-card hover:shadow-md transition-all cursor-pointer shadow-sm" onClick={() => navigate(`/body/looks/metric/${routine.id}`)}>
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
                           {(FREQ_LABELS[routine.frequency] || routine.frequency).toLowerCase()}
                         </p>
-                        <p className="text-sm font-semibold mt-0.5 leading-tight">{routine.name}</p>
+                        <p className="text-sm font-bold tracking-tight mt-1 leading-tight">{routine.name}</p>
                       </div>
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight text-muted-foreground/40 tabular-nums">
                           <span>{d === null ? "Never" : d === 0 ? "Today" : `${d}d ago`}</span>
                           {routine.streak > 0 && (
                             <span className="flex items-center gap-0.5 text-orange-500">
@@ -432,34 +361,33 @@ export function HygienePage() {
                 })}
               </div>
             </div>
+          ) : (
+            <div className="px-6 pb-10 flex flex-col items-center justify-center text-center opacity-50">
+              <p className="text-sm font-medium">No routines yet</p>
+            </div>
           )}
         </div>
 
-        {/* ── 8. Cross-Body Impact ── */}
+        {/* ── 7. Impact ── */}
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
           <div className="px-6 pt-6 pb-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Cross-body impact</p>
-            <h2 className="text-xl font-bold mt-1">Glow-up support from the rest of Body</h2>
+            <SectionHeader title="Support" kicker="Cross-body" className="mb-0" />
           </div>
-
-          <div className="px-6 pb-6 grid grid-cols-4 gap-3">
+          <div className="px-6 pb-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
             {crossBodySignals.map((s) => (
               <button
                 key={s.label}
                 onClick={() => navigate(s.path)}
-                className="text-left border border-border/60 rounded-xl p-4 hover:shadow-sm hover:bg-muted/30 transition-all space-y-2"
+                className="text-left border border-border/60 rounded-2xl p-5 hover:shadow-md hover:bg-muted/10 transition-all space-y-3 shadow-sm group"
               >
-                <p className="text-[10px] font-semibold text-muted-foreground">{s.label}</p>
-                <p className="text-sm font-bold leading-snug">{s.statement}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{s.label}</p>
+                <p className="text-sm font-bold leading-snug group-hover:text-purple-500 transition-colors">{s.statement}</p>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── 9. Trends ── */}
         <HygieneTrends routines={routines} />
-
-        <div className="h-4" />
       </div>
     </div>
   );

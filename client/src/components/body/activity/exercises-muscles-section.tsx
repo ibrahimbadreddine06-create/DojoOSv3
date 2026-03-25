@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChevronRight, Plus, Search } from "lucide-react";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import type { ExerciseLibraryItem, MuscleStat } from "@shared/schema";
@@ -89,7 +89,7 @@ export function ExercisesMusclesSection() {
 
   return (
     <div>
-      <SectionLabel>Exercises & muscles</SectionLabel>
+      <SectionHeader title="Exercises & muscles" kicker="Strength log" />
 
       {/* Toggle */}
       <ToggleGroup

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Watch } from "lucide-react";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useLocation } from "wouter";
@@ -12,7 +12,7 @@ const HR_ZONES = [
   { zone: 2, name: "Moderate", color: "#14b8a6", range: "121–140 bpm" },
   { zone: 3, name: "Vigorous", color: "#f59e0b", range: "141–160 bpm" },
   { zone: 4, name: "Hard", color: "#f97316", range: "161–180 bpm" },
-  { zone: 5, name: "Maximum", color: "#ef4444", range: "181–200 bpm" },
+  { zone: 5, name: "Maximum", color: "#ea580c", range: "181–200 bpm" },
 ];
 
 interface HrZonesSectionProps {
@@ -35,25 +35,23 @@ export function HrZonesSection({
     ? [
         { name: "Aerobic low", value: cardioFocus.aerobicLow, color: "#14b8a6" },
         { name: "Aerobic high", value: cardioFocus.aerobicHigh, color: "#f59e0b" },
-        { name: "Anaerobic", value: cardioFocus.anaerobic, color: "#ef4444" },
+        { name: "Anaerobic", value: cardioFocus.anaerobic, color: "#ea580c" },
       ]
     : [{ name: "No data", value: 1, color: "#e5e7eb" }];
 
   const chartConfig = {
     aerobicLow: { label: "Aerobic low", color: "#14b8a6" },
     aerobicHigh: { label: "Aerobic high", color: "#f59e0b" },
-    anaerobic: { label: "Anaerobic", color: "#ef4444" },
+    anaerobic: { label: "Anaerobic", color: "#ea580c" },
   };
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <SectionLabel className="mb-0">HR zones & cardio focus</SectionLabel>
+      <SectionHeader title="HR zones & cardio focus" kicker="Heart Rate">
         <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1">
-          <Watch className="w-2.5 h-2.5" />
-          Wearable
+          <Watch className="w-2.5 h-2.5" /> Wearable
         </Badge>
-      </div>
+      </SectionHeader>
 
       <Card>
         <CardContent className="p-0">

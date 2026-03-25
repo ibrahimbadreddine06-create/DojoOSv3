@@ -19,18 +19,18 @@ export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: Fastin
   const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
 
   return (
-    <div className="bg-card border rounded-xl p-6 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden min-h-[180px]">
+    <div className="bg-card border-border/60 rounded-2xl p-5 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden min-h-[180px] shadow-sm">
       <div className="flex justify-between items-start relative z-10">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group-hover:text-orange-600 transition-colors">
             <Timer className="w-4 h-4 text-orange-500" />
-            <span className="text-[11px] font-medium tracking-wider text-muted-foreground">Fasting</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Fasting</span>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col mt-1">
             <span className="text-xl font-black tracking-tight">
               {!isConfigured ? "Program Off" : isActive ? "Fasting" : "Eating Window"}
             </span>
-            <span className="text-[10px] text-muted-foreground/50 font-medium">
+            <span className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-tight">
               {isConfigured ? (typeof bodyProfile.fastingProgram === 'string' ? bodyProfile.fastingProgram : bodyProfile.fastingProgram?.preset) : "Not configured"}
             </span>
           </div>

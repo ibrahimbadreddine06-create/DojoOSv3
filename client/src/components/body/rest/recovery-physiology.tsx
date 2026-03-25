@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Watch, ChevronRight } from "lucide-react";
 import { useLocation } from "wouter";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 
 interface PhysiologyMetric {
   label: string;
@@ -19,36 +19,36 @@ function PhysiologyRow({ label, value, unit, color, metricKey, normal }: Physiol
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <div className="flex items-center justify-between w-full">
           {/* L: Label + Badge */}
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-2 h-2 rounded-full shrink-0"
+              className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: color }}
             />
-            <p className="text-sm font-medium truncate">{label}</p>
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0">
-              <Watch className="w-2 h-2" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 truncate">{label}</p>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
+              <Watch className="w-2.5 h-2.5" />
             </Badge>
           </div>
 
           {/* R: Value + Chevron */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm tabular-nums font-semibold" style={displayValue !== "–" ? { color } : undefined}>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-base font-black tabular-nums tracking-tight" style={displayValue !== "–" ? { color } : undefined}>
               {displayValue}{displayValue !== "–" && unit ? ` ${unit}` : ""}
             </span>
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-foreground transition-colors" />
           </div>
         </div>
 
         {/* Bottom edge label if normal exists */}
         {normal && (
-          <div className="flex mt-1 pl-4">
-            <p className="text-[10px] text-muted-foreground">normal: {normal}</p>
+          <div className="flex mt-1 pl-5">
+            <p className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/40">normal: {normal}</p>
           </div>
         )}
       </CardContent>
@@ -96,7 +96,7 @@ export function RecoveryPhysiology({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <SectionLabel className="mb-0">Recovery Physiology</SectionLabel>
+        <SectionHeader title="Recovery Physiology" kicker="Biometrics" className="mb-0" />
         <Badge variant="outline" className="text-[9px] px-2 py-0.5 gap-1 h-5">
           <Watch className="w-2.5 h-2.5" /> Wearable
         </Badge>

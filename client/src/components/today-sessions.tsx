@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { TimeBlock } from "@shared/schema";
+import { cn } from "@/lib/utils";
 
 const HOUR_HEIGHT = 40;
 
@@ -28,6 +29,9 @@ function getBlockHeight(block: TimeBlock): number {
 interface TodaySessionsProps {
   module: "second_brain" | "languages" | "studies" | "body" | "disciplines" | "activity" | "nutrition" | "rest" | "hygiene";
   itemId?: string;
+  naked?: boolean;
+  hideHeader?: boolean;
+  className?: string;
 }
 
 function getModuleColorVar(linkedModule?: string | null): string {
@@ -68,7 +72,7 @@ function calculateWeightedCompletion(tasks?: Array<{ completed: boolean; importa
   return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
 }
 
-export function TodaySessions({ module, itemId }: TodaySessionsProps) {
+export function TodaySessions({ module, itemId, naked = false, hideHeader = false, className }: TodaySessionsProps) {
   const [, navigate] = useLocation();
   const today = format(new Date(), "yyyy-MM-dd");
   const { toast } = useToast();
@@ -127,8 +131,9 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
   });
 
   if (isLoading) {
+    if (naked) return <div className={cn("animate-pulse text-muted-foreground text-sm", className)}>Loading...</div>;
     return (
-      <Card>
+      <Card className={className}>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4" />
@@ -143,8 +148,18 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
   }
 
   if (!sessions || sessions.length === 0) {
+    if (naked) {
+      return (
+        <div className={cn("py-6 flex flex-col items-center justify-center gap-2", className)}>
+          <p className="text-sm font-medium text-muted-foreground/50">No sessions scheduled for today</p>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/planner')} className="text-[10px] h-7">
+            Go to Daily Planner
+          </Button>
+        </div>
+      );
+    }
     return (
-      <Card>
+      <Card className={className}>
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4" />
@@ -168,8 +183,112 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
     );
   }
 
+  const content = (
+    <div className={cn("space-y-3", naked ? "" : "p-4", className)}>
+      {!hideHeader && naked && (
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="w-3.5 h-3.5 text-muted-foreground/60" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Today's Sessions</span>
+          <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 h-4 min-w-[1.25rem] flex items-center justify-center">
+            {sessions.length}
+          </Badge>
+        </div>
+      )}
+      <div className="space-y-3">
+        {sessions.map((block) => {
+          const colorVar = getModuleColorVar(block.linkedModule);
+          const progress = calculateWeightedCompletion(block.tasks || [], []);
+
+          return (
+            <div
+              key={block.id}
+              className="rounded-xl border flex flex-col overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md"
+              style={{
+                borderColor: `hsl(var(${colorVar}) / 0.4)`,
+                backgroundColor: `hsl(var(${colorVar}) / 0.03)`,
+                minHeight: 70,
+              }}
+              data-testid={`session-block-${block.id}`}
+            >
+              {/* Header */}
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
+                style={{
+                  backgroundColor: `hsl(var(${colorVar}) / 0.45)`,
+                  minHeight: 28,
+                }}
+              >
+                <CircularProgress
+                  completed={block.completed}
+                  progress={progress}
+                  diameter={18}
+                  colorVar={colorVar}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
+                  }}
+                  data-testid={`checkbox-block-${block.id}`}
+                />
+                <span className={`text-xs font-bold truncate flex-1 uppercase tracking-tight ${block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
+                  }`}>
+                  {block.title}
+                </span>
+                <span className="text-[10px] text-muted-foreground/70 font-bold tabular-nums shrink-0">
+                  {block.startTime}–{block.endTime}
+                </span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-4 w-4 text-destructive/40 hover:text-destructive transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete "${block.title}"?`)) {
+                      deleteBlockMutation.mutate(block.id);
+                    }
+                  }}
+                  data-testid={`button-delete-block-${block.id}`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: '0.5px', backgroundColor: `hsl(var(${colorVar}) / 0.3)` }} />
+
+              {/* Content area */}
+              {block.tasks && block.tasks.length > 0 && (
+                <div
+                  className={`flex-1 flex flex-col gap-1.5 min-h-0 p-2.5 overflow-y-auto ${block.completed ? 'opacity-60' : ''}`}
+                  style={{
+                    backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                  }}
+                >
+                  {block.tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center gap-1.5 px-2 py-1 rounded transition-all duration-150"
+                      style={{
+                        backgroundColor: `hsl(var(${colorVar}) / 0.1)`,
+                      }}
+                    >
+                      <span className={`truncate text-[11px] font-medium flex-1 ${task.completed ? 'line-through text-muted-foreground/50' : 'text-foreground/70'}`}>
+                        {task.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  if (naked) return content;
+
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="py-3 px-4 border-b">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Calendar className="w-4 h-4" />
@@ -179,95 +298,8 @@ export function TodaySessions({ module, itemId }: TodaySessionsProps) {
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          {sessions.map((block) => {
-            const colorVar = getModuleColorVar(block.linkedModule);
-            const progress = calculateWeightedCompletion(block.tasks || [], []);
-
-            return (
-              <div
-                key={block.id}
-                className="rounded-lg border flex flex-col overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md"
-                style={{
-                  borderColor: `hsl(var(${colorVar}) / 0.5)`,
-                  backgroundColor: `hsl(var(${colorVar}) / 0.04)`,
-                  minHeight: 80,
-                }}
-                data-testid={`session-block-${block.id}`}
-              >
-                {/* Header */}
-                <div
-                  className={`flex items-center gap-2 px-3 py-2 shrink-0 ${block.completed ? 'opacity-70' : ''}`}
-                  style={{
-                    backgroundColor: `hsl(var(${colorVar}) / 0.55)`,
-                    minHeight: 32,
-                  }}
-                >
-                  <CircularProgress
-                    completed={block.completed}
-                    progress={progress}
-                    diameter={20}
-                    colorVar={colorVar}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleBlockMutation.mutate({ id: block.id, completed: !block.completed });
-                    }}
-                    data-testid={`checkbox-block-${block.id}`}
-                  />
-                  <span className={`text-sm font-medium truncate flex-1 ${block.completed ? "line-through text-muted-foreground/60" : "text-foreground/90"
-                    }`}>
-                    {block.title}
-                  </span>
-                  <span className="text-xs text-muted-foreground/70 font-mono shrink-0">
-                    {block.startTime}–{block.endTime}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-4 w-4 text-destructive hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm(`Delete "${block.title}"?`)) {
-                        deleteBlockMutation.mutate(block.id);
-                      }
-                    }}
-                    data-testid={`button-delete-block-${block.id}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-
-                {/* Divider */}
-                <div style={{ height: '1px', backgroundColor: `hsl(var(${colorVar}) / 0.4)` }} />
-
-                {/* Content area */}
-                {block.tasks && block.tasks.length > 0 && (
-                  <div
-                    className={`flex-1 flex flex-col gap-2 min-h-0 p-3 overflow-y-auto ${block.completed ? 'opacity-65' : ''}`}
-                    style={{
-                      backgroundColor: `hsl(var(${colorVar}) / 0.25)`,
-                    }}
-                  >
-                    {block.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-1 px-2 py-1 rounded transition-all duration-150 hover-elevate"
-                        style={{
-                          backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
-                        }}
-                      >
-                        <span className={`truncate text-xs flex-1 ${task.completed ? 'line-through text-muted-foreground/70' : 'text-foreground/80'}`}>
-                          {task.text}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <CardContent className="p-0">
+        {content}
       </CardContent>
     </Card>
   );

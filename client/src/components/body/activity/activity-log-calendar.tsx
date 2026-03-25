@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, getDay, isToday } from "date-fns";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 import type { Workout, WorkoutPreset } from "@shared/schema";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -54,7 +54,7 @@ export function ActivityLogCalendar() {
 
   return (
     <div>
-      <SectionLabel>Activity log</SectionLabel>
+      <SectionHeader title="Activity log" kicker="Chronology" />
       <Card>
         <CardContent className="p-0">
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">

@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { SectionHeader } from "../section-header";
 
 interface TrendTileProps {
   label: string;
@@ -12,12 +13,12 @@ function TrendTile({ label, value, metricKey }: TrendTileProps) {
 
   return (
     <button
-      className="text-left border border-border/60 rounded-xl bg-card p-4 space-y-2 hover:shadow-sm hover:bg-muted/20 transition-all cursor-pointer"
+      className="text-left border border-border/60 rounded-2xl bg-card p-5 flex flex-col gap-2 hover:shadow-md transition-all cursor-pointer shadow-sm group min-h-[100px]"
       onClick={() => navigate(`/body/looks/metric/${metricKey}`)}
       data-testid={`trend-tile-${metricKey}`}
     >
-      <p className="text-[10px] font-medium text-muted-foreground leading-tight">{label}</p>
-      <p className="text-xl font-bold leading-snug">{display}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 leading-tight">{label}</p>
+      <p className="text-2xl font-black tracking-tight tabular-nums leading-none mt-auto">{display}</p>
     </button>
   );
 }
@@ -102,9 +103,9 @@ export function HygieneTrends({ upkeepScore = null, disciplineRate = null, routi
   ];
 
   return (
-    <div className="space-y-3">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Trends</p>
-      <div className="grid grid-cols-4 gap-3">
+    <div className="space-y-4">
+      <SectionHeader title="Performance insights" kicker="Trends" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {tiles.map((t) => (
           <TrendTile key={t.metricKey} label={t.label} value={t.value} metricKey={t.metricKey} />
         ))}

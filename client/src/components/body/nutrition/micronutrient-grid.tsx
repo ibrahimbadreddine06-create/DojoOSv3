@@ -2,7 +2,7 @@ import React from "react";
 import { type IntakeLog, type BodyProfile } from "@shared/schema";
 import { AlertTriangle, Sun, Brain, Zap, Shield, Droplet, Fish, Bone, Apple } from "lucide-react";
 import { Link } from "wouter";
-import { SectionLabel } from "../activity/section-label";
+import { SectionHeader } from "../section-header";
 
 interface MicronutrientGridProps {
   intakeLogs: IntakeLog[];
@@ -21,6 +21,7 @@ const MICROS = [
 ];
 
 export function MicronutrientGrid({ intakeLogs, bodyProfile }: MicronutrientGridProps) {
+  const [showAll, setShowAll] = React.useState(false);
   const sex = bodyProfile?.sex || "male";
 
   const totals = intakeLogs.reduce((acc, log) => {
@@ -33,52 +34,53 @@ export function MicronutrientGrid({ intakeLogs, bodyProfile }: MicronutrientGrid
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-baseline px-1">
-        <SectionLabel className="mb-0">Micronutrients</SectionLabel>
+        <SectionHeader title="Micronutrients" kicker="Vitamins & Minerals" className="mb-0" />
         <span className="text-[10px] text-muted-foreground/50 font-medium">RDA Status</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {MICROS.map(m => {
+        {MICROS.filter((_, i) => showAll || i < 4).map(m => {
           const val = totals[m.key] || 0;
           const goal = sex === "female" ? m.fGoal : m.mGoal;
           const progress = Math.min(100, (val / goal) * 100);
-          const isLow = progress < 20;
+          const isLow = progress < 20 && val > 0;
+          const isEmpty = val === 0;
           const IconComponent = m.icon;
 
           return (
             <Link key={m.key} href={`/body/nutrition/metric/${m.key}`}>
-              <div className={`bg-card border rounded-xl p-3 flex flex-col gap-1.5 hover:shadow-md transition-shadow cursor-pointer group ${isLow ? "border-red-500/30" : ""}`}>
+              <div className={`bg-card border-border/60 rounded-2xl p-5 flex flex-col gap-2 hover:shadow-md transition-shadow cursor-pointer group shadow-sm ${isLow ? "border-orange-500/30" : ""}`}>
                 {/* Top row: icon + name */}
                 <div className="flex items-center gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isLow ? "bg-red-100 dark:bg-red-900/40" : m.iconBg}`}>
-                    <IconComponent className={`w-3 h-3 ${isLow ? "text-red-500" : m.iconColor}`} />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isLow ? "bg-red-100 dark:bg-red-900/40" : isEmpty ? "bg-muted/30" : m.iconBg}`}>
+                    <IconComponent className={`w-3.5 h-3.5 ${isLow ? "text-orange-500" : isEmpty ? "text-muted-foreground/30" : m.iconColor}`} />
                   </div>
                   <div className="flex items-center gap-1 flex-1 min-w-0">
-                    <span className={`text-[10px] font-medium tracking-wide truncate ${isLow ? "text-red-500" : "text-muted-foreground"} group-hover:text-purple-500 transition-colors`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest truncate ${isLow ? "text-orange-500" : "text-muted-foreground/70"} group-hover:text-purple-500 transition-colors`}>
                       {m.label}
                     </span>
-                    {isLow && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                    {isLow && <AlertTriangle className="w-3 h-3 text-orange-500 shrink-0" />}
                   </div>
                 </div>
 
                 {/* Value */}
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-lg font-black tracking-tight ${isLow ? "text-red-500" : ""}`}>
+                <div className="flex items-baseline gap-1.5 mt-auto">
+                  <span className={`text-2xl font-bold tabular-nums tracking-tight ${isLow ? "text-orange-500" : isEmpty ? "text-muted-foreground/20" : ""}`}>
                     {Math.round(val * 10) / 10}
                   </span>
-                  <span className="text-[9px] text-muted-foreground/50 font-medium">{m.unit}</span>
+                  <span className="text-xs text-muted-foreground font-semibold uppercase tracking-tighter">{m.unit}</span>
                 </div>
 
                 {/* Progress bar */}
-                <div className="h-1 bg-muted rounded-full overflow-hidden">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
                   <div
-                    className={`h-full transition-all duration-1000 ease-out ${isLow ? "bg-red-500" : progress >= 100 ? "bg-emerald-500" : "bg-purple-500/50"}`}
+                    className={`h-full transition-all duration-1000 ease-out ${isLow ? "bg-orange-500" : progress >= 100 ? "bg-emerald-500" : isEmpty ? "bg-muted" : "bg-purple-500/50"}`}
                     style={{ width: `${progress}%` }}
                   />
                 </div>
 
                 {/* RDA text */}
-                <p className="text-[9px] text-muted-foreground/40">
+                <p className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/40 mt-1">
                   {Math.round(val * 10) / 10} / {goal} {m.unit} RDA
                 </p>
               </div>
@@ -87,8 +89,11 @@ export function MicronutrientGrid({ intakeLogs, bodyProfile }: MicronutrientGrid
         })}
       </div>
 
-      <button className="text-[10px] text-muted-foreground/50 hover:text-purple-500 transition-colors w-full text-right px-1">
-        Show all nutrients →
+      <button 
+        onClick={() => setShowAll(!showAll)}
+        className="text-[10px] text-muted-foreground/50 hover:text-purple-500 transition-colors w-full text-right px-1"
+      >
+        {showAll ? "Show less ↑" : "Show all nutrients →"}
       </button>
     </div>
   );

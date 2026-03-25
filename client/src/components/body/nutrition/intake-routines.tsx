@@ -1,15 +1,17 @@
 import React from "react";
 import { CheckCircle2, Circle, Pill, Zap } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { type IntakeRoutine, type IntakeRoutineCheckin } from "@shared/schema";
-import { SectionLabel } from "../activity/section-label";
+import { SectionHeader } from "../section-header";
 
 interface IntakeRoutinesProps {
   date: string;
 }
 
 export function IntakeRoutines({ date }: IntakeRoutinesProps) {
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: routines, isLoading: routinesLoading } = useQuery<IntakeRoutine[]>({
@@ -39,15 +41,18 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
     <div className="space-y-3">
       <div className="flex justify-between items-baseline px-1">
         <div className="space-y-0.5">
-          <SectionLabel className="mb-0">Daily Intake Routines</SectionLabel>
+          <SectionHeader title="Daily Intake Routines" kicker="Cadence" className="mb-0" />
           <p className="text-[9px] text-muted-foreground/40 font-medium tracking-wider uppercase">Auto-synced</p>
         </div>
-        <button className="text-[10px] text-purple-500/70 hover:text-purple-500 transition-colors font-medium">
+        <button 
+          onClick={() => navigate("/body/setup")}
+          className="text-[10px] text-purple-500/70 hover:text-purple-500 transition-colors font-medium"
+        >
           Configure →
         </button>
       </div>
 
-      <div className="bg-card border rounded-2xl overflow-hidden divide-y divide-border/50">
+      <div className="bg-card border-border/60 rounded-2xl overflow-hidden divide-y divide-border/40 shadow-sm">
         {routineList.length === 0 ? (
           <div className="p-10 text-center space-y-3">
             <p className="text-sm text-muted-foreground/50">No routines configured.</p>
@@ -71,10 +76,10 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
                     <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-card ${statusColor}`} />
                   </div>
                   <div>
-                    <p className={`font-black tracking-tight ${isTaken ? "line-through text-muted-foreground/40" : ""}`}>
+                    <p className={`text-sm font-bold tracking-tight leading-tight ${isTaken ? "line-through text-muted-foreground/40" : ""}`}>
                       {r.name}
                     </p>
-                    <p className="text-[10px] font-medium text-muted-foreground/50">
+                    <p className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/50 mt-0.5">
                       {r.dose} {r.unit} · {r.timeOfDay || "Anytime"}
                     </p>
                   </div>
@@ -100,7 +105,10 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
         <span className="text-[10px] text-muted-foreground/40 font-medium">
           Schedules sync to your daily planner automatically
         </span>
-        <button className="text-[10px] text-purple-500/60 hover:text-purple-500 transition-colors font-medium">
+        <button 
+          onClick={() => navigate("/body/setup")}
+          className="text-[10px] text-purple-500/60 hover:text-purple-500 transition-colors font-medium"
+        >
           Edit routines →
         </button>
       </div>

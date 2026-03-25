@@ -122,10 +122,10 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
   return (
     <Dialog open={isOpen} onOpenChange={(v) => { if(!v) { resetFlow(); onClose(); } }}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-background border-none shadow-2xl rounded-2xl">
-        <div className="p-6 bg-purple-600 text-white relative">
+        <div className="p-6 bg-orange-500 text-white relative">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black tracking-tight text-white mb-2">Log Intake</DialogTitle>
-            <DialogDescription className="text-purple-100/70 font-bold uppercase text-[10px] tracking-widest leading-relaxed">
+            <DialogDescription className="text-orange-100/70 font-bold uppercase text-[10px] tracking-widest leading-relaxed">
               {preselectedBlockId ? "Logging for specific planner block" : "Fuel your performance"}
             </DialogDescription>
           </DialogHeader>
@@ -133,8 +133,8 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
 
         {analysisResult ? (
           <div className="p-6 space-y-6 animate-in slide-in-from-bottom duration-300">
-             <div className="p-4 bg-muted/50 rounded-2xl border-2 border-purple-500/20">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 mb-2">AI Analysis</h3>
+             <div className="p-4 bg-muted/50 rounded-2xl border-2 border-orange-500/20">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-600 mb-2">AI Analysis</h3>
                 <p className="text-xl font-black tracking-tight">{analysisResult.mealName}</p>
                 <div className="grid grid-cols-4 gap-2 mt-4">
                    <MetricBox label="KCAL" value={analysisResult.calories} />
@@ -144,13 +144,13 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
                 </div>
                 <div className="flex flex-wrap gap-1 mt-4">
                    {analysisResult.fuelCategories?.map((c: string) => (
-                     <span key={c} className="text-[8px] font-black uppercase bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full border border-purple-500/20">{c}</span>
+                     <span key={c} className="text-[8px] font-black uppercase bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full border border-orange-500/20">{c}</span>
                    ))}
                 </div>
              </div>
              <div className="flex gap-2">
                 <Button variant="outline" className="flex-1 font-black uppercase tracking-widest text-[10px]" onClick={() => setAnalysisResult(null)}>Edit / Retake</Button>
-                <Button className="flex-1 bg-purple-600 hover:bg-purple-700 font-black uppercase tracking-widest text-[10px]" onClick={() => logMutation.mutate(analysisResult)}>Confirm & Log</Button>
+                <Button className="flex-1 bg-orange-500 hover:bg-orange-600 border-none text-white font-black uppercase tracking-widest text-[10px]" onClick={() => logMutation.mutate(analysisResult)}>Confirm & Log</Button>
              </div>
           </div>
         ) : describeMode ? (
@@ -178,7 +178,7 @@ export function LogIntakeModal({ isOpen, onClose, preselectedBlockId }: LogIntak
           </div>
         ) : (
           <Tabs defaultValue="food" className="w-full" onValueChange={(v) => setSelectedType(v as IntakeType)}>
-            <div className="px-6 py-4 bg-purple-500/5 border-b border-purple-500/10">
+            <div className="px-6 py-4 bg-orange-500/5 border-b border-orange-500/10">
               <TabsList className="grid grid-cols-5 w-full bg-transparent gap-2 h-auto">
                 <LogTypeTrigger value="food" icon={<Utensils className="w-4 h-4" />} label="Food" active={selectedType === "food"} />
                 <LogTypeTrigger value="water" icon={<Droplets className="w-4 h-4" />} label="Water" active={selectedType === "water"} />

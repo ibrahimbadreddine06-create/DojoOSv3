@@ -2,7 +2,7 @@ import React from "react";
 import { type IntakeLog, type BodyProfile } from "@shared/schema";
 import { useTheme } from "@/contexts/theme-context";
 import { Link } from "wouter";
-import { SectionLabel } from "../activity/section-label";
+import { SectionHeader } from "../section-header";
 
 interface CalorieMacroCardProps {
   intakeLogs: IntakeLog[];
@@ -32,15 +32,15 @@ export function CalorieMacroCard({ intakeLogs, bodyProfile }: CalorieMacroCardPr
   const calProgress = Math.min(100, (totals.calories / goals.calories) * 100);
 
   return (
-    <div className="bg-card border rounded-xl p-6 space-y-8">
+    <div className="bg-card border-border/60 rounded-2xl p-5 shadow-sm space-y-8">
       {/* Calorie Bar */}
       <Link href="/body/nutrition/metric/calories">
         <div className="space-y-3 cursor-pointer group">
           <div className="flex justify-between items-baseline">
-            <SectionLabel className="mb-0 group-hover:text-purple-500 transition-colors">Calories</SectionLabel>
+            <SectionHeader title="Calories" kicker="Status" className="mb-0 overflow-hidden" />
             <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-black tracking-tighter">{Math.round(totals.calories)}</span>
-              <span className="text-xs text-muted-foreground font-medium">/ {goals.calories} kcal</span>
+              <span className="text-2xl font-black tracking-tight tabular-nums">{Math.round(totals.calories)}</span>
+              <span className="text-xs text-muted-foreground font-semibold">/ {goals.calories} kcal</span>
             </div>
           </div>
           <div className="h-4 bg-muted/50 rounded-full overflow-hidden border border-muted/50 relative">
@@ -99,14 +99,12 @@ function MacroItem({ label, metricKey, value, goal, color }: { label: string, me
   return (
     <Link href={`/body/nutrition/metric/${metricKey}`}>
       <div className="space-y-2 cursor-pointer group">
-        <div className="text-[10px] text-muted-foreground font-medium group-hover:text-purple-500 transition-colors">
-          {label}
-        </div>
+        <SectionHeader title={label} className="mb-0" />
         <div className="flex items-baseline gap-1">
-          <span className="text-xl font-black">{Math.round(value)}</span>
-          <span className="text-[10px] text-muted-foreground/50 font-medium">g</span>
+          <span className="text-xl font-black tabular-nums">{Math.round(value)}</span>
+          <span className="text-[10px] text-muted-foreground/50 font-semibold tracking-tighter">g</span>
         </div>
-        <p className="text-[10px] text-muted-foreground/40 font-medium">{remaining}g remaining</p>
+        <p className="text-[10px] text-muted-foreground/40 font-bold uppercase tracking-tight">{remaining}g remaining</p>
         <div className="h-1 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full transition-all duration-700 ease-out"

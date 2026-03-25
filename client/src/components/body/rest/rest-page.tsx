@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Moon, AlertCircle, Watch, Info } from "lucide-react";
+import { Moon, Watch, Info, Plus } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useLocation } from "wouter";
 
 import { MetricRing } from "@/components/body/metric-ring";
-import { SectionLabel } from "./section-label";
+import { cn } from "@/lib/utils";
+import { SectionHeader } from "../section-header";
 import { LogRestDialog } from "./log-rest-dialog";
 import { TonightRhythmCard } from "./tonight-rhythm-card";
 import { TodaySessions } from "@/components/today-sessions";
@@ -18,6 +20,9 @@ import { TodaysRestImpact } from "./todays-rest-impact";
 import { RestChronology } from "./rest-chronology";
 import { RestTrends } from "./rest-trends";
 import { RestInsights } from "./rest-insights";
+import { StatusBanner } from "../status-banner";
+import { Button } from "@/components/ui/button";
+import { ModuleBriefing } from "../module-briefing";
 
 const SLEEP_GOAL = 8;
 
@@ -64,62 +69,44 @@ export function RestPage() {
   const restScoreColor =
     restScore === null ? "#6b7280"
       : restScore >= 70 ? "#22c55e"
-      : restScore >= 40 ? "#eab308"
-      : "#ef4444";
+        : restScore >= 40 ? "#eab308"
+          : "#ef4444";
 
   const recoveryColor =
     recoveryReadiness === null ? "#6b7280"
       : recoveryReadiness >= 70 ? "#22c55e"
-      : recoveryReadiness >= 40 ? "#eab308"
-      : "#ef4444";
+        : recoveryReadiness >= 40 ? "#eab308"
+          : "#ef4444";
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700">
-      <div className="space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700 pb-24">
+      <div className="space-y-8">
 
         {/* ── 1. Page Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Rest</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Rest</h1>
             <p className="text-sm sm:text-base text-muted-foreground">Recovery, sleep & rhythm</p>
           </div>
-          <LogRestDialog />
+          <LogRestDialog>
+            <Button
+              className="gap-1.5 shrink-0 shadow-sm rounded-xl bg-indigo-500 hover:bg-indigo-600 border-none text-white transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Log rest
+            </Button>
+          </LogRestDialog>
         </div>
 
         {/* ── 2. Status Banner ── */}
-        {showNoDataBanner && (
-          <div className="flex items-start gap-3 bg-indigo-500/8 border border-indigo-500/20 rounded-2xl px-5 py-4">
-            <Moon className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm">No rest data yet</p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">
-                Tap <strong>Log rest</strong> to record your first entry, or connect a wearable in
-                Settings → Integrations for automatic tracking.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {showWarningBanner && (
-          <div className="flex items-start gap-3 bg-red-500/8 border border-red-500/20 rounded-2xl px-5 py-4">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm text-red-600 dark:text-red-400">Low recovery detected</p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">
-                Your rest score is below 40. Prioritize sleep tonight and keep training light today.
-              </p>
-            </div>
-          </div>
-        )}
+        <RestAiBrief dailyState={dailyState} showNoDataWarning={showNoDataBanner} lowRecoveryWarning={showWarningBanner} />
 
         {/* ── 3. Hero Metrics Row ── */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Rest Score */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate("/body/rest/metric/restScore")}
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
+            onClick={() => navigate("/body/sleep/metric/restScore")}
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={restScore ?? 0}
                 max={100}
@@ -131,12 +118,11 @@ export function RestPage() {
             </CardContent>
           </Card>
 
-          {/* Sleep Duration */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate("/body/rest/metric/sleepDuration")}
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
+            onClick={() => navigate("/body/sleep/metric/sleepDuration")}
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={sleepDuration ?? 0}
                 max={sleepGoal}
@@ -149,11 +135,10 @@ export function RestPage() {
             </CardContent>
           </Card>
 
-          {/* Recovery Readiness */}
           <Popover>
             <PopoverTrigger asChild>
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-5 flex items-center justify-center">
+              <Card className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm">
+                <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
                   {recoveryReadiness !== null ? (
                     <MetricRing
                       value={recoveryReadiness}
@@ -165,7 +150,6 @@ export function RestPage() {
                     />
                   ) : (
                     <div className="flex flex-col items-center relative">
-                      {/* Invisible spacer to perfectly balance the text height at the bottom */}
                       <div className="invisible pointer-events-none select-none text-center mb-1.5">
                         <p className="text-[12px] font-semibold tracking-wide leading-none">Readiness</p>
                         <p className="text-[11px] leading-none mt-0.5">wearable needed</p>
@@ -176,7 +160,7 @@ export function RestPage() {
                           <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-3xl font-mono font-black text-muted-foreground">–</span>
+                          <span className="text-3xl font-mono font-bold text-muted-foreground">–</span>
                         </div>
                       </div>
 
@@ -191,24 +175,15 @@ export function RestPage() {
             </PopoverTrigger>
             {recoveryReadiness === null && (
               <PopoverContent className="w-72">
-                <div className="flex items-start gap-2">
-                  <Watch className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-semibold mb-1">Recovery Readiness</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Calculated from overnight HRV and resting HR data. Requires a connected wearable.
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Connect in <strong>Settings → Integrations</strong>.
-                    </p>
-                  </div>
-                </div>
+                <h4 className="text-sm font-semibold mb-1">Recovery Readiness</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Calculated from overnight HRV and resting HR data. Requires a connected wearable.
+                </p>
               </PopoverContent>
             )}
           </Popover>
         </div>
 
-        {/* ── 4. Tonight & Rhythm ── */}
         <TonightRhythmCard
           windDownTime={bodyProfile?.windDownTime ?? "22:00"}
           bedTarget={bodyProfile?.bedTarget ?? "23:00"}
@@ -216,45 +191,48 @@ export function RestPage() {
           sleepNeeded={sleepGoal}
         />
 
-        {/* ── 5. Linked Time Blocks ── */}
         <TodaySessions module="rest" />
-
-        {/* ── 6. Last Night Breakdown ── */}
         <LastNightBreakdown
           timeInBed={lastLog ? parseFloat(lastLog.actualHours || 0) : null}
           efficiency={
             lastLog
-              ? Math.min(
-                  100,
-                  Math.round(
-                    (parseFloat(lastLog.actualHours || 0) /
-                      parseFloat(lastLog.plannedHours || sleepGoal)) *
-                      100
-                  )
-                )
+              ? Math.min(100, Math.round((parseFloat(lastLog.actualHours || 0) / parseFloat(lastLog.plannedHours || sleepGoal)) * 100))
               : null
           }
           bedtime={lastLog?.bedtime ?? null}
           wakeTime={lastLog?.wakeTime ?? null}
         />
-
-        {/* ── 7. Recovery Physiology ── */}
         <RecoveryPhysiology />
-
-        {/* ── 8. Today's Rest Impact ── */}
         <TodaysRestImpact restScore={restScore} recoveryReadiness={recoveryReadiness} />
-
-        {/* ── 9. Chronology ── */}
         <RestChronology />
-
-        {/* ── 10. Trends ── */}
         <RestTrends restScore={restScore} sleepDuration={sleepDuration} />
-
-        {/* ── 11. Insights / Education ── */}
         <RestInsights hasData={hasData} />
-
-        <div className="h-4" />
       </div>
     </div>
+  );
+}
+
+function RestAiBrief({ dailyState, showNoDataWarning, lowRecoveryWarning }: { dailyState: any, showNoDataWarning?: boolean, lowRecoveryWarning?: boolean }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/rest/ai-brief", JSON.stringify(dailyState)],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/rest/ai-brief", { dailyState });
+      if (!res.ok) return { brief: "Rest & recovery analysis currently unavailable." };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const warningPrefix = lowRecoveryWarning ? "⚠️ LOW RECOVERY DETECTED: Your rest score is low. Prioritize sleep tonight and keep training light today.\n\n" : "";
+  const fallbackText = "No rest data yet. Tap Log rest to record your first entry, or connect a wearable in Settings → Integrations for automatic tracking.";
+
+  return (
+    <ModuleBriefing
+      title="Briefing"
+      kicker="Sensei AI"
+      content={data?.brief ? (warningPrefix + data.brief) : (showNoDataWarning ? fallbackText : data?.brief)}
+      isLoading={isLoading}
+      accentColor="bg-indigo-500/10"
+    />
   );
 }

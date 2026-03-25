@@ -1,7 +1,7 @@
 import { Brain, Dumbbell, Coffee, ChevronRight, Zap, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 
 interface ImpactItem {
   icon: React.ReactNode;
@@ -65,8 +65,8 @@ export function TodaysRestImpact({ restScore = null, recoveryReadiness = null }:
   ];
 
   return (
-    <div>
-      <SectionLabel>Today's Rest Impact</SectionLabel>
+    <div className="space-y-4">
+      <SectionHeader title="Today's Rest Impact" kicker="Analysis" />
 
       <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
         <div className="divide-y divide-border/40">
@@ -81,17 +81,17 @@ export function TodaysRestImpact({ restScore = null, recoveryReadiness = null }:
                   {item.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="text-sm font-semibold">{item.label}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{item.label}</p>
                     <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      className="text-[9px] font-black uppercase tracking-tight px-2 py-0.5 rounded-full tabular-nums"
                       style={{ backgroundColor: colors.bg, color: colors.text }}
                     >
                       {item.value}
                     </span>
                   </div>
                   {item.description && (
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{item.description}</p>
+                    <p className="text-sm leading-relaxed text-muted-foreground font-medium">{item.description}</p>
                   )}
                 </div>
               </div>
@@ -100,14 +100,14 @@ export function TodaysRestImpact({ restScore = null, recoveryReadiness = null }:
         </div>
 
         {/* Planner action */}
-        <div className="px-5 py-3 border-t border-border/40 bg-muted/20">
+        <div className="px-5 py-4 border-t border-border/40 bg-muted/10">
           <button
             onClick={() => navigate("/planner")}
-            className="flex items-center gap-2 text-[11px] font-semibold text-indigo-500 hover:text-indigo-600 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-indigo-500 hover:text-indigo-600 transition-colors"
           >
             <Calendar className="w-3.5 h-3.5" />
-            Apply rest guidance to today's planner
-            <ChevronRight className="w-3.5 h-3.5" />
+            Apply guidance to planner
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

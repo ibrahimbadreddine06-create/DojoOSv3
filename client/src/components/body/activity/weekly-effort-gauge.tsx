@@ -14,7 +14,7 @@ export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugePr
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate("/body/activity/metric/weeklyEffort")}
     >
       <CardContent className="p-5 sm:p-6 flex flex-col items-center justify-center text-center">
@@ -22,7 +22,7 @@ export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugePr
         <span className="text-4xl font-bold tabular-nums text-foreground leading-none">
           {percentage}%
         </span>
-        <p className="text-[11px] text-muted-foreground mt-2 mb-5 uppercase tracking-wider font-semibold">
+        <p className="text-[10px] text-muted-foreground mt-2 mb-5 uppercase tracking-widest font-bold">
           Weekly effort vs target
         </p>
 

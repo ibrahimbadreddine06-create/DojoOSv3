@@ -871,6 +871,29 @@ export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any
   return result.response.text().trim();
 }
 
+// ─── Rest Brief ─────────────────────────────────────────────────────────────
+
+export async function generateRestBrief(dailyState: any): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "Rest & recovery analysis currently unavailable.";
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const dataStr = JSON.stringify(dailyState || {});
+  const prompt = `You are a sleep and recovery coach. In 1-2 sentences, summarize the user's recovery status.
+    Data: ${dataStr}.
+    Focus on readiness, sleep quality, and wind-down adherence.
+    Keep it concise and professional. No markdown.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (e) {
+    return "Your recovery data is looking stable. Focus on a consistent wind-down routine tonight.";
+  }
+}
+
 // ─── Fuel Category Classification ────────────────────────────────────────────
 
 export async function classifyFuelCategory(foodName: string): Promise<string[]> {

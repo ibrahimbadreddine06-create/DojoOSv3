@@ -34,9 +34,10 @@ const REST_TYPES = [
 
 interface LogRestDialogProps {
   trigger?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export function LogRestDialog({ trigger }: LogRestDialogProps) {
+export function LogRestDialog({ trigger, children }: LogRestDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -70,8 +71,8 @@ export function LogRestDialog({ trigger }: LogRestDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" className="gap-1.5 shrink-0" style={{ backgroundColor: "#6366f1" }}>
+        {trigger ?? children ?? (
+          <Button size="sm" className="gap-1.5 shrink-0 shadow-sm rounded-xl">
             <Plus className="w-4 h-4" /> Log rest
           </Button>
         )}
@@ -188,13 +189,13 @@ export function LogRestDialog({ trigger }: LogRestDialogProps) {
             />
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-xl">
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={createMutation.isPending}
-                style={{ backgroundColor: "#6366f1" }}
+                className="shadow-sm rounded-xl bg-indigo-500 hover:bg-indigo-600 border-none text-white transition-colors"
               >
                 {createMutation.isPending ? "Logging…" : "Log entry"}
               </Button>

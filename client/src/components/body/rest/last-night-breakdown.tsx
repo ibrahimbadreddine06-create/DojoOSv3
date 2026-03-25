@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Watch } from "lucide-react";
 import { useLocation } from "wouter";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 
 interface BreakdownMetric {
   label: string;
@@ -22,27 +22,27 @@ function BreakdownTile({
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-4 space-y-1">
+      <CardContent className="p-5 flex flex-col gap-2 min-h-[90px]">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</span>
           {showWearable && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5">
-              <Watch className="w-2 h-2" />
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 font-bold uppercase tracking-tighter">
+              <Watch className="w-2.5 h-2.5" />
             </Badge>
           )}
         </div>
-        <div className="flex items-baseline gap-1">
+        <div className="flex items-baseline gap-1.5 mt-auto">
           <span
-            className="text-xl font-bold tabular-nums"
+            className="text-2xl font-black tabular-nums tracking-tight"
             style={color && displayValue !== "–" ? { color } : undefined}
           >
             {displayValue}
           </span>
           {displayValue !== "–" && unit && (
-            <span className="text-[10px] text-muted-foreground">{unit}</span>
+            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-tighter">{unit}</span>
           )}
         </div>
       </CardContent>
@@ -100,7 +100,7 @@ export function LastNightBreakdown({
 
   return (
     <div>
-      <SectionLabel>Last night breakdown</SectionLabel>
+      <SectionHeader title="Last Night Breakdown" kicker="Logs" />
       <div className="grid grid-cols-3 gap-3">
         {metrics.map((m) => (
           <BreakdownTile key={m.metricKey} {...m} />

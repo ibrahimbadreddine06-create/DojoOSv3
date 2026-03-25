@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Moon, Sun, Wind, Zap, Brain, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { SectionHeader } from "../section-header";
 
 // Placeholder 7-day bedtime consistency sparkline (minutes after midnight)
 const BEDTIME_SPARKLINE = [
@@ -44,10 +45,7 @@ export function TonightRhythmCard({
     <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-5 pb-3 border-b border-border/40 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Tonight & Rhythm</p>
-          <h3 className="font-bold text-sm tracking-tight">Sleep planning & circadian guidance</h3>
-        </div>
+        <SectionHeader title="Sleep planning & circadian guidance" kicker="Tonight & Rhythm" className="mb-0" />
         {rhythmConsistency !== null && (
           <Badge
             variant="outline"
@@ -68,10 +66,10 @@ export function TonightRhythmCard({
         {planningItems.map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-1.5 px-3 py-4">
             {item.icon}
-            <p className="font-mono font-black text-base tabular-nums leading-none" style={{ color: item.color }}>
+            <p className="font-black text-xl tabular-nums leading-none tracking-tight" style={{ color: item.color }}>
               {item.value}
             </p>
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">{item.label}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{item.label}</p>
           </div>
         ))}
       </div>
@@ -126,7 +124,7 @@ export function TonightRhythmCard({
           <Calendar className="w-3 h-3" />
           View planner
         </Button>
-        <button className="text-[10px] font-bold uppercase tracking-widest h-8 px-3 rounded-md border border-dashed border-border/60 text-muted-foreground/60 hover:text-indigo-500 hover:border-indigo-500/40 transition-colors">
+        <button className="text-[10px] font-bold uppercase tracking-widest h-8 px-3 rounded-xl border border-dashed border-border/60 text-muted-foreground/60 hover:text-indigo-500 hover:border-indigo-500/40 transition-colors">
           Adjust targets
         </button>
       </div>

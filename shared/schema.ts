@@ -45,6 +45,8 @@ export const users = pgTable("users", {
   bio: text("bio"),
   isPrivate: boolean("is_private").notNull().default(true),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  googleFitTokens: jsonb("google_fit_tokens").$type<{ accessToken: string; refreshToken: string; expiryDate: number }>(),
+  appleHealthSyncToken: text("apple_health_sync_token"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -392,12 +394,15 @@ export const workoutSets = pgTable("workout_sets", {
 
 export const muscleStats = pgTable("muscle_stats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
   muscleId: text("muscle_id").notNull(), // Matches BodyMap IDs
   recoveryScore: integer("recovery_score").default(100), // 0-100%
   lastTrained: timestamp("last_trained"),
   volumeAccumulated: integer("volume_accumulated").default(0), // Rolling window volume
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  unique("muscle_stats_v2_user_muscle_idx").on(table.userId, table.muscleId),
+]);
 
 export const workoutPresets = pgTable("workout_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -597,6 +602,10 @@ export const dailyState = pgTable("daily_state", {
   steps: integer("steps"),
   distanceKm: decimal("distance_km", { precision: 7, scale: 2 }),
   avgHeartRate: integer("avg_heart_rate"),
+  // Biometric signals (0-100)
+  balanceScore: integer("balance_score"),
+  stressScore: integer("stress_score"),
+  momentumScore: integer("momentum_score"),
   // Planner
   plannerCompletion: decimal("planner_completion", { precision: 5, scale: 2 }), // 0-100
   // Goal events

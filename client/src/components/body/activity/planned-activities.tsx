@@ -13,7 +13,7 @@ export function PlannedActivities() {
   });
 
   const { data: workouts } = useQuery<Workout[]>({
-    queryKey: ["/api/workouts"],
+    queryKey: [`/api/workouts/${today}`],
   });
 
   const bodyBlocks = timeBlocks?.filter(
@@ -48,22 +48,22 @@ export function PlannedActivities() {
               return (
                 <div 
                   key={block.id} 
-                  className={`group relative bg-card border rounded-2xl p-4 transition-all hover:shadow-md ${isCompleted ? "border-red-500/30" : "border-dashed opacity-60 hover:opacity-100"}`}
+                  className={`group relative bg-card border rounded-2xl p-4 transition-all hover:shadow-md ${isCompleted ? "border-amber-500/30" : "border-dashed opacity-60 hover:opacity-100"}`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${isCompleted ? "bg-red-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                      <div className={`p-2 rounded-xl ${isCompleted ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}>
                         <Play className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-black uppercase tracking-widest">{block.title}</p>
+                        <p className="text-xs font-bold uppercase tracking-widest">{block.title}</p>
                         <p className="text-[10px] font-bold text-muted-foreground">{block.startTime} - {block.endTime}</p>
                       </div>
                     </div>
                     {isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 text-red-500" />
+                      <CheckCircle2 className="w-5 h-5 text-amber-500" />
                     ) : (
-                      <Button size="sm" variant="outline" className="text-[10px] font-black uppercase tracking-widest h-8">
+                      <Button size="sm" variant="outline" className="text-[10px] font-bold uppercase tracking-widest h-8">
                         Start
                       </Button>
                     )}

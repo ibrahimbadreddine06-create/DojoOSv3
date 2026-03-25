@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Watch, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { useLocation } from "wouter";
 
@@ -141,7 +141,7 @@ export function TrendsSection({
 }: TrendsSectionProps) {
   return (
     <div>
-      <SectionLabel>Trends — tap any to see full graph</SectionLabel>
+      <SectionHeader title="Trends" kicker="Tap any to see full graph" />
 
       {/* Top 4 sparkline cards */}
       <div className="grid grid-cols-2 gap-3 mb-3">
@@ -155,7 +155,7 @@ export function TrendsSection({
           label="Energy burned"
           value={energyBurned ?? null}
           unit="kcal"
-          color="hsl(0 84.2% 60.2%)"
+          color="#f59e0b"
           metricKey="energyBurned"
         />
         <TrendCard
@@ -183,14 +183,14 @@ export function TrendsSection({
           label="Exercise duration"
           value={exerciseDuration ?? null}
           unit="min"
-          color="hsl(0 84.2% 60.2%)"
+          color="#f59e0b"
           metricKey="exerciseDuration"
         />
         <TrendRow
           label="FC en journée"
           value={avgHR ?? null}
           unit="bpm"
-          color="#ef4444"
+          color="#f59e0b"
           metricKey="avgHR"
           wearableRequired
           wearableConnected={wearableConnected}

@@ -47,8 +47,8 @@ export function BodyLayout({ children }: BodyLayoutProps) {
                         const Icon = item.icon;
 
                         return (
-                            <Link key={item.id} href={item.path}>
-                                <div className="relative flex flex-col items-center gap-1 px-3 py-1 cursor-pointer min-w-[48px]">
+                            <Link key={item.id} href={item.path} className="flex-1">
+                                <div className="relative flex flex-col items-center gap-1 px-1 py-1 cursor-pointer min-w-[48px] hover:bg-muted/30 rounded-lg transition-colors group">
                                     {/* Active indicator */}
                                     {isActive && (
                                         <motion.div
@@ -59,7 +59,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
                                         />
                                     )}
                                     <Icon
-                                        className="w-5 h-5 transition-all duration-150"
+                                        className="w-5 h-5 transition-all duration-150 group-active:scale-90"
                                         style={{
                                             color: isActive ? item.activeColor : undefined,
                                             opacity: isActive ? 1 : 0.35,
@@ -67,7 +67,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
                                         strokeWidth={isActive ? 2.5 : 1.8}
                                     />
                                     <span
-                                        className="text-[9px] font-bold transition-all duration-150 uppercase tracking-wide"
+                                        className="text-[9px] font-bold transition-all duration-150 uppercase tracking-wide group-active:scale-90"
                                         style={{
                                             color: isActive ? item.activeColor : undefined,
                                             opacity: isActive ? 1 : 0.35,

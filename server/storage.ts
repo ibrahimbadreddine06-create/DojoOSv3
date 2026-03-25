@@ -56,8 +56,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByAppleHealthToken(token: string): Promise<User | undefined>;
   searchUsers(query: string): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   deleteUser(id: string): Promise<void>;
 
@@ -140,8 +142,8 @@ export interface IStorage {
   updateWorkoutSet(id: string, data: Partial<InsertWorkoutSet>): Promise<WorkoutSet>;
   getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]>;
 
-  getMuscleStats(): Promise<MuscleStat[]>;
-  upsertMuscleStat(muscleId: string, recoveryScore: number): Promise<MuscleStat>;
+  getMuscleStats(userId: string): Promise<MuscleStat[]>;
+  upsertMuscleStat(userId: string, muscleId: string, recoveryScore: number): Promise<MuscleStat>;
 
   getIntakeLogs(date: string): Promise<IntakeLog[]>;
   createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
@@ -184,6 +186,9 @@ export interface IStorage {
   getNutritionTrends(metric: string, days: number): Promise<{ date: string; value: number }[]>;
   getNutritionOverview(userId: string, date: string): Promise<any>;
   getNutritionTrendsBatch(metrics: string[], days: number): Promise<Record<string, { date: string; value: number }[]>>;
+  getActivityTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]>;
+  getRestTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]>;
+  getBodySignals(userId: string): Promise<{ balance: number; stress: number; momentum: number }>;
   // Meal Presets
   getMealPresets(): Promise<MealPreset[]>;
   createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
@@ -312,6 +317,12 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByAppleHealthToken(token: string): Promise<User | undefined> {
+    this.ensureDb();
+    const [user] = await db.select().from(users).where(eq(users.appleHealthSyncToken, token));
+    return user;
+  }
+
   async searchUsers(query: string): Promise<User[]> {
     this.ensureDb();
     if (!query) {
@@ -339,6 +350,12 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: InsertUser): Promise<User> {
     this.ensureDb();
     const [user] = await db.insert(users).values(userData).returning();
+    return user;
+  }
+
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
+    this.ensureDb();
+    const [user] = await db.update(users).set({ ...userData, updatedAt: new Date() }).where(eq(users.id, id)).returning();
     return user;
   }
 
@@ -915,19 +932,19 @@ export class DatabaseStorage implements IStorage {
     return Array.from(byDate.entries()).map(([date, v]) => ({ date, ...v }));
   }
 
-  async getMuscleStats(): Promise<MuscleStat[]> {
+  async getMuscleStats(userId: string): Promise<MuscleStat[]> {
     this.ensureDb();
-    return await db.select().from(muscleStats);
+    return await db.select().from(muscleStats).where(eq(muscleStats.userId, userId));
   }
 
-  async upsertMuscleStat(muscleId: string, recoveryScore: number): Promise<MuscleStat> {
+  async upsertMuscleStat(userId: string, muscleId: string, recoveryScore: number): Promise<MuscleStat> {
     this.ensureDb();
-    const [existing] = await db.select().from(muscleStats).where(eq(muscleStats.muscleId, muscleId));
+    const [existing] = await db.select().from(muscleStats).where(and(eq(muscleStats.userId, userId), eq(muscleStats.muscleId, muscleId)));
     if (existing) {
-      const [updated] = await db.update(muscleStats).set({ recoveryScore, updatedAt: new Date() }).where(eq(muscleStats.muscleId, muscleId)).returning();
+      const [updated] = await db.update(muscleStats).set({ recoveryScore, updatedAt: new Date() }).where(and(eq(muscleStats.userId, userId), eq(muscleStats.muscleId, muscleId))).returning();
       return updated;
     } else {
-      const [created] = await db.insert(muscleStats).values({ muscleId, recoveryScore }).returning();
+      const [created] = await db.insert(muscleStats).values({ userId, muscleId, recoveryScore }).returning();
       return created;
     }
   }
@@ -1703,6 +1720,99 @@ export class DatabaseStorage implements IStorage {
     const [log] = await db.insert(disciplineLogs).values(data).returning();
     return log;
   }
+
+  async getActivityTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]> {
+    this.ensureDb();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    
+    const metricToField: Record<string, any> = {
+      steps: dailyState.steps,
+      activeMinutes: dailyState.activeMinutes,
+      heartRate: dailyState.avgHeartRate,
+      caloriesBurned: dailyState.caloriesBurned,
+      workoutDuration: dailyState.workoutDurationMin,
+      totalVolume: dailyState.totalVolume,
+      activeTime: dailyState.activeMinutes,
+      effortScore: dailyState.effortScore,
+      recovery: dailyState.recoveryScore,
+      avgHR: dailyState.avgHeartRate,
+      exerciseDuration: dailyState.workoutDurationMin,
+      strengthVolume: dailyState.totalVolume,
+    };
+    
+    const field = metricToField[metric];
+    if (!field) return [];
+
+    const rows = await db.select({
+      date: dailyState.date,
+      value: field,
+    }).from(dailyState)
+      .where(and(
+        eq(dailyState.userId, userId),
+        sql`${dailyState.date} >= ${since.toISOString().split('T')[0]}`
+      ))
+      .orderBy(asc(dailyState.date));
+
+    return rows.map((r: any) => ({ 
+      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0], 
+      value: Number(r.value) || 0 
+    }));
+  }
+
+  async getRestTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]> {
+    this.ensureDb();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    
+    const metricToField: Record<string, any> = {
+      sleepHours: dailyState.sleepHours,
+      sleepQuality: dailyState.sleepQuality,
+      readiness: dailyState.readinessScore,
+      recovery: dailyState.recoveryScore,
+      restScore: dailyState.readinessScore, // Using readiness as a proxy for restScore
+      sleepDuration: dailyState.sleepHours,
+      recoveryReadiness: dailyState.readinessScore,
+      heartRate: dailyState.avgHeartRate,
+    };
+    
+    const field = metricToField[metric];
+    if (!field) return [];
+
+    const rows = await db.select({
+      date: dailyState.date,
+      value: field,
+    }).from(dailyState)
+      .where(and(
+        eq(dailyState.userId, userId),
+        sql`${dailyState.date} >= ${since.toISOString().split('T')[0]}`
+      ))
+      .orderBy(asc(dailyState.date));
+
+    return rows.map((r: any) => ({ 
+      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0], 
+      value: Number(r.value) || 0 
+    }));
+  }
+
+  async getBodySignals(userId: string): Promise<{ balance: number; stress: number; momentum: number }> {
+    this.ensureDb();
+    const today = new Date().toISOString().split('T')[0];
+    const state = await this.getDailyState(userId, today);
+    
+    const readiness = Number(state?.readinessScore || 75);
+    const recovery = Number(state?.recoveryScore || 80);
+    const quality = Number(state?.sleepQuality || 3);
+    const hr = Number(state?.avgHeartRate || 65);
+    const steps = Number(state?.steps || 0);
+    const activeMin = Number(state?.activeMinutes || 0);
+    
+    return {
+      balance: Math.round((readiness + recovery) / 2),
+      stress: Math.max(0, Math.min(100, Math.round((100 - (quality * 20)) + (hr > 80 ? (hr - 80) * 2 : 0)))),
+      momentum: Math.min(100, Math.round((steps / 10000 + activeMin / 45) * 50))
+    };
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -1885,6 +1995,12 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByAppleHealthToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.appleHealthSyncToken === token,
+    );
+  }
+
   async searchUsers(query: string): Promise<User[]> {
     if (!query) return [];
     const q = query.toLowerCase();
@@ -1921,9 +2037,19 @@ export class MemStorage implements IStorage {
       encryptionKeySalt: insertUser.encryptionKeySalt ?? null,
       bio: insertUser.bio ?? null,
       isPrivate: insertUser.isPrivate ?? true,
+      googleFitTokens: null,
+      appleHealthSyncToken: null,
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
+    const existing = this.users.get(id);
+    if (!existing) throw new Error("User not found");
+    const updated = { ...existing, ...userData, updatedAt: new Date() } as User;
+    this.users.set(id, updated);
+    return updated;
   }
 
   async upsertUser(user: UpsertUser): Promise<User> {
@@ -2209,18 +2335,18 @@ export class MemStorage implements IStorage {
     return [];
   }
 
-  async getMuscleStats(): Promise<MuscleStat[]> {
-    return Array.from(this.muscleStats.values());
+  async getMuscleStats(userId: string): Promise<MuscleStat[]> {
+    return Array.from(this.muscleStats.values()).filter(m => m.userId === userId);
   }
-  async upsertMuscleStat(muscleId: string, recoveryScore: number): Promise<MuscleStat> {
-    const existing = Array.from(this.muscleStats.values()).find(m => m.muscleId === muscleId);
+  async upsertMuscleStat(userId: string, muscleId: string, recoveryScore: number): Promise<MuscleStat> {
+    const existing = Array.from(this.muscleStats.values()).find(m => m.userId === userId && m.muscleId === muscleId);
     if (existing) {
       const updated = { ...existing, recoveryScore, updatedAt: new Date() };
       this.muscleStats.set(existing.id, updated);
       return updated;
     } else {
       const id = this.generateId();
-      const created: MuscleStat = { id, muscleId, recoveryScore, lastTrained: null, volumeAccumulated: 0, updatedAt: new Date() };
+      const created: MuscleStat = { id, userId, muscleId, recoveryScore, lastTrained: null, volumeAccumulated: 0, updatedAt: new Date() };
       this.muscleStats.set(id, created);
       return created;
     }
@@ -2769,6 +2895,16 @@ export class MemStorage implements IStorage {
     }
 
     return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }
+
+  async getActivityTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]> {
+    return [];
+  }
+  async getRestTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]> {
+    return [];
+  }
+  async getBodySignals(userId: string): Promise<{ balance: number; stress: number; momentum: number }> {
+    return { balance: 80, stress: 20, momentum: 50 };
   }
 }
 

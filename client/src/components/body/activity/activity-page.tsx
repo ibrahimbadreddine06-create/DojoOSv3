@@ -4,7 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Watch } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBanner } from "../status-banner";
+import { ModuleBriefing } from "../module-briefing";
+import { Sparkles, Plus, ChevronRight, Activity as ActivityIcon } from "lucide-react";
 import { format, startOfWeek, isAfter } from "date-fns";
 import { useLocation } from "wouter";
 
@@ -18,7 +22,6 @@ import { ExercisesMusclesSection } from "./exercises-muscles-section";
 import { HrZonesSection } from "./hr-zones-section";
 import { TrendsSection } from "./trends-section";
 import { LogActivityModal } from "./log-activity-modal";
-import { SectionLabel } from "./section-label";
 import { TodaySessions } from "@/components/today-sessions";
 
 import type { Workout, BodyProfile, DailyState } from "@shared/schema";
@@ -29,7 +32,7 @@ export function ActivityPage() {
   const today = format(new Date(), "yyyy-MM-dd");
 
   // Data queries
-  const { data: workouts } = useQuery<Workout[]>({ queryKey: ["/api/workouts"] });
+  const { data: workouts } = useQuery<Workout[]>({ queryKey: [`/api/workouts/${today}`] });
   const { data: bodyProfile } = useQuery<BodyProfile>({ queryKey: ["/api/body-profile"] });
   const { data: dailyState } = useQuery<DailyState | null>({
     queryKey: [`/api/daily-state/${today}`],
@@ -69,120 +72,83 @@ export function ActivityPage() {
   const totalVolume = dailyState?.totalVolume ?? null;
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl pb-24 animate-in fade-in duration-700">
-      <div className="space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700 pb-24">
+      <div className="space-y-8">
         {/* 1. Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Activity</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity</h1>
             <p className="text-sm sm:text-base text-muted-foreground">Movement & training</p>
           </div>
           <Button
             onClick={() => setLogModalOpen(true)}
-            className="gap-1.5 shrink-0"
-            style={{ backgroundColor: "hsl(0 84.2% 60.2%)" }}
+            size="sm"
+            className="gap-1.5 shrink-0 shadow-sm rounded-xl bg-amber-500 hover:bg-amber-600 border-none text-white transition-colors"
           >
             <Plus className="w-4 h-4" /> Log activity
           </Button>
         </div>
 
-        {/* 2. AI Brief */}
-        <AiBriefCard dailyData={dailyState} />
+        {/* 2. Unified Status Banner */}
+        <ActivityAiBrief dailyData={dailyState} />
 
-        {/* 3a. Three Rings */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* 4. Three Rings Row */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {/* Effort */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/activity/metric/effortScore")}
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={effortScore ?? 0}
                 max={100}
                 label="Effort"
                 color="#f59e0b"
                 size="lg"
-                sublabel="composite score"
+                sublabel="score"
               />
             </CardContent>
           </Card>
 
           {/* Energy */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/activity/metric/energyBurned")}
           >
-            <CardContent className="p-5 flex items-center justify-center">
+            <CardContent className="p-2 sm:p-5 flex items-center justify-center">
               <MetricRing
                 value={caloriesBurned ?? 0}
                 max={dailyEnergyGoal}
                 label="Energy"
                 unit="kcal"
-                color="hsl(0, 84.2%, 60.2%)"
+                color="#f59e0b"
                 size="lg"
-                sublabel={`goal: ${dailyEnergyGoal} kcal`}
+                sublabel="today"
               />
             </CardContent>
           </Card>
 
           {/* Recovery */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-5 flex items-center justify-center">
-                  {recoveryScore != null ? (
-                    <MetricRing
-                      value={recoveryScore}
-                      max={100}
-                      label="Recovery"
-                      color="#14b8a6"
-                      size="lg"
-                      sublabel="tap → history"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center relative">
-                      {/* Invisible spacer to geometrically perfectly balance the text height at the bottom */}
-                      <div className="invisible pointer-events-none select-none text-center mb-1.5">
-                        <p className="text-[12px] font-semibold tracking-wide leading-none">Recovery</p>
-                        <p className="text-[12px] leading-none mt-0.5">tap → learn more</p>
-                      </div>
-
-                      <div className="relative" style={{ width: 140, height: 140 }}>
-                        <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
-                          <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-3xl font-mono font-black text-muted-foreground">–</span>
-                        </div>
-                      </div>
-                      
-                      <div className="text-center mt-1.5">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground leading-none">Recovery</p>
-                        <p className="text-[12px] text-muted-foreground/60 leading-none mt-0.5">tap → learn more</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </PopoverTrigger>
-            {recoveryScore == null && (
-              <PopoverContent className="w-72">
-                <h4 className="text-sm font-semibold mb-1">Recovery Score</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Your recovery score (0–100) is calculated from heart rate variability (HRV) and resting heart rate data.
-                  It tells you how ready your body is for training.
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Connect a wearable in <strong>Settings → Integrations</strong> to unlock this metric.
-                </p>
-              </PopoverContent>
-            )}
-          </Popover>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
+            onClick={() => navigate("/body/sleep")}
+          >
+            <CardContent className="p-2 sm:p-5 flex items-center justify-center">
+              <MetricRing
+                value={recoveryScore ?? 0}
+                max={100}
+                label="Recovery"
+                color="#14b8a6"
+                size="lg"
+                sublabel="readiness"
+              />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* 3b. Four KPI Tiles */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* 5. Four KPI Tiles Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiTile
             label="Active time"
             value={activeMinutes || null}
@@ -218,25 +184,12 @@ export function ActivityPage() {
           />
         </div>
 
-        {/* 4. Weekly Effort Gauge */}
         <WeeklyEffortGauge currentEffort={weeklyEffort} target={weeklyEffortTarget} />
-
-        {/* 5. Linked Time Blocks */}
         <TodaySessions module="activity" />
-
-        {/* 6. Planned Activities */}
         <PlannedActivities />
-
-        {/* 7. Activity Log Calendar */}
         <ActivityLogCalendar />
-
-        {/* 7. Exercises & Muscles */}
         <ExercisesMusclesSection />
-
-        {/* 8. HR Zones & Cardio Focus */}
         <HrZonesSection />
-
-        {/* 9. Trends */}
         <TrendsSection
           effortScore={effortScore}
           energyBurned={caloriesBurned}
@@ -248,8 +201,29 @@ export function ActivityPage() {
         />
       </div>
 
-      {/* Log Activity Modal */}
       <LogActivityModal open={logModalOpen} onOpenChange={setLogModalOpen} />
     </div>
+  );
+}
+
+function ActivityAiBrief({ dailyData }: { dailyData: any }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/activity/ai-brief", JSON.stringify(dailyData)],
+    queryFn: async () => {
+      const res = await apiRequest("POST", "/api/activity/ai-brief", { dailyData });
+      if (!res.ok) return { brief: "Activity analysis currently unavailable." };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return (
+    <ModuleBriefing
+      title="Briefing"
+      kicker="Sensei AI"
+      content={data?.brief || "It looks like we're just getting started with tracking your activity today! Every step counts, and we're here to cheer you on for whatever you choose to do. Let's make it a great one!"}
+      isLoading={isLoading}
+      accentColor="bg-amber-500/10"
+    />
   );
 }

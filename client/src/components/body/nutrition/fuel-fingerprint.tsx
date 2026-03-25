@@ -1,8 +1,8 @@
 import React from "react";
-import { type IntakeLog } from "@shared/schema";
+import { type IntakeLog, type BodyProfile } from "@shared/schema";
 import { Link } from "wouter";
 import { Leaf, Dumbbell, Wheat, Droplets, AlertTriangle } from "lucide-react";
-import { SectionLabel } from "../activity/section-label";
+import { SectionHeader } from "../section-header";
 
 interface FuelFingerprintProps {
   intakeLogs: IntakeLog[];
@@ -71,9 +71,9 @@ const NEGATIVE_CATEGORIES = [
     statText: "0 items · limit 1/day",
     icon: AlertTriangle,
     iconBg: "bg-red-100 dark:bg-red-900/40",
-    iconColor: "text-red-500",
-    barColor: "bg-red-500",
-    border: "border-red-500/30",
+    iconColor: "text-orange-500",
+    barColor: "bg-orange-500",
+    border: "border-orange-500/30",
     tint: "bg-red-50/50 dark:bg-red-950/20",
     text: "text-red-700 dark:text-red-300",
   },
@@ -84,9 +84,9 @@ const NEGATIVE_CATEGORIES = [
     statText: "0mg · limit 2300mg/day",
     icon: AlertTriangle,
     iconBg: "bg-red-100 dark:bg-red-900/40",
-    iconColor: "text-red-500",
-    barColor: "bg-red-500",
-    border: "border-red-500/30",
+    iconColor: "text-orange-500",
+    barColor: "bg-orange-500",
+    border: "border-orange-500/30",
     tint: "bg-red-50/50 dark:bg-red-950/20",
     text: "text-red-700 dark:text-red-300",
   },
@@ -97,9 +97,9 @@ const NEGATIVE_CATEGORIES = [
     statText: "0g · limit 25g/day",
     icon: AlertTriangle,
     iconBg: "bg-red-100 dark:bg-red-900/40",
-    iconColor: "text-red-500",
-    barColor: "bg-red-500",
-    border: "border-red-500/30",
+    iconColor: "text-orange-500",
+    barColor: "bg-orange-500",
+    border: "border-orange-500/30",
     tint: "bg-red-50/50 dark:bg-red-950/20",
     text: "text-red-700 dark:text-red-300",
   },
@@ -128,7 +128,7 @@ export function FuelFingerprint({ intakeLogs }: FuelFingerprintProps) {
       <div className="flex justify-between items-baseline px-1">
         <Link href="/body/nutrition/metric/fuel">
           <div className="cursor-pointer group">
-            <SectionLabel className="mb-0 group-hover:text-purple-500 transition-colors">Fuel Fingerprint</SectionLabel>
+            <SectionHeader title="Fuel Fingerprint" kicker="Qualitative" className="mb-0 group-hover:text-purple-500 transition-colors" />
           </div>
         </Link>
         <span className="text-[10px] text-muted-foreground/50 font-medium">Daily Coverage</span>
@@ -178,35 +178,35 @@ function FingerprintCard({ cat, isActive, type }: { cat: any, isActive: boolean,
 
   return (
     <Link href="/body/nutrition/metric/fuel">
-      <div className={`rounded-xl border p-3 flex flex-col gap-2 transition-all duration-300 cursor-pointer group ${
+      <div className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all duration-300 cursor-pointer group shadow-sm ${
         isActive
           ? `${cat.tint} ${cat.border}`
-          : "bg-muted/10 border-border/40"
+          : "bg-muted/10 border-border/60"
       }`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+        <div className="flex items-center gap-3">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
             isActive ? cat.iconBg : "bg-muted/40"
           }`}>
-            <IconComponent className={`w-3 h-3 ${isActive ? cat.iconColor : "text-muted-foreground/30"}`} />
+            <IconComponent className={`w-3.5 h-3.5 ${isActive ? cat.iconColor : "text-muted-foreground/30"}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className={`text-[10px] font-bold leading-tight truncate ${isActive ? cat.text : "text-muted-foreground/30"}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest leading-tight truncate ${isActive ? cat.text : "text-muted-foreground/30"}`}>
               {cat.label}
             </p>
-            <p className={`text-[9px] leading-tight truncate ${isActive ? "text-muted-foreground/60" : "text-muted-foreground/20"}`}>
+            <p className={`text-[10px] font-medium leading-tight truncate mt-0.5 ${isActive ? "text-muted-foreground/60" : "text-muted-foreground/20"}`}>
               {cat.description}
             </p>
           </div>
         </div>
 
-        <div className={`h-1 rounded-full overflow-hidden ${isActive ? "bg-muted/30" : "bg-muted/20"}`}>
+        <div className={`h-1.5 rounded-full overflow-hidden mt-auto ${isActive ? "bg-muted/30" : "bg-muted/20"}`}>
           <div
             className={`h-full rounded-full transition-all duration-700 ${isActive ? cat.barColor : "bg-muted-foreground/10"}`}
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <p className={`text-[9px] ${isActive ? "text-muted-foreground/50" : "text-muted-foreground/20"}`}>
+        <p className={`text-[9px] font-bold uppercase tracking-tight ${isActive ? "text-muted-foreground/50" : "text-muted-foreground/20"}`}>
           {cat.statText}
         </p>
       </div>

@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 // It is dynamically imported only in local development
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
+import { setupHealthRoutes } from "./health";
 import { EXERCISES_DATA } from "./seeds/exercises";
 import { db } from "./db";
 import { exerciseLibrary } from "../shared/schema";
@@ -102,10 +103,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// 1. Setup Auth
+// 1. Setup Auth and Health
 if (process.env.DISABLE_AUTH !== "true") {
   try {
     setupAuth(app);
+    setupHealthRoutes(app);
   } catch(e) {
     console.error("Auth Setup Error (missing env vars?):", e);
   }

@@ -3,10 +3,11 @@ import { useParams, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Info, Watch } from "lucide-react";
+import { ArrowLeft, Loader2, Watch } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 
 const METRIC_CONFIG: Record<string, {
   title: string;
@@ -177,17 +178,28 @@ export default function RestDrilldown() {
     description: "Detailed tracking and historical analysis for this rest metric.",
   };
 
-  // Placeholder chart data (no-data for wearable metrics)
+  const { data: trends = [], isLoading } = useQuery<{ date: string; value: number }[]>({
+    queryKey: ["/api/rest/trends", metricKey, range],
+    queryFn: async () => {
+      const res = await fetch(`/api/rest/trends?metric=${metricKey}&days=${range}`);
+      if (!res.ok) throw new Error("Failed to fetch trends");
+      return res.json();
+    },
+    enabled: !!metricKey,
+  });
+
   const chartData = useMemo(() => {
-    return Array.from({ length: range }, (_, i) => {
-      const date = subDays(new Date(), range - 1 - i);
-      return {
-        date: format(date, "MMM d"),
-        fullDate: format(date, "yyyy-MM-dd"),
-        value: config.wearableRequired ? null : Math.floor(Math.random() * 40) + 50,
-      };
-    });
-  }, [range, config.wearableRequired, metricKey]);
+    return trends.map(t => ({
+      date: format(new Date(t.date), "MMM d"),
+      fullDate: t.date,
+      value: t.value
+    }));
+  }, [trends]);
+
+  const currentMetricValue = useMemo(() => {
+    if (chartData.length === 0) return 0;
+    return chartData[chartData.length - 1].value;
+  }, [chartData]);
 
   const chartConfig = {
     value: { label: config.title, color: config.color },
@@ -222,7 +234,7 @@ export default function RestDrilldown() {
             )}
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Current: <strong>{config.wearableRequired ? "–" : `${Math.floor(Math.random() * 60 + 40)}`}</strong> {config.unit}
+            Current: <strong>{isLoading ? "..." : (config.wearableRequired && currentMetricValue === 0) ? "–" : `${currentMetricValue}`}</strong> {config.unit}
           </p>
         </div>
 
@@ -289,19 +301,32 @@ export default function RestDrilldown() {
             <CardContent className="p-4">
               <h3 className="text-sm font-semibold mb-3">Trend Analysis</h3>
               <div className="space-y-0">
-                {trendPeriods.map((period) => (
-                  <div key={period.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <span className="text-sm text-muted-foreground">{period.label}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums font-medium">
-                        {config.wearableRequired ? "–" : `${Math.floor(Math.random() * 30 + 50)}`} {config.unit}
-                      </span>
-                      {!config.wearableRequired && (
-                        <span className="text-xs text-green-500">↑ {Math.floor(Math.random() * 15)}%</span>
-                      )}
+              {useMemo(() => {
+                const calculateAvg = (days: number) => {
+                  const sliced = trends.slice(-days);
+                  if (sliced.length === 0) return 0;
+                  const sum = sliced.reduce((acc, curr) => acc + curr.value, 0);
+                  return (sum / sliced.length).toFixed(config.unit === "h" ? 1 : 0);
+                };
+                return [
+                  { label: "Last 3 days", days: 3 },
+                  { label: "Last 7 days", days: 7 },
+                  { label: "Last 14 days", days: 14 },
+                  { label: "Last 30 days", days: 30 },
+                ].map((period) => {
+                  const avg = calculateAvg(period.days);
+                  return (
+                    <div key={period.label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <span className="text-sm text-muted-foreground">{period.label}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm tabular-nums font-medium">
+                          {isLoading ? "..." : (config.wearableRequired && Number(avg) === 0) ? "–" : `${avg}`} {config.unit}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                });
+              }, [trends, isLoading, config.wearableRequired, config.unit])}
               </div>
             </CardContent>
           </Card>

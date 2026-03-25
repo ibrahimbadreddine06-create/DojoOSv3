@@ -2,8 +2,9 @@ import React from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { type IntakeLog } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
+import { format, subDays } from "date-fns";
 import { ChevronRight } from "lucide-react";
-import { SectionLabel } from "../activity/section-label";
+import { SectionHeader } from "../section-header";
 
 interface NutritionTrendsProps {
   intakeLogs: IntakeLog[];
@@ -38,7 +39,7 @@ export function NutritionTrends({ intakeLogs }: NutritionTrendsProps) {
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-baseline px-1">
-        <SectionLabel className="mb-0">Trends</SectionLabel>
+        <SectionHeader title="Performance Trends" kicker="Analytics" className="mb-0" />
         <span className="text-[10px] text-muted-foreground/50 font-medium">7D Snapshot</span>
       </div>
 
@@ -62,15 +63,15 @@ function TrendCard({ metric, data }: { metric: any, data?: { date: string, value
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (
-    <div className="bg-card border rounded-xl p-4 space-y-3 hover:border-purple-500/30 transition-all cursor-pointer group">
+    <div className="bg-card border-border/60 rounded-2xl p-5 space-y-3 hover:shadow-md transition-all cursor-pointer group shadow-sm">
       <div className="flex justify-between items-start">
         <div className="space-y-0.5">
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground/60">{metric.label}</p>
-          <p className="text-2xl font-black tracking-tighter">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{metric.label}</p>
+          <p className="text-2xl font-black tracking-tight tabular-nums">
             {metric.key === 'score' ? Math.round(lastValue) : Math.round(lastValue).toLocaleString()}
           </p>
         </div>
-        <div className="h-2 w-2 rounded-full mt-1" style={{ backgroundColor: metric.color }} />
+        <div className="h-2 w-2 rounded-full mt-1.5" style={{ backgroundColor: metric.color }} />
       </div>
 
       <div className="h-12 w-full">
@@ -96,12 +97,12 @@ function TrendRow({ metric, data }: { metric: any, data?: { date: string, value:
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (
-    <div className="bg-card border rounded-xl p-4 flex items-center justify-between hover:border-purple-500/30 transition-all cursor-pointer group">
-      <div className="flex items-center gap-3 flex-1">
+    <div className="bg-card border-border/60 rounded-2xl p-5 flex items-center justify-between hover:shadow-md transition-all cursor-pointer group shadow-sm">
+      <div className="flex items-center gap-4 flex-1">
         <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: metric.color }} />
-        <div className="min-w-[90px]">
-          <p className="text-[10px] font-medium tracking-wider text-muted-foreground/60">{metric.label}</p>
-          <p className="text-sm font-black tracking-tight">{Math.round(lastValue)} {metric.key === 'vitaminD' ? 'mcg' : 'g'}</p>
+        <div className="min-w-[110px]">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{metric.label}</p>
+          <p className="text-sm font-black tracking-tight tabular-nums">{Math.round(lastValue)} {metric.key === 'vitaminD' ? 'mcg' : 'g'}</p>
         </div>
       </div>
 

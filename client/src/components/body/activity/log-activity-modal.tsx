@@ -17,7 +17,7 @@ const ACTIVITY_TYPES = [
   { type: "cycle", label: "Cycle", icon: Bike, color: "#3b82f6" },
   { type: "swim", label: "Swim", icon: Waves, color: "#06b6d4" },
   { type: "sport", label: "Sport", icon: Trophy, color: "#8b5cf6" },
-  { type: "workout", label: "Workout", icon: Dumbbell, color: "#ef4444" },
+  { type: "workout", label: "Workout", icon: Dumbbell, color: "#f59e0b" },
   { type: "other", label: "Other", icon: MoreHorizontal, color: "#6b7280" },
 ];
 
@@ -209,8 +209,7 @@ export function LogActivityModal({ open, onOpenChange }: LogActivityModalProps) 
             <Button
               onClick={handleSubmit}
               disabled={durationNum <= 0 || createMutation.isPending}
-              className="w-full"
-              style={{ backgroundColor: "hsl(0 84.2% 60.2%)" }}
+              className="w-full bg-amber-500 hover:bg-amber-600 border-none transition-colors"
             >
               {createMutation.isPending ? "Saving..." : "Log activity"}
             </Button>

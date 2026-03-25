@@ -17,7 +17,7 @@ function SubScoreTile({ label, value }: { label: string; value: number | string 
       <div className="flex flex-col">
         <span className="text-[10px] font-medium tracking-wider text-muted-foreground mb-0.5 leading-none">{label}</span>
         <div className="flex items-baseline gap-1">
-          <span className="text-xl font-black">{value}</span>
+          <span className="text-xl font-bold">{value}</span>
           <span className="text-[10px] text-muted-foreground/50 font-medium uppercase">/ 10</span>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function NutritionScoreCard({ intakeLogs, bodyProfile }: NutritionScoreCa
             <div className="flex flex-col">
               <span className="text-[10px] font-medium tracking-wider text-muted-foreground mb-0.5 leading-none">Food quality</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-xl font-black">{result.subScores?.foodQuality}</span>
+                <span className="text-xl font-bold">{result.subScores?.foodQuality}</span>
                 <span className="text-[10px] text-muted-foreground/50 font-medium uppercase">/ 10</span>
               </div>
             </div>

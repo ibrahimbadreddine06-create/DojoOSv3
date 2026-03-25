@@ -1,6 +1,6 @@
 import { Moon, BookOpen, Lightbulb, HelpCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 
 const INSIGHTS = [
   {
@@ -30,6 +30,7 @@ interface RestInsightsProps {
 export function RestInsights({ hasData = false }: RestInsightsProps) {
   return (
     <div className="space-y-4">
+      <SectionHeader title="Insights & Education" kicker="Knowledge" />
       {/* Why no data notice */}
       {!hasData && (
         <div className="border border-dashed border-indigo-500/30 rounded-2xl px-5 py-5 flex items-start gap-4 bg-indigo-500/5">
@@ -46,24 +47,26 @@ export function RestInsights({ hasData = false }: RestInsightsProps) {
         </div>
       )}
 
-      <SectionLabel>Insights & Education</SectionLabel>
-
-      <div className="space-y-3">
-        {INSIGHTS.map((insight) => (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {INSIGHTS.map((insight, i) => (
           <div
-            key={insight.title}
-            className="bg-card border border-border/60 rounded-2xl px-5 py-4 flex items-start gap-3"
+            key={i}
+            className="p-5 rounded-2xl border border-border/60 bg-card hover:shadow-md transition-all cursor-pointer group shadow-sm flex flex-col gap-3"
           >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-              style={{ backgroundColor: `${insight.color}15` }}
-            >
-              {insight.icon}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${insight.color}15` }}
+              >
+                {insight.icon}
+              </div>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
+                {insight.title}
+              </h4>
             </div>
-            <div>
-              <p className="text-sm font-semibold mb-1">{insight.title}</p>
-              <p className="text-[12px] text-muted-foreground leading-relaxed">{insight.body}</p>
-            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground/90 font-medium">
+              {insight.body}
+            </p>
           </div>
         ))}
       </div>

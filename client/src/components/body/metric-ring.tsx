@@ -23,7 +23,7 @@ export function MetricRing({
   max,
   label,
   unit,
-  color = "#ef4444",
+  color = "#f59e0b",
   size = "md",
   sublabel,
   icon,
@@ -74,10 +74,10 @@ export function MetricRing({
       </div>
 
       <div
-        className="relative rounded-full"
+        className="relative rounded-full w-full mx-auto"
         style={{
-          width: diameter,
-          height: diameter,
+          maxWidth: diameter,
+          aspectRatio: "1/1",
           // Strong colored outer glow
           filter: animatedProgress > 0.05
             ? `drop-shadow(0 0 10px ${color}88) drop-shadow(0 0 4px ${color}55)`
@@ -85,8 +85,7 @@ export function MetricRing({
         }}
       >
         <svg
-          width={diameter}
-          height={diameter}
+          className="w-full h-full"
           viewBox={`0 0 ${diameter} ${diameter}`}
           style={{ transform: "rotate(-90deg)", display: "block" }}
         >
@@ -127,7 +126,7 @@ export function MetricRing({
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {icon && <div className="mb-0.5">{icon}</div>}
           <span
-            className={`font-mono font-black tabular-nums leading-none ${fontSize}`}
+            className={`font-mono font-bold tabular-nums leading-none ${fontSize}`}
             style={{ color: animatedProgress > 0.05 ? color : undefined }}
           >
             {value > 999 ? `${(value / 1000).toFixed(1)}k` : Math.round(value)}

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { Moon, Sun, Coffee, Wind, BookOpen, Pen, AlertCircle } from "lucide-react";
-import { SectionLabel } from "./section-label";
+import { SectionHeader } from "../section-header";
 
 const EVENT_ICONS: Record<string, React.ReactNode> = {
   sleep: <Moon className="w-3.5 h-3.5 text-indigo-400" />,
@@ -58,8 +58,8 @@ export function RestChronology() {
   const events = deriveEvents(allLogs?.slice(0, 7) || []);
 
   return (
-    <div>
-      <SectionLabel>Chronology</SectionLabel>
+    <div className="space-y-4">
+      <SectionHeader title="Chronology" kicker="Timeline" />
 
       {isLoading ? (
         <div className="space-y-2">
@@ -86,14 +86,14 @@ export function RestChronology() {
                 </div>
 
                 {/* Card */}
-                <div className="flex-1 bg-card border border-border/60 rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
+                <div className="flex-1 bg-card border border-border/60 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-sm group hover:shadow-md transition-shadow cursor-pointer">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{event.label}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{event.label}</p>
                     {event.sub && (
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{event.sub}</p>
+                      <p className="text-sm font-medium text-muted-foreground/90 truncate mt-0.5">{event.sub}</p>
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground/60 font-medium shrink-0">{event.time}</p>
+                  <p className="text-[9px] font-black uppercase tracking-tight text-muted-foreground/40 shrink-0 tabular-nums">{event.time}</p>
                 </div>
               </div>
             ))}
