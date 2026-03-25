@@ -33,28 +33,28 @@ function TrendCard({
       className="cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col"
       onClick={() => navigate(`/body/activity/metric/${metricKey}`)}
     >
-      <CardContent className="p-4 flex flex-col justify-between flex-1 min-h-[120px]">
+      <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5 flex flex-col justify-between flex-1 min-h-[110px]">
         <div className="flex flex-col flex-1">
           <div className="flex items-start justify-between flex-wrap gap-1">
-            <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 leading-none">{label}</span>
             {showWearableBadge && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0">
-                <Watch className="w-2 h-2" />
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
+                <Watch className="w-2.5 h-2.5" />
               </Badge>
             )}
           </div>
-          <div className="flex items-baseline gap-1 mt-1.5 flex-1">
-            <span className="text-xl font-bold tabular-nums leading-none">{displayValue}</span>
+          <div className="flex items-baseline gap-1 mt-2 flex-1">
+            <span className="text-xl font-bold tabular-nums leading-none tracking-tight">{displayValue}</span>
             {displayValue !== "–" && unit && (
-              <span className="text-[10px] text-muted-foreground leading-none">{unit}</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter leading-none mb-0.5">{unit}</span>
             )}
           </div>
           {trend && displayValue !== "–" && (
-            <div className={`flex items-center gap-0.5 text-[10px] mt-1 ${
-              trend.direction === "up" ? "text-green-500" : trend.direction === "down" ? "text-red-500" : "text-muted-foreground"
+            <div className={`flex items-center gap-0.5 text-[9px] mt-1 font-bold uppercase tracking-tight ${
+              trend.direction === "up" ? "text-green-500/80" : trend.direction === "down" ? "text-red-500/80" : "text-muted-foreground/60"
             }`}>
               {trend.direction === "up" ? <ArrowUp className="w-2.5 h-2.5" /> : trend.direction === "down" ? <ArrowDown className="w-2.5 h-2.5" /> : null}
-              {trend.percent > 0 ? `${trend.direction === "up" ? "↑" : "↓"} ${trend.percent}% vs last week` : "no change"}
+              {trend.percent}% vs last week
             </div>
           )}
         </div>
@@ -103,20 +103,20 @@ function TrendRow({ label, value, unit, color, metricKey, wearableRequired, wear
       className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => navigate(`/body/activity/metric/${metricKey}`)}
     >
-      <CardContent className="p-3 flex items-center justify-between">
-        <div className="flex items-start gap-2 max-w-[60%]">
-          <span className="text-sm font-medium leading-tight">{label}</span>
+      <CardContent className="px-5 py-4 pt-4 sm:pt-4 flex items-center justify-between">
+        <div className="flex items-baseline gap-2.5 min-w-0">
+          <span className="text-sm font-semibold tracking-tight text-foreground/90">{label}</span>
           {showWearableBadge && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 mt-px">
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 opacity-60">
               <Watch className="w-2 h-2" />
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm tabular-nums">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-sm tabular-nums font-bold text-muted-foreground">
             {displayValue}{displayValue !== "–" && unit ? ` ${unit}` : ""}
           </span>
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-foreground/40 transition-colors" />
         </div>
       </CardContent>
     </Card>

@@ -25,24 +25,24 @@ function BreakdownTile({
       className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-5 flex flex-col gap-2 min-h-[90px]">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</span>
+      <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5 flex flex-col h-full gap-3">
+        <div className="flex items-start justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 leading-none">{label}</span>
           {showWearable && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 font-bold uppercase tracking-tighter">
-              <Watch className="w-2.5 h-2.5" />
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 font-bold uppercase tracking-tighter shrink-0">
+              <Watch className="w-2 h-2" />
             </Badge>
           )}
         </div>
         <div className="flex items-baseline gap-1.5 mt-auto">
           <span
-            className="text-2xl font-black tabular-nums tracking-tight"
+            className="text-2xl font-black tabular-nums tracking-tight leading-none"
             style={color && displayValue !== "–" ? { color } : undefined}
           >
             {displayValue}
           </span>
           {displayValue !== "–" && unit && (
-            <span className="text-xs text-muted-foreground font-semibold uppercase tracking-tighter">{unit}</span>
+            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter leading-none mb-0.5">{unit}</span>
           )}
         </div>
       </CardContent>

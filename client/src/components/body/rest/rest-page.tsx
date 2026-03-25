@@ -19,7 +19,6 @@ import { RecoveryPhysiology } from "./recovery-physiology";
 import { TodaysRestImpact } from "./todays-rest-impact";
 import { RestChronology } from "./rest-chronology";
 import { RestTrends } from "./rest-trends";
-import { RestInsights } from "./rest-insights";
 import { StatusBanner } from "../status-banner";
 import { Button } from "@/components/ui/button";
 import { ModuleBriefing } from "../module-briefing";
@@ -101,12 +100,12 @@ export function RestPage() {
         <RestAiBrief dailyState={dailyState} showNoDataWarning={showNoDataBanner} lowRecoveryWarning={showWarningBanner} />
 
         {/* ── 3. Hero Metrics Row ── */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Card
             className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/sleep/metric/restScore")}
           >
-            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
+            <CardContent className="p-5 flex items-center justify-center min-h-[220px]">
               <MetricRing
                 value={restScore ?? 0}
                 max={100}
@@ -122,7 +121,7 @@ export function RestPage() {
             className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/sleep/metric/sleepDuration")}
           >
-            <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
+            <CardContent className="p-5 flex items-center justify-center min-h-[220px]">
               <MetricRing
                 value={sleepDuration ?? 0}
                 max={sleepGoal}
@@ -138,7 +137,7 @@ export function RestPage() {
           <Popover>
             <PopoverTrigger asChild>
               <Card className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm">
-                <CardContent className="p-2.5 sm:p-5 flex items-center justify-center">
+                <CardContent className="p-5 flex items-center justify-center min-h-[220px]">
                   {recoveryReadiness !== null ? (
                     <MetricRing
                       value={recoveryReadiness}
@@ -150,23 +149,24 @@ export function RestPage() {
                     />
                   ) : (
                     <div className="flex flex-col items-center relative">
-                      <div className="invisible pointer-events-none select-none text-center mb-1.5">
-                        <p className="text-[12px] font-semibold tracking-wide leading-none">Readiness</p>
-                        <p className="text-[11px] leading-none mt-0.5">wearable needed</p>
+                      {/* Invisible spacer to match MetricRing lg size centering */}
+                      <div className="invisible pointer-events-none select-none text-center mb-1.5 text-xs">
+                        <p className="font-semibold tracking-wide leading-none">Readiness</p>
+                        <p className="leading-none mt-0.5">wearable needed</p>
                       </div>
 
                       <div className="relative" style={{ width: 140, height: 140 }}>
                         <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
-                          <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} />
+                          <circle cx={70} cy={70} r={63.5} fill="none" stroke="#e5e7eb" strokeWidth={13} strokeOpacity={0.18} />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-3xl font-mono font-bold text-muted-foreground">–</span>
+                          <span className="text-3xl font-mono font-bold text-muted-foreground opacity-40">–</span>
                         </div>
                       </div>
 
-                      <div className="text-center mt-1.5">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground leading-none">Readiness</p>
-                        <p className="text-[11px] text-muted-foreground/60 leading-none mt-0.5">wearable needed</p>
+                      <div className="text-center mt-1.5 text-xs">
+                        <p className="font-semibold tracking-wide text-muted-foreground leading-none">Readiness</p>
+                        <p className="text-muted-foreground/60 leading-none mt-0.5">wearable needed</p>
                       </div>
                     </div>
                   )}
@@ -206,7 +206,6 @@ export function RestPage() {
         <TodaysRestImpact restScore={restScore} recoveryReadiness={recoveryReadiness} />
         <RestChronology />
         <RestTrends restScore={restScore} sleepDuration={sleepDuration} />
-        <RestInsights hasData={hasData} />
       </div>
     </div>
   );

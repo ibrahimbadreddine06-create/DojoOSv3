@@ -100,11 +100,28 @@ const TYPE_LABELS: Record<string, string> = {
   disciplines: "Skill or Discipline to Master",
 };
 
+/**
+ * Helper to retry AI operations with exponential backoff on 429 (Rate Limit) errors.
+ */
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const isRateLimit = error?.message?.includes("429") || error?.status === 429;
+    if (isRateLimit && retries > 0) {
+      console.log(`[AI] Rate limited (429). Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise(res => setTimeout(res, delay));
+      return withRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+}
+
 export async function generateLearningTrajectory(
   params: TrajectoryParams
 ): Promise<GeneratedTrajectory> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -176,7 +193,7 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no extra text:
 
 Source type values: "university", "book", "course", "institution", "website"`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const response = result.response;
   const text = response.text();
 
@@ -236,7 +253,7 @@ Source type values: "university", "book", "course", "institution", "website"`;
 export async function generateLearningObjectives(
   params: GenerateLearningObjectivesParams
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const contextBlock = params.trajectoryContext
     ? `Subject: ${params.trajectoryContext.submoduleName}\nGoal: ${params.trajectoryContext.goal}\nLevel: ${params.trajectoryContext.context}`
@@ -254,7 +271,7 @@ This directive will be used to evaluate whether study materials cover the right 
 
 OUTPUT: Plain text bullet list (use • bullets), no markdown headers, max 10 bullets, each bullet is a specific learning objective.`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   return result.response.text().trim();
 }
 
@@ -315,7 +332,7 @@ async function analyzeVideoContent(
   directive: string,
   chapterTitle: string
 ): Promise<{ covers: string[]; misses: string[]; score: number; description: string } | null> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `You are evaluating a YouTube video for a learner studying: "${chapterTitle}".
 
@@ -342,7 +359,7 @@ OUTPUT — ONLY valid JSON, no markdown:
 }`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withRetry(() => model.generateContent(prompt));
     const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
@@ -362,7 +379,7 @@ OUTPUT — ONLY valid JSON, no markdown:
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const contextBlock = params.trajectoryContext
     ? `LEARNER CONTEXT:
@@ -520,7 +537,7 @@ OUTPUT — return ONLY valid JSON array, no markdown:
   // Website, PDF, and custom types: use Gemini with Google Search grounding
   let result;
   try {
-    result = await model.generateContent(prompt);
+    result = await withRetry(() => model.generateContent(prompt));
   } catch (err: any) {
     console.error("AI find-materials error:", err.message);
     return { type: params.materialType as "website" | "pdf" | "custom", results: [] };
@@ -604,7 +621,7 @@ export interface GeneratedNote {
 
 export async function generateNotes(params: GenerateNotesParams): Promise<GeneratedNote> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -657,7 +674,7 @@ OUTPUT FORMAT: Return a JSON object with "title" and "content" fields.
 Return ONLY the JSON object, no markdown fences:
 {"title": "...", "content": "<h2>...</h2><p>...</p>..."}`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const text = result.response.text().trim();
 
   let jsonStr = text;
@@ -720,7 +737,7 @@ const STYLE_DESCRIPTIONS: Record<FlashcardStyle, string> = {
 
 export async function generateFlashcards(params: GenerateFlashcardsParams): Promise<GeneratedFlashcard[]> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-1.5-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -798,7 +815,7 @@ OUTPUT — return ONLY a valid JSON array (no markdown, no extra text):
 [{"front": "question or prompt", "back": "answer or explanation"}, ...]`;
   }
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const text = result.response.text().trim();
 
   let jsonStr = text;
@@ -827,12 +844,12 @@ export async function generateActivityBrief(dailyData: any): Promise<string> {
   if (!apiKey) return "No activity logged yet today. Tap '+ Log activity' to get started.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const dataStr = JSON.stringify(dailyData || {});
   const prompt = `In 1-2 sentences, summarize the user's activity status for today. Data: ${dataStr}. Keep it conversational and motivating. No markdown. If there's no meaningful data, say something encouraging about getting started.`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const text = result.response.text();
   return text.trim();
 }
@@ -844,7 +861,7 @@ export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any
   if (!apiKey) return "No intake logged yet today. Tap '+ Log intake' to get started.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const totals = intakeLogs.reduce((acc: any, log: any) => {
     acc.calories = (acc.calories || 0) + (parseFloat(log.calories) || 0);
@@ -867,7 +884,7 @@ export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any
     Example: "Protein on track — 142g of 188g consumed. 860 kcal remaining toward your 2500 kcal goal."
     No motivational language. No markdown. No conversational filler.`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   return result.response.text().trim();
 }
 
@@ -878,16 +895,16 @@ export async function generateRestBrief(dailyState: any): Promise<string> {
   if (!apiKey) return "Rest & recovery analysis currently unavailable.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const dataStr = JSON.stringify(dailyState || {});
   const prompt = `You are a sleep and recovery coach. In 1-2 sentences, summarize the user's recovery status.
     Data: ${dataStr}.
     Focus on readiness, sleep quality, and wind-down adherence.
-    Keep it concise and professional. No markdown.`;
+    Keep it conversational and professional. No markdown.`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await withRetry(() => model.generateContent(prompt));
     return result.response.text().trim();
   } catch (e) {
     return "Your recovery data is looking stable. Focus on a consistent wind-down routine tonight.";
@@ -901,11 +918,11 @@ export async function classifyFuelCategory(foodName: string): Promise<string[]> 
   if (!apiKey) return [];
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `Classify this food into one or more of these categories: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat. Food: "${foodName}". Return ONLY a JSON array of strings. Example: ["plants","quality-protein"]`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const text = result.response.text().trim();
   const match = text.match(/\[[\s\S]*?\]/);
   if (!match) return [];
@@ -924,7 +941,7 @@ export async function analyzeMealDescription(description: string): Promise<any> 
   if (!apiKey) throw new Error("GEMINI_API_KEY not found");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `Analyze this meal description for the DojoOS Nutrition module. 
     Meal: "${description}"
@@ -951,7 +968,7 @@ export async function analyzeMealDescription(description: string): Promise<any> 
     Example: {"mealName": "Chicken Salad", "calories": 350, "protein": 30, "carbs": 10, "fats": 20, "fiber": 5, "fuelCategories": ["plants", "quality-protein"]}
     If you cannot estimate, return null.`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withRetry(() => model.generateContent(prompt));
   const text = result.response.text().trim();
   const match = text.match(/\{[\s\S]*?\}/);
   if (!match) return null;
@@ -967,7 +984,7 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
   if (!apiKey) throw new Error("GEMINI_API_KEY not found");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `Analyze this meal photo for the DojoOS Nutrition module. 
     
@@ -1000,7 +1017,7 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
     },
   };
 
-  const result = await model.generateContent([prompt, imagePart]);
+  const result = await withRetry(() => model.generateContent([prompt, imagePart]));
   const text = result.response.text().trim();
   const match = text.match(/\{[\s\S]*?\}/);
   if (!match) return null;

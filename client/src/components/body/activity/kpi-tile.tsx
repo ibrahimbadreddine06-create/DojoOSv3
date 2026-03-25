@@ -37,10 +37,12 @@ export function KpiTile({
       className="cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col border-border/60 rounded-2xl shadow-sm"
       onClick={() => metricKey && navigate(`/body/activity/metric/${metricKey}`)}
     >
-      <CardContent className="p-5 flex flex-col justify-between flex-1 gap-2 min-h-[110px]">
-        {/* Top */}
-        <div className="flex items-start justify-between gap-1 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</span>
+      <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5 flex flex-col h-full min-h-[110px]">
+        {/* Label Row */}
+        <div className="flex items-start justify-between gap-1 mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 leading-none">
+            {label}
+          </span>
           {showWearableBadge && (
             <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 gap-1 shrink-0 font-bold uppercase tracking-tighter">
               <Watch className="w-2.5 h-2.5" /> Wearable
@@ -48,27 +50,33 @@ export function KpiTile({
           )}
         </div>
         
-        {/* Bottom Data Container */}
-        <div className="mt-auto flex flex-col gap-0.5">
-          <div className="flex items-baseline gap-1.5">
+        {/* Main Value Area */}
+        <div className="mt-1 flex flex-col gap-0.5">
+          <div className="flex items-baseline gap-1.5 align-bottom">
             <span className="text-2xl font-black tabular-nums leading-none tracking-tight">
               {displayValue}
             </span>
             {(displayValue !== "–" || unit) && (
-              <span className="text-xs text-muted-foreground font-semibold leading-none">{unit}</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter leading-none mb-0.5">
+                {unit}
+              </span>
             )}
           </div>
-          {(subtitle || goal != null) && (
-            <div className="flex flex-col mt-1">
-              {subtitle && <span className="text-[10px] font-medium text-muted-foreground/60 leading-none">{subtitle}</span>}
-              {goal != null && (
-                <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-tight mt-1">
-                  goal: {goal} {goalUnit || unit}
-                </span>
-              )}
-            </div>
+          {subtitle && (
+            <span className="text-[10px] font-medium text-muted-foreground/60 leading-tight mt-0.5 italic">
+              {subtitle}
+            </span>
           )}
         </div>
+
+        {/* Goal Indicator - Aligned Bottom */}
+        {goal != null && (
+          <div className="mt-auto pt-2 border-t border-border/5">
+            <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-tight">
+              goal: {goal} {goalUnit || unit}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

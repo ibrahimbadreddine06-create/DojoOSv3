@@ -26,24 +26,24 @@ function TrendCard({ label, value, unit, color, metricKey, wearableRequired, spa
       className="cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-5 flex flex-col justify-between flex-1 min-h-[120px] gap-2">
+      <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5 flex flex-col justify-between flex-1 min-h-[110px] gap-2">
         <div className="flex flex-col flex-1">
           <div className="flex items-start justify-between flex-wrap gap-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 leading-none">{label}</span>
             {wearableRequired && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
+              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
                 <Watch className="w-2.5 h-2.5" />
               </Badge>
             )}
           </div>
-          <div className="flex items-baseline gap-1.5 mt-2 flex-1">
-            <span className="text-2xl font-black tabular-nums tracking-tight">{displayValue}</span>
+          <div className="flex items-baseline gap-1 mt-auto flex-1">
+            <span className="text-xl font-bold tabular-nums leading-none tracking-tight">{displayValue}</span>
             {displayValue !== "–" && unit && (
-              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-tighter">{unit}</span>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter leading-none mb-0.5">{unit}</span>
             )}
           </div>
         </div>
-        <div className="h-8 mt-2">
+        <div className="h-8">
           {hasData ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
@@ -71,20 +71,20 @@ function TrendRow({
       className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-5 flex items-center justify-between">
-        <div className="flex items-start gap-3 max-w-[70%]">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</span>
+      <CardContent className="px-5 py-4 pt-4 sm:pt-4 flex items-center justify-between">
+        <div className="flex items-baseline gap-2.5 min-w-0">
+          <span className="text-sm font-semibold tracking-tight text-foreground/90">{label}</span>
           {wearableRequired && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 opacity-60">
               <Watch className="w-2.5 h-2.5" />
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-base font-black tabular-nums tracking-tight">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-sm tabular-nums font-bold text-muted-foreground">
             {value !== null && value !== undefined ? `${value}${unit ? ` ${unit}` : ""}` : "–"}
           </span>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-foreground transition-colors" />
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-foreground/40 transition-colors" />
         </div>
       </CardContent>
     </Card>

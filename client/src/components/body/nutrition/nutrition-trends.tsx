@@ -63,18 +63,18 @@ function TrendCard({ metric, data }: { metric: any, data?: { date: string, value
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (
-    <div className="bg-card border-border/60 rounded-2xl p-5 space-y-3 hover:shadow-md transition-all cursor-pointer group shadow-sm">
+    <div className="bg-card border-border/60 rounded-2xl p-5 sm:p-5 flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group shadow-sm min-h-[110px]">
       <div className="flex justify-between items-start">
-        <div className="space-y-0.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{metric.label}</p>
-          <p className="text-2xl font-black tracking-tight tabular-nums">
+        <div className="flex flex-col gap-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 leading-none">{metric.label}</p>
+          <p className="text-2xl font-black tracking-tight tabular-nums leading-none">
             {metric.key === 'score' ? Math.round(lastValue) : Math.round(lastValue).toLocaleString()}
           </p>
         </div>
-        <div className="h-2 w-2 rounded-full mt-1.5" style={{ backgroundColor: metric.color }} />
+        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: metric.color }} />
       </div>
 
-      <div className="h-12 w-full">
+      <div className="h-8 w-full mt-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={displayData}>
             <Line
@@ -97,30 +97,31 @@ function TrendRow({ metric, data }: { metric: any, data?: { date: string, value:
   const lastValue = displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
 
   return (
-    <div className="bg-card border-border/60 rounded-2xl p-5 flex items-center justify-between hover:shadow-md transition-all cursor-pointer group shadow-sm">
+    <div className="bg-card border-border/60 rounded-2xl px-5 py-4 sm:py-4 flex items-center justify-between hover:shadow-md transition-all cursor-pointer group shadow-sm">
       <div className="flex items-center gap-4 flex-1">
         <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: metric.color }} />
-        <div className="min-w-[110px]">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{metric.label}</p>
-          <p className="text-sm font-black tracking-tight tabular-nums">{Math.round(lastValue)} {metric.key === 'vitaminD' ? 'mcg' : 'g'}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 leading-none">{metric.label}</p>
+          <p className="text-sm font-black tracking-tight tabular-nums leading-none">{Math.round(lastValue)} {metric.key === 'vitaminD' ? 'mcg' : 'g'}</p>
         </div>
       </div>
 
-      <div className="h-8 w-24">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={displayData}>
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={metric.color}
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="flex items-center gap-3">
+        <div className="h-6 w-16 opacity-60">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={displayData}>
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={metric.color}
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-foreground/40 transition-colors ml-1" />
       </div>
-
-      <ChevronRight className="w-4 h-4 text-muted-foreground/20 group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all ml-3" />
     </div>
   );
 }

@@ -244,7 +244,14 @@ export function AITrajectoryBuilder({
     onError: (err: any) => {
       if (loadingInterval.current) clearInterval(loadingInterval.current);
       setStep("form");
-      toast({ title: "Generation failed", description: err.message || "Please try again.", variant: "destructive" });
+      const isRateLimit = err.message?.includes("429") || err.status === 429;
+      toast({ 
+        title: "Generation failed", 
+        description: isRateLimit 
+          ? "The AI is currently at capacity (too many requests). Retrying on the server, but you may need to wait 60 seconds."
+          : (err.message || "Please try again."), 
+        variant: "destructive" 
+      });
     },
   });
 

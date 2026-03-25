@@ -22,33 +22,33 @@ function PhysiologyRow({ label, value, unit, color, metricKey, normal }: Physiol
       className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
       onClick={() => navigate(`/body/rest/metric/${metricKey}`)}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5">
         <div className="flex items-center justify-between w-full">
           {/* L: Label + Badge */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div
-              className="w-2.5 h-2.5 rounded-full shrink-0"
+              className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: color }}
             />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 truncate">{label}</p>
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 gap-0.5 shrink-0 font-bold uppercase tracking-tighter">
-              <Watch className="w-2.5 h-2.5" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 truncate leading-none">{label}</p>
+            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 gap-0.5 shrink-0 font-bold uppercase tracking-tighter opacity-60">
+              <Watch className="w-2 h-2" />
             </Badge>
           </div>
 
           {/* R: Value + Chevron */}
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-base font-black tabular-nums tracking-tight" style={displayValue !== "–" ? { color } : undefined}>
+            <span className="text-base font-black tabular-nums tracking-tight leading-none" style={displayValue !== "–" ? { color } : undefined}>
               {displayValue}{displayValue !== "–" && unit ? ` ${unit}` : ""}
             </span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-foreground transition-colors" />
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-foreground/40 transition-colors" />
           </div>
         </div>
 
         {/* Bottom edge label if normal exists */}
         {normal && (
-          <div className="flex mt-1 pl-5">
-            <p className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/40">normal: {normal}</p>
+          <div className="flex mt-1.5 pl-[18px]">
+            <p className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/30 leading-none">normal: {normal}</p>
           </div>
         )}
       </CardContent>
