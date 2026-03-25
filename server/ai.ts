@@ -121,7 +121,7 @@ export async function generateLearningTrajectory(
   params: TrajectoryParams
 ): Promise<GeneratedTrajectory> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -253,7 +253,7 @@ Source type values: "university", "book", "course", "institution", "website"`;
 export async function generateLearningObjectives(
   params: GenerateLearningObjectivesParams
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const contextBlock = params.trajectoryContext
     ? `Subject: ${params.trajectoryContext.submoduleName}\nGoal: ${params.trajectoryContext.goal}\nLevel: ${params.trajectoryContext.context}`
@@ -332,7 +332,7 @@ async function analyzeVideoContent(
   directive: string,
   chapterTitle: string
 ): Promise<{ covers: string[]; misses: string[]; score: number; description: string } | null> {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `You are evaluating a YouTube video for a learner studying: "${chapterTitle}".
 
@@ -379,7 +379,7 @@ OUTPUT — ONLY valid JSON, no markdown:
 export async function findMaterialsForChapter(
   params: FindMaterialsParams
 ): Promise<FindMaterialsResult> {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const contextBlock = params.trajectoryContext
     ? `LEARNER CONTEXT:
@@ -621,7 +621,7 @@ export interface GeneratedNote {
 
 export async function generateNotes(params: GenerateNotesParams): Promise<GeneratedNote> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -737,7 +737,7 @@ const STYLE_DESCRIPTIONS: Record<FlashcardStyle, string> = {
 
 export async function generateFlashcards(params: GenerateFlashcardsParams): Promise<GeneratedFlashcard[]> {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     tools: [{ googleSearch: {} } as any],
   });
 
@@ -844,7 +844,7 @@ export async function generateActivityBrief(dailyData: any): Promise<string> {
   if (!apiKey) return "No activity logged yet today. Tap '+ Log activity' to get started.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const dataStr = JSON.stringify(dailyData || {});
   const prompt = `In 1-2 sentences, summarize the user's activity status for today. Data: ${dataStr}. Keep it conversational and motivating. No markdown. If there's no meaningful data, say something encouraging about getting started.`;
@@ -861,7 +861,7 @@ export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any
   if (!apiKey) return "No intake logged yet today. Tap '+ Log intake' to get started.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const totals = intakeLogs.reduce((acc: any, log: any) => {
     acc.calories = (acc.calories || 0) + (parseFloat(log.calories) || 0);
@@ -895,7 +895,7 @@ export async function generateRestBrief(dailyState: any): Promise<string> {
   if (!apiKey) return "Rest & recovery analysis currently unavailable.";
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const dataStr = JSON.stringify(dailyState || {});
   const prompt = `You are a sleep and recovery coach. In 1-2 sentences, summarize the user's recovery status.
@@ -918,7 +918,7 @@ export async function classifyFuelCategory(foodName: string): Promise<string[]> 
   if (!apiKey) return [];
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `Classify this food into one or more of these categories: plants, quality-protein, complex-carbs, healthy-fats, ultra-processed, high-sodium, added-sugars, red-processed-meat. Food: "${foodName}". Return ONLY a JSON array of strings. Example: ["plants","quality-protein"]`;
 
@@ -941,7 +941,7 @@ export async function analyzeMealDescription(description: string): Promise<any> 
   if (!apiKey) throw new Error("GEMINI_API_KEY not found");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `Analyze this meal description for the DojoOS Nutrition module. 
     Meal: "${description}"
@@ -984,7 +984,7 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
   if (!apiKey) throw new Error("GEMINI_API_KEY not found");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `Analyze this meal photo for the DojoOS Nutrition module. 
     
