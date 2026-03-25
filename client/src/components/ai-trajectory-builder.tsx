@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 interface ChapterNode {
   id: string;
   title: string;
+  learningObjectives?: string[];
   children: ChapterNode[];
   expanded: boolean;
 }
@@ -50,10 +51,11 @@ interface Props {
 let _idCounter = 0;
 function tempId() { return `tmp-${++_idCounter}`; }
 
-function mapAIChapters(nodes: { title: string; children?: any[] }[]): ChapterNode[] {
+function mapAIChapters(nodes: { title: string; learningObjectives?: string[]; children?: any[] }[]): ChapterNode[] {
   return nodes.map(n => ({
     id: tempId(),
     title: n.title,
+    learningObjectives: n.learningObjectives,
     children: n.children?.length ? mapAIChapters(n.children) : [],
     expanded: false,
   }));

@@ -70,6 +70,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export interface ChapterNode {
   title: string;
+  learningObjectives?: string[]; // Bullets of what must be mastered
   children: ChapterNode[];
 }
 
@@ -169,15 +170,12 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no extra text:
   "chapters": [
     {
       "title": "Chapter Title",
+      "learningObjectives": ["bullet 1", "bullet 2"],
       "children": [
         {
           "title": "Subchapter Title",
-          "children": [
-            {
-              "title": "Sub-subchapter (only if needed)",
-              "children": []
-            }
-          ]
+          "learningObjectives": ["bullet 1", "bullet 2"],
+          "children": []
         }
       ]
     }
@@ -325,54 +323,52 @@ async function searchYouTubeAPI(query: string, maxResults = 10): Promise<Youtube
 
 // Analyze a YouTube video's content against the learning directive using Gemini's knowledge.
 // Uses text-only analysis (knowledge-based) — more reliable than fileData YouTube processing.
-async function analyzeVideoContent(
-  videoId: string,
-  videoTitle: string,
-  channel: string,
+// Analyze multiple YouTube videos in ONE call to Gemini to save API quota.
+async function analyzeVideosBulk(
+  videos: { videoId: string; title: string; channel: string }[],
   directive: string,
   chapterTitle: string
-): Promise<{ covers: string[]; misses: string[]; score: number; description: string } | null> {
+): Promise<Record<string, { covers: string[]; misses: string[]; score: number; description: string }>> {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const prompt = `You are evaluating a YouTube video for a learner studying: "${chapterTitle}".
+  const videosList = videos.map((v, i) => 
+    `VIDEO #${i + 1}: "${v.title}" by ${v.channel} (ID: ${v.videoId})`
+  ).join("\n");
 
-VIDEO: "${videoTitle}" by ${channel}
-URL: https://www.youtube.com/watch?v=${videoId}
+  const prompt = `You are evaluating YouTube videos for a learner studying: "${chapterTitle}".
 
 LEARNING DIRECTIVE — what the learner must master:
 ${directive}
 
-Based on your knowledge of this video's content, determine:
-1. Which specific learning objectives from the directive are clearly covered in this video?
+CANDIDATE VIDEOS:
+${videosList}
+
+TASK: For each video above, determine:
+1. Which specific learning objectives from the directive are clearly covered?
 2. Which specific learning objectives are NOT adequately covered?
-3. Alignment score: how well does this video serve this directive? (0-10)
-4. Write a 2-sentence description of what this video actually teaches.
+3. Alignment score (0-10): how well does this video serve this EXACT directive?
+4. Write a 1-2 sentence description of what the video teaches.
 
-Be strict — only mark something as "covered" if the video genuinely teaches it in depth.
-
-OUTPUT — ONLY valid JSON, no markdown:
+OUTPUT — return a JSON object where keys are the video IDs:
 {
-  "covers": ["exact objectives from directive that are well covered"],
-  "misses": ["exact objectives from directive that are missing or only touched on"],
-  "score": 7,
-  "description": "2-sentence description of what this video actually teaches."
+  "videoId1": {
+    "covers": ["objective A", "objective B"],
+    "misses": ["objective C"],
+    "score": 8,
+    "description": "..."
+  },
+  ...
 }`;
 
   try {
     const result = await withRetry(() => model.generateContent(prompt));
     const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (typeof parsed.score !== "number") return null;
-    return {
-      covers: Array.isArray(parsed.covers) ? parsed.covers : [],
-      misses: Array.isArray(parsed.misses) ? parsed.misses : [],
-      score: parsed.score,
-      description: parsed.description || "",
-    };
-  } catch {
-    return null;
+    if (!jsonMatch) return {};
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error("Bulk video analysis failed:", err);
+    return {};
   }
 }
 
@@ -430,21 +426,13 @@ export async function findMaterialsForChapter(
       return true;
     });
 
-    // Analyze each video's content against the directive and rank by relevance
-    const analysisResults = await Promise.allSettled(
-      deduped.map(async (video) => {
-        const analysis = await Promise.race([
-          analyzeVideoContent(video.videoId, video.title, video.channel, directive, params.chapterTitle),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 12000)),
-        ]);
-        return { video, analysis };
-      })
-    );
+    // Analyze the top candidates in ONE bulk call to save API quota
+    const candidateSubset = deduped.slice(0, 8);
+    const analysisMap = await analyzeVideosBulk(candidateSubset, directive, params.chapterTitle);
 
-    const analyzed: (YoutubeResult & { _score: number })[] = analysisResults
-      .map(r => {
-        if (r.status === "rejected") return null;
-        const { video, analysis } = r.value;
+    const analyzed: (YoutubeResult & { _score: number })[] = candidateSubset
+      .map(video => {
+        const analysis = analysisMap[video.videoId];
         if (!analysis) return { ...video, _score: -1 };
         return {
           ...video,
@@ -635,8 +623,8 @@ export async function generateNotes(params: GenerateNotesParams): Promise<Genera
 
   const materialsBlock = params.materials.length > 0
     ? `SELECTED MATERIALS TO ANALYZE:\n${params.materials.map((m, i) =>
-        `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
-      ).join("\n")}`
+      `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
+    ).join("\n")}`
     : "";
 
   const subtopicsBlock = params.chapterContext
@@ -750,8 +738,8 @@ export async function generateFlashcards(params: GenerateFlashcardsParams): Prom
 
   const materialsBlock = params.materials.length > 0
     ? `SELECTED MATERIALS TO BASE FLASHCARDS ON:\n${params.materials.map((m, i) =>
-        `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
-      ).join("\n")}`
+      `${i + 1}. ${m.title}${m.url ? ` — ${m.url}` : ""}${m.type ? ` (${m.type})` : ""}`
+    ).join("\n")}`
     : "";
 
   const subtopicsBlock = params.chapterContext
