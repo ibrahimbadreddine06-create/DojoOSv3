@@ -279,6 +279,7 @@ function MainLayout() {
     isInSubModule,
     hasTrajectorySidebar,
     isMobile,
+    isWideScreen,
     mainSidebarOpen,
     trajectorySidebarOpen,
     chatSidebarOpen,
@@ -298,7 +299,9 @@ function MainLayout() {
     : mainSidebarOpen && !trajectorySidebarOpen;
 
   const desktopShowTrajectory = hasTrajectorySidebar
-    ? (trajectorySidebarOpen || !mainSidebarOpen)
+    ? (chatSidebarOpen && !isWideScreen)
+      ? false
+      : (trajectorySidebarOpen || !mainSidebarOpen)
     : false;
 
   if (isFullScreen) {

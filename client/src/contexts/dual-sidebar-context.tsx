@@ -102,7 +102,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
-      setIsWideScreen(window.innerWidth >= 1050);
+      setIsWideScreen(window.innerWidth >= 1080);
     };
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
