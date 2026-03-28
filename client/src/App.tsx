@@ -298,11 +298,7 @@ function MainLayout() {
     ? mainSidebarOpen
     : mainSidebarOpen && !trajectorySidebarOpen;
 
-  const desktopShowTrajectory = hasTrajectorySidebar
-    ? (chatSidebarOpen && !isWideScreen)
-      ? false
-      : (trajectorySidebarOpen || !mainSidebarOpen)
-    : false;
+  const desktopShowTrajectory = hasTrajectorySidebar && trajectorySidebarOpen;
 
   if (isFullScreen) {
     return (

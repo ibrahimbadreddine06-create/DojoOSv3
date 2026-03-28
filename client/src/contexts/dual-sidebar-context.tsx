@@ -187,7 +187,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
           if (!isWideScreen) setChatSidebarOpenInternal(false);
         } else {
           setMainSidebarOpenInternal(false);
-          if (hasTrajectorySidebar) {
+          if (hasTrajectorySidebar && (!chatSidebarOpen || isWideScreen)) {
             setTrajectorySidebarOpenInternal(true);
           }
         }
@@ -196,7 +196,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
         setMainSidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen, chatSidebarOpen]);
 
   const setTrajectorySidebarOpen = useCallback((open: boolean) => {
     if (!hasTrajectorySidebar) return; // Prevent opening if not available
@@ -214,14 +214,16 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
           if (!isWideScreen) setChatSidebarOpenInternal(false);
         } else {
           setTrajectorySidebarOpenInternal(false);
-          setMainSidebarOpenInternal(true);
+          if (!chatSidebarOpen || isWideScreen) {
+            setMainSidebarOpenInternal(true);
+          }
         }
       } else {
         if (open && !isWideScreen) setChatSidebarOpenInternal(false);
         setTrajectorySidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen, chatSidebarOpen]);
 
   const setChatSidebarOpen = useCallback((open: boolean) => {
     if (open) {
@@ -233,6 +235,10 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
       setChatSidebarOpenInternal(true);
     } else {
       setChatSidebarOpenInternal(false);
+      // Restore left sidebar when chat closes on medium screen
+      if (!isWideScreen && !isMobile) {
+        setTrajectorySidebarOpenInternal(true);
+      }
     }
   }, [isWideScreen, isMobile]);
 
