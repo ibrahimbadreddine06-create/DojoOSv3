@@ -405,6 +405,189 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // AI: Sensei Chat
+  app.post("/api/ai/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: "AI not configured (missing GEMINI_API_KEY)" });
+    }
+
+    const { message, history, subModuleType, subModuleId } = req.body;
+    if (!message || !subModuleType || !subModuleId) {
+      return res.status(400).json({ message: "message, subModuleType, subModuleId are required" });
+    }
+
+    try {
+      let submoduleName = "";
+      let submoduleDescription: string | undefined;
+      let trajectoryContext: any;
+      let chapters: any[] = [];
+      let flashcards: any[] = [];
+      let chapterNotes: any[] = [];
+      let materials: any[] = [];
+      let metrics: { completion: number; readiness: number } | undefined;
+      let disciplineLevel: number | undefined;
+      let disciplineXp: number | undefined;
+
+      // Build hierarchical chapter tree
+      function buildTree(items: any[]): any[] {
+        const map = new Map<string, any>();
+        const roots: any[] = [];
+        items.forEach(item => map.set(item.id, { ...item, children: [] }));
+        items.forEach(item => {
+          const node = map.get(item.id)!;
+          if (item.parentId && map.has(item.parentId)) {
+            map.get(item.parentId)!.children.push(node);
+          } else {
+            roots.push(node);
+          }
+        });
+        return roots;
+      }
+
+      // Fetch notes for all top-level chapters (including their direct children)
+      async function fetchAllNotes(flatItems: any[]): Promise<any[]> {
+        const topLevel = flatItems.filter(i => !i.parentId);
+        const allNotes = await Promise.all(
+          topLevel.map(item => {
+            const childIds = flatItems
+              .filter(c => c.parentId === item.id)
+              .map(c => c.id);
+            return storage.getNotesByChapterWithChildren(item.id, childIds);
+          })
+        );
+        return allNotes.flat();
+      }
+
+      if (subModuleType === "second-brain" || subModuleType === "languages") {
+        const topic = await storage.getKnowledgeTopic(subModuleId);
+        if (!topic) return res.status(404).json({ message: "Topic not found" });
+        submoduleName = topic.name;
+        submoduleDescription = topic.description ?? undefined;
+        trajectoryContext = (topic as any).trajectoryContext ?? null;
+
+        const [items, cards, mats, metricsData] = await Promise.all([
+          storage.getLearnPlanItems(subModuleId),
+          storage.getFlashcardsByTheme(subModuleId),
+          storage.getMaterials(subModuleId),
+          storage.getKnowledgeMetrics(subModuleId),
+        ]);
+        chapters = buildTree(items);
+        flashcards = cards;
+        materials = mats;
+        chapterNotes = await fetchAllNotes(items);
+        if (metricsData.length > 0) {
+          const latest = metricsData[metricsData.length - 1];
+          metrics = {
+            completion: parseFloat(String(latest.completion ?? 0)),
+            readiness: parseFloat(String(latest.readiness ?? 0)),
+          };
+        }
+
+      } else if (subModuleType === "studies") {
+        const course = await storage.getCourse(subModuleId);
+        if (!course) return res.status(404).json({ message: "Course not found" });
+        submoduleName = course.name;
+        submoduleDescription = (course as any).description ?? undefined;
+        trajectoryContext = (course as any).trajectoryContext ?? null;
+
+        const [items, cards, mats, metricsData] = await Promise.all([
+          storage.getCourseLearnPlanItems(subModuleId),
+          storage.getFlashcardsByCourse(subModuleId),
+          storage.getMaterialsByCourse(subModuleId),
+          storage.getCourseMetrics(subModuleId),
+        ]);
+        chapters = buildTree(items);
+        flashcards = cards;
+        materials = mats;
+        chapterNotes = await fetchAllNotes(items);
+        if (metricsData.length > 0) {
+          const latest = metricsData[metricsData.length - 1];
+          metrics = {
+            completion: parseFloat(String((latest as any).completion ?? 0)),
+            readiness: 0,
+          };
+        }
+
+      } else if (subModuleType === "disciplines") {
+        const discipline = await storage.getDiscipline(subModuleId);
+        if (!discipline) return res.status(404).json({ message: "Discipline not found" });
+        submoduleName = discipline.name;
+        submoduleDescription = (discipline as any).description ?? undefined;
+        trajectoryContext = (discipline as any).trajectoryContext ?? null;
+        disciplineLevel = discipline.level ?? undefined;
+        disciplineXp = discipline.currentXp ?? undefined;
+
+        const [items, cards, mats] = await Promise.all([
+          storage.getLearnPlanItemsByDiscipline(subModuleId),
+          storage.getFlashcardsByDiscipline(subModuleId),
+          storage.getMaterialsByDiscipline(subModuleId),
+        ]);
+        chapters = buildTree(items);
+        flashcards = cards;
+        materials = mats;
+        chapterNotes = await fetchAllNotes(items);
+      } else {
+        return res.status(400).json({ message: "Unsupported subModuleType" });
+      }
+
+      // Today's planned sessions linked to this submodule
+      const today = new Date().toISOString().split("T")[0];
+      let todaysSessions: Array<{ title: string; startTime: string; duration: number }> = [];
+      try {
+        const moduleKey = subModuleType.replace(/-/g, "_");
+        const linkedBlocks = await storage.getLinkedTimeBlocks(today, moduleKey, subModuleId);
+        todaysSessions = linkedBlocks.map((b: any) => ({
+          title: b.title || "Session",
+          startTime: b.startTime || "",
+          duration: b.duration || 0,
+        }));
+      } catch {
+        // Not critical; continue without session data
+      }
+
+      const { chatWithSensei } = await import("./ai");
+      const reply = await chatWithSensei({
+        message,
+        history: history || [],
+        context: {
+          submoduleType: subModuleType,
+          submoduleName,
+          submoduleDescription,
+          trajectoryContext: trajectoryContext ? {
+            goal: trajectoryContext.goal ?? "",
+            context: trajectoryContext.context ?? "",
+            structure: trajectoryContext.structure ?? "",
+          } : undefined,
+          chapters,
+          flashcards: flashcards.map((f: any) => ({
+            front: f.front,
+            back: f.back,
+            mastery: f.mastery ?? 0,
+          })),
+          chapterNotes: chapterNotes.map((n: any) => ({
+            title: n.title || "Note",
+            content: n.content || "",
+          })),
+          materials: materials.map((m: any) => ({
+            title: m.title,
+            type: m.type,
+            url: m.url ?? undefined,
+          })),
+          metrics,
+          todaysSessions,
+          disciplineLevel,
+          disciplineXp,
+        },
+      });
+
+      res.json({ reply });
+    } catch (e: any) {
+      console.error("Sensei chat error:", e);
+      res.status(500).json({ message: e.message || "Chat failed" });
+    }
+  });
+
   app.get("/api/learn-plan-items/discipline/:disciplineId", async (req, res) => {
     const items = await storage.getLearnPlanItemsByDiscipline(req.params.disciplineId);
     res.json(items);
