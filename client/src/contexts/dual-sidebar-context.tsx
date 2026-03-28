@@ -1,5 +1,5 @@
 // @refresh reset
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { useLocation } from "wouter";
 
 interface SubModuleInfo {
@@ -15,19 +15,31 @@ interface LearningTrajectoryData {
   onSelectChapter: (id: string | null) => void;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
 interface DualSidebarContextType {
   isInSubModule: boolean;
   hasTrajectorySidebar: boolean;
   subModuleInfo: SubModuleInfo | null;
   isMobile: boolean;
+  isWideScreen: boolean;
   mainSidebarOpen: boolean;
   trajectorySidebarOpen: boolean;
+  chatSidebarOpen: boolean;
   learningData: LearningTrajectoryData | null;
+  chatMessages: ChatMessage[];
 
   setMainSidebarOpen: (open: boolean) => void;
   setTrajectorySidebarOpen: (open: boolean) => void;
+  setChatSidebarOpen: (open: boolean) => void;
   closeAllSidebars: () => void;
   setLearningData: (data: LearningTrajectoryData | null) => void;
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
 }
 
 const DualSidebarContext = createContext<DualSidebarContextType | null>(null);
@@ -52,8 +64,11 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   const [location] = useLocation();
   const [mainSidebarOpen, setMainSidebarOpenInternal] = useState(true);
   const [trajectorySidebarOpen, setTrajectorySidebarOpenInternal] = useState(false);
+  const [chatSidebarOpen, setChatSidebarOpenInternal] = useState(false);
   const [learningData, setLearningData] = useState<LearningTrajectoryData | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [isWideScreen, setIsWideScreen] = useState(false);
   const [prevLocation, setPrevLocation] = useState(location);
   const [prevIsMobile, setPrevIsMobile] = useState(false);
 
@@ -85,12 +100,13 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   const hasTrajectorySidebar = isInSubModule && subModuleInfo?.type !== 'body';
 
   useEffect(() => {
-    const checkMobile = () => {
+    const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
+      setIsWideScreen(window.innerWidth >= 1280);
     };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
   useEffect(() => {
@@ -101,6 +117,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
       if (isMobile) {
         setMainSidebarOpenInternal(false);
         setTrajectorySidebarOpenInternal(false);
+        setChatSidebarOpenInternal(false);
       } else {
         if (isInSubModule) {
           setMainSidebarOpenInternal(false);
@@ -115,13 +132,13 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
 
     if (locationChanged) {
       const wasInSubModule = isSubModulePath(prevLocation);
-      const wasTrajectoryAvailable = wasInSubModule && !prevLocation.startsWith("/body");
       const nowInSubModule = isInSubModule;
       const nowTrajectoryAvailable = hasTrajectorySidebar;
 
       if (isMobile) {
         setMainSidebarOpenInternal(false);
         setTrajectorySidebarOpenInternal(false);
+        setChatSidebarOpenInternal(false);
       } else {
         if (nowInSubModule) {
           if (nowTrajectoryAvailable) {
@@ -139,6 +156,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
           // Leaving a submodule to home or list pages
           setMainSidebarOpenInternal(true);
           setTrajectorySidebarOpenInternal(false);
+          setChatSidebarOpenInternal(false);
           setLearningData(null);
         }
       }
@@ -158,6 +176,7 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
         if (open) {
           setMainSidebarOpenInternal(true);
           setTrajectorySidebarOpenInternal(false);
+          if (!isWideScreen) setChatSidebarOpenInternal(false);
         } else {
           setMainSidebarOpenInternal(false);
           if (hasTrajectorySidebar) {
@@ -165,10 +184,11 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
           }
         }
       } else {
+        if (open && !isWideScreen) setChatSidebarOpenInternal(false);
         setMainSidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule, hasTrajectorySidebar]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen]);
 
   const setTrajectorySidebarOpen = useCallback((open: boolean) => {
     if (!hasTrajectorySidebar) return; // Prevent opening if not available
@@ -183,20 +203,36 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
         if (open) {
           setTrajectorySidebarOpenInternal(true);
           setMainSidebarOpenInternal(false);
+          if (!isWideScreen) setChatSidebarOpenInternal(false);
         } else {
           setTrajectorySidebarOpenInternal(false);
           setMainSidebarOpenInternal(true);
         }
       } else {
+        if (open && !isWideScreen) setChatSidebarOpenInternal(false);
         setTrajectorySidebarOpenInternal(open);
       }
     }
-  }, [isMobile, isInSubModule, hasTrajectorySidebar]);
+  }, [isMobile, isInSubModule, hasTrajectorySidebar, isWideScreen]);
+
+  const setChatSidebarOpen = useCallback((open: boolean) => {
+    if (open) {
+      if (!isWideScreen && !isMobile) {
+        // Medium screen: close left sidebars when opening chat
+        setMainSidebarOpenInternal(false);
+        setTrajectorySidebarOpenInternal(false);
+      }
+      setChatSidebarOpenInternal(true);
+    } else {
+      setChatSidebarOpenInternal(false);
+    }
+  }, [isWideScreen, isMobile]);
 
   const closeAllSidebars = useCallback(() => {
     if (isMobile) {
       setMainSidebarOpenInternal(false);
       setTrajectorySidebarOpenInternal(false);
+      setChatSidebarOpenInternal(false);
     }
   }, [isMobile]);
 
@@ -205,13 +241,18 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
     hasTrajectorySidebar,
     subModuleInfo,
     isMobile,
+    isWideScreen,
     mainSidebarOpen,
     trajectorySidebarOpen,
+    chatSidebarOpen,
     learningData,
+    chatMessages,
     setMainSidebarOpen,
     setTrajectorySidebarOpen,
+    setChatSidebarOpen,
     closeAllSidebars,
     setLearningData,
+    setChatMessages,
   };
 
   return (

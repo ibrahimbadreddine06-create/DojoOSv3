@@ -1016,3 +1016,162 @@ export async function analyzeMealPhoto(base64Image: string): Promise<any> {
   }
 }
 
+// ─── Sensei AI Chat ────────────────────────────────────────────────────────────
+
+export interface SenseiChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface SenseiChatParams {
+  message: string;
+  history: SenseiChatMessage[];
+  context: {
+    submoduleType: string;
+    submoduleName: string;
+    submoduleDescription?: string;
+    trajectoryContext?: {
+      goal: string;
+      context: string;
+      structure: string;
+    };
+    chapters: Array<{
+      title: string;
+      completed: boolean;
+      importance: number;
+      notes?: string;
+      children: any[];
+    }>;
+    flashcards: Array<{
+      front: string;
+      back: string;
+      mastery: number;
+    }>;
+    chapterNotes: Array<{
+      title: string;
+      content: string;
+    }>;
+    materials: Array<{
+      title: string;
+      type: string;
+      url?: string;
+    }>;
+    metrics?: {
+      completion: number;
+      readiness: number;
+    };
+    todaysSessions?: Array<{
+      title: string;
+      startTime: string;
+      duration: number;
+    }>;
+    disciplineLevel?: number;
+    disciplineXp?: number;
+  };
+}
+
+function renderChapterTree(chapters: any[], depth = 0): string {
+  return chapters.map(ch => {
+    const indent = "  ".repeat(depth);
+    const status = ch.completed ? "✓" : "○";
+    const importance = ch.importance ? ` (importance ${ch.importance}/5)` : "";
+    const noteSnippet = ch.notes ? ` — ${String(ch.notes).slice(0, 80)}` : "";
+    const line = `${indent}${status} ${ch.title}${importance}${noteSnippet}`;
+    const children = ch.children?.length > 0
+      ? "\n" + renderChapterTree(ch.children, depth + 1)
+      : "";
+    return line + children;
+  }).join("\n");
+}
+
+export async function chatWithSensei(params: SenseiChatParams): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const { context, message, history } = params;
+  const masteryLabels = ["new", "needs work", "okay", "good", "mastered"];
+
+  // Cap flashcards to 100 least-mastered to avoid token limits
+  const sortedFlashcards = [...context.flashcards]
+    .sort((a, b) => a.mastery - b.mastery)
+    .slice(0, 100);
+
+  const flashcardsSection = sortedFlashcards.length > 0
+    ? `=== FLASHCARDS (${sortedFlashcards.length} of ${context.flashcards.length} shown — least mastered first) ===\n` +
+      sortedFlashcards.map(f =>
+        `Q: ${f.front}\nA: ${f.back}\nMastery: ${masteryLabels[f.mastery] ?? f.mastery}`
+      ).join("\n---\n")
+    : "";
+
+  const notesSection = context.chapterNotes.length > 0
+    ? `=== NOTES (${context.chapterNotes.length} notes) ===\n` +
+      context.chapterNotes.map(n => {
+        const plain = (n.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        return `[${n.title}]\n${plain.slice(0, 400)}`;
+      }).join("\n\n")
+    : "";
+
+  const materialsSection = context.materials.length > 0
+    ? `=== MATERIALS (${context.materials.length} resources) ===\n` +
+      context.materials.map(m => `• ${m.title} (${m.type})${m.url ? " — " + m.url : ""}`).join("\n")
+    : "";
+
+  const metricsSection = context.metrics
+    ? `=== KNOWLEDGE METRICS ===\nCompletion: ${context.metrics.completion}%\nRetention/Readiness: ${context.metrics.readiness}%`
+    : "";
+
+  const sessionsSection = context.todaysSessions && context.todaysSessions.length > 0
+    ? `=== TODAY'S PLANNED SESSIONS ===\n` +
+      context.todaysSessions.map(s => `• ${s.title} at ${s.startTime} (${s.duration} min)`).join("\n")
+    : "";
+
+  const disciplineSection = context.disciplineLevel !== undefined
+    ? `=== DISCIPLINE PROGRESS ===\nLevel: ${context.disciplineLevel} | XP: ${context.disciplineXp ?? 0}`
+    : "";
+
+  const trajectorySection = context.trajectoryContext
+    ? `=== LEARNING TRAJECTORY ===\nGoal: ${context.trajectoryContext.goal}\nBackground: ${context.trajectoryContext.context}\nStructure: ${context.trajectoryContext.structure}`
+    : "";
+
+  const systemPrompt = `You are Sensei AI, an intelligent personal learning coach embedded in DojoOS — a personal mastery operating system. You have complete, real-time access to the learner's study module and use it to give specific, context-aware guidance.
+
+=== LEARNER'S MODULE ===
+Subject: ${context.submoduleName}
+Type: ${context.submoduleType}${context.submoduleDescription ? `\nDescription: ${context.submoduleDescription}` : ""}
+
+${trajectorySection}
+
+=== CHAPTERS (${context.chapters.length} total) ===
+${renderChapterTree(context.chapters)}
+
+${flashcardsSection}
+
+${notesSection}
+
+${materialsSection}
+
+${metricsSection}
+
+${sessionsSection}
+
+${disciplineSection}
+
+=== YOUR ROLE ===
+- Be a concise, direct Sensei. No filler. Answer questions, explain concepts, quiz the learner, or help them plan.
+- Reference their actual chapters, flashcards, and notes when relevant.
+- If asked to quiz them, use their real flashcard questions.
+- Keep responses focused and actionable.
+- Use plain text only — no markdown headers or excessive bullet lists unless the learner asks.`;
+
+  const conversationHistory = history.map(m =>
+    `${m.role === "user" ? "Learner" : "Sensei"}: ${m.content}`
+  ).join("\n");
+
+  const fullPrompt = `${systemPrompt}
+
+=== CONVERSATION ===
+${conversationHistory ? conversationHistory + "\n" : ""}Learner: ${message}
+Sensei:`;
+
+  const result = await withRetry(() => model.generateContent(fullPrompt));
+  return result.response.text().trim();
+}
+

@@ -1,5 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { queryClient, getQueryFn } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,11 +8,12 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LearningTrajectorySidebar } from "@/components/learning-trajectory-sidebar";
 import { DualSidebarProvider, useDualSidebar } from "@/contexts/dual-sidebar-context";
-import { Menu, BookOpen } from "lucide-react";
+import { Menu, BookOpen, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
+import { SenseiChatSidebar } from "@/components/sensei-chat-sidebar";
 
 import { ThemeProvider } from "@/contexts/theme-context";
 import { useQuery } from "@tanstack/react-query";
@@ -189,8 +190,10 @@ function DualSidebarHeader() {
     mainSidebarOpen,
     trajectorySidebarOpen,
     hasTrajectorySidebar,
+    chatSidebarOpen,
     setMainSidebarOpen,
     setTrajectorySidebarOpen,
+    setChatSidebarOpen,
   } = useDualSidebar();
 
   const handleMainNavClick = () => {
@@ -209,6 +212,10 @@ function DualSidebarHeader() {
       setMainSidebarOpen(false);
       setTrajectorySidebarOpen(true);
     }
+  };
+
+  const handleChatClick = () => {
+    setChatSidebarOpen(!chatSidebarOpen);
   };
 
   return (
@@ -239,6 +246,21 @@ function DualSidebarHeader() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isInSubModule && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleChatClick}
+              data-testid="button-sensei-toggle"
+              className={cn(
+                "flex items-center gap-1.5 h-9 px-3",
+                chatSidebarOpen ? "bg-accent" : ""
+              )}
+            >
+              <Bot className="h-4 w-4" />
+              <span className="text-sm">Sensei</span>
+            </Button>
+          )}
           <span className="md:text-sm text-base font-medium text-muted-foreground">
             DojoOS
           </span>
@@ -251,6 +273,7 @@ function DualSidebarHeader() {
 function MainLayout() {
   const [location] = useLocation();
   const isFullScreen = isFullScreenRoute(location);
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   const {
     isInSubModule,
@@ -258,6 +281,8 @@ function MainLayout() {
     isMobile,
     mainSidebarOpen,
     trajectorySidebarOpen,
+    chatSidebarOpen,
+    setChatSidebarOpen,
     setMainSidebarOpen,
     setTrajectorySidebarOpen,
   } = useDualSidebar();
@@ -317,6 +342,33 @@ function MainLayout() {
                 </div>
               </SheetContent>
             </Sheet>
+
+            {/* Sensei chat bottom sheet (mobile) */}
+            <Sheet
+              open={isInSubModule && chatSidebarOpen}
+              onOpenChange={(o) => {
+                setChatSidebarOpen(o);
+                if (!o) setChatExpanded(false);
+              }}
+            >
+              <SheetContent
+                side="bottom"
+                className={cn(
+                  "p-0 rounded-t-2xl border-t transition-[height] duration-300",
+                  chatExpanded ? "h-[calc(100dvh-44px)]" : "h-[75dvh]"
+                )}
+                aria-describedby={undefined}
+              >
+                <VisuallyHidden.Root>
+                  <SheetTitle>Sensei AI</SheetTitle>
+                </VisuallyHidden.Root>
+                <SenseiChatSidebar
+                  onClose={() => { setChatSidebarOpen(false); setChatExpanded(false); }}
+                  isMobileSheet
+                  onExpand={(e) => setChatExpanded(e)}
+                />
+              </SheetContent>
+            </Sheet>
           </>
         ) : (
           <>
@@ -330,7 +382,7 @@ function MainLayout() {
           </>
         )}
 
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <DualSidebarHeader />
           <main className="flex-1 bg-background overflow-y-auto">
             <div className="pb-[env(safe-area-inset-bottom)]">
@@ -338,6 +390,13 @@ function MainLayout() {
             </div>
           </main>
         </div>
+
+        {/* Sensei chat right panel (desktop & tablet) */}
+        {!isMobile && isInSubModule && chatSidebarOpen && (
+          <div className="w-80 shrink-0 border-l h-full overflow-hidden flex flex-col">
+            <SenseiChatSidebar onClose={() => setChatSidebarOpen(false)} />
+          </div>
+        )}
       </div>
     </SidebarProvider>
   );
