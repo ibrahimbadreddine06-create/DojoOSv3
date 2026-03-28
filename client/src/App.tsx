@@ -393,7 +393,7 @@ function MainLayout() {
 
         {/* Sensei chat right panel (desktop & tablet) */}
         {!isMobile && isInSubModule && chatSidebarOpen && (
-          <div className="w-80 shrink-0 border-l h-full overflow-hidden flex flex-col">
+          <div className="w-[420px] shrink-0 border-l h-full overflow-hidden flex flex-col">
             <SenseiChatSidebar onClose={() => setChatSidebarOpen(false)} />
           </div>
         )}
