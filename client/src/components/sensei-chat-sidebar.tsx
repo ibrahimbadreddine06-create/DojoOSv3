@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, RotateCcw, Send, Maximize2, Minimize2 } from "lucide-react";
+import { Bot, RotateCcw, Send, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -104,8 +104,8 @@ export function SenseiChatSidebar({
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+      {/* Header — same height as app nav bar so border-b aligns */}
+      <div className="flex items-center justify-between px-4 border-b shrink-0 h-11 md:h-16">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="font-semibold text-sm">Sensei AI</span>
@@ -134,14 +134,6 @@ export function SenseiChatSidebar({
             onClick={handleNewConversation}
           >
             <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
