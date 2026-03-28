@@ -382,7 +382,7 @@ function MainLayout() {
           </>
         )}
 
-        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        <div className="flex flex-col flex-1 shrink-0 overflow-hidden min-w-[480px]">
           <DualSidebarHeader />
           <main className="flex-1 bg-background overflow-y-auto">
             <div className="pb-[env(safe-area-inset-bottom)]">
@@ -393,7 +393,7 @@ function MainLayout() {
 
         {/* Sensei chat right panel (desktop & tablet) */}
         {!isMobile && isInSubModule && chatSidebarOpen && (
-          <div className="w-[420px] shrink-0 border-l h-full overflow-hidden flex flex-col">
+          <div className="w-[clamp(280px,30vw,520px)] shrink-0 border-l h-full overflow-hidden flex flex-col">
             <SenseiChatSidebar onClose={() => setChatSidebarOpen(false)} />
           </div>
         )}

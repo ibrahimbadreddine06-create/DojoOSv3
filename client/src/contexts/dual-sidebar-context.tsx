@@ -102,12 +102,20 @@ export function DualSidebarProvider({ children }: DualSidebarProviderProps) {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
-      setIsWideScreen(window.innerWidth >= 1280);
+      setIsWideScreen(window.innerWidth >= 1100);
     };
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
+
+  // When screen narrows below wide threshold with all 3 panels open, auto-close left sidebar
+  useEffect(() => {
+    if (!isWideScreen && !isMobile && chatSidebarOpen && (mainSidebarOpen || trajectorySidebarOpen)) {
+      setMainSidebarOpenInternal(false);
+      setTrajectorySidebarOpenInternal(false);
+    }
+  }, [isWideScreen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const mobileChanged = isMobile !== prevIsMobile;
