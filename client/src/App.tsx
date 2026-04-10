@@ -381,7 +381,7 @@ function MainLayout() {
           </>
         )}
 
-        <div className="flex flex-col flex-[1_0_480px] min-w-[480px] overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <DualSidebarHeader />
           <main className="flex-1 bg-background overflow-y-auto">
             <div className="pb-[env(safe-area-inset-bottom)]">
