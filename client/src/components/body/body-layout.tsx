@@ -27,7 +27,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
             <div className="shrink-0" style={{ height: 'env(safe-area-inset-top)' }} />
 
             {/* Main content */}
-            <main className="flex-1" style={{ paddingBottom: 'calc(4rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
+            <main className="flex-1" style={{ paddingBottom: 'calc(3.5rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
                 {children}
             </main>
 
@@ -38,7 +38,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
                 }}>
-                <div className="flex items-end justify-around px-1 pt-2"
+                <div className="flex items-center pt-1"
                     style={{ paddingBottom: 'max(0.625rem, env(safe-area-inset-bottom))' }}>
                     {navItems.map((item) => {
                         const isActive = item.id === "hub"
@@ -48,12 +48,12 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
                         return (
                             <Link key={item.id} href={item.path} className="flex-1">
-                                <div className="relative flex flex-col items-center gap-1 px-1 py-1 cursor-pointer w-full min-w-[48px] hover:bg-muted/30 rounded-lg transition-colors group">
-                                    {/* Active indicator */}
+                                <div className="relative flex items-center justify-center cursor-pointer w-full py-2 hover:bg-muted/30 rounded-lg transition-colors group">
+                                    {/* Active indicator line — centered above icon */}
                                     {isActive && (
                                         <motion.div
                                             layoutId="navIndicator"
-                                            className="absolute -top-2 left-1/2 -translate-x-1/2 h-0.5 w-6 rounded-full"
+                                            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full h-0.5 w-6 rounded-full"
                                             style={{ backgroundColor: item.activeColor }}
                                             transition={{ type: "spring", stiffness: 500, damping: 35 }}
                                         />
@@ -66,15 +66,6 @@ export function BodyLayout({ children }: BodyLayoutProps) {
                                         }}
                                         strokeWidth={isActive ? 2.5 : 1.8}
                                     />
-                                    <span
-                                        className="text-[9px] font-bold transition-all duration-150 uppercase tracking-wide group-active:scale-90"
-                                        style={{
-                                            color: isActive ? item.activeColor : undefined,
-                                            opacity: isActive ? 1 : 0.35,
-                                        }}
-                                    >
-                                        {item.label}
-                                    </span>
                                 </div>
                             </Link>
                         );
