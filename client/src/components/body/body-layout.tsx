@@ -22,7 +22,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
     );
 
     return (
-        <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
             {/* Safe area top spacer */}
             <div className="shrink-0" style={{ height: 'env(safe-area-inset-top)' }} />
 
@@ -48,7 +48,7 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
                         return (
                             <Link key={item.id} href={item.path} className="flex-1">
-                                <div className="relative flex flex-col items-center gap-1 px-1 py-1 cursor-pointer min-w-[48px] hover:bg-muted/30 rounded-lg transition-colors group">
+                                <div className="relative flex flex-col items-center gap-1 px-1 py-1 cursor-pointer w-full min-w-[48px] hover:bg-muted/30 rounded-lg transition-colors group">
                                     {/* Active indicator */}
                                     {isActive && (
                                         <motion.div
