@@ -2,19 +2,27 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBanner } from "../status-banner";
 import { ModuleBriefing } from "../module-briefing";
-import { Sparkles, Plus, ChevronRight, Activity as ActivityIcon } from "lucide-react";
+import {
+  Plus,
+  Timer,
+  Activity as ActivityIcon,
+  MapPin,
+  Heart,
+  Zap,
+  Flame,
+  TrendingUp,
+  Dumbbell,
+} from "lucide-react";
 import { format, startOfWeek, isAfter } from "date-fns";
 import { useLocation } from "wouter";
 
 import { MetricRing } from "@/components/body/metric-ring";
-import { AiBriefCard } from "./ai-brief-card";
 import { KpiTile } from "./kpi-tile";
+import { KpiGrid } from "@/components/body/kpi-grid";
+import type { KpiDefinition } from "@/components/body/kpi-grid";
 import { WeeklyEffortGauge } from "./weekly-effort-gauge";
 import { PlannedActivities } from "./planned-activities";
 import { ActivityLogCalendar } from "./activity-log-calendar";
@@ -31,45 +39,205 @@ export function ActivityPage() {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const today = format(new Date(), "yyyy-MM-dd");
 
-  // Data queries
+  // ── Data queries ─────────────────────────────────────────────────────────────
   const { data: workouts } = useQuery<Workout[]>({ queryKey: [`/api/workouts/${today}`] });
   const { data: bodyProfile } = useQuery<BodyProfile>({ queryKey: ["/api/body-profile"] });
   const { data: dailyState } = useQuery<DailyState | null>({
     queryKey: [`/api/daily-state/${today}`],
   });
 
-  // Compute metrics from data
+  // ── Derived metrics ───────────────────────────────────────────────────────────
   const todaysWorkouts = workouts?.filter(
-    (w) => w.date && format(new Date(w.date), "yyyy-MM-dd") === today
+    (w) => w.date && format(new Date(w.date), "yyyy-MM-dd") === today,
   ) || [];
 
-  const activeMinutes = dailyState?.activeMinutes ??
-    todaysWorkouts.reduce((sum, w) => sum + (w.endTime && w.startTime
-      ? Math.round((new Date(w.endTime).getTime() - new Date(w.startTime).getTime()) / 60000)
-      : 0), 0);
+  const activeMinutes =
+    dailyState?.activeMinutes ??
+    todaysWorkouts.reduce(
+      (sum, w) =>
+        sum +
+        (w.endTime && w.startTime
+          ? Math.round(
+              (new Date(w.endTime).getTime() - new Date(w.startTime).getTime()) / 60000,
+            )
+          : 0),
+      0,
+    );
 
-  const effortScore = dailyState?.effortScore ?? null;
-  const caloriesBurned = dailyState?.caloriesBurned ?? null;
-  const recoveryScore = dailyState?.recoveryScore ?? null;
-  const steps = dailyState?.steps ?? null;
-  const distanceKm = dailyState?.distanceKm ? parseFloat(String(dailyState.distanceKm)) : null;
-  const avgHeartRate = dailyState?.avgHeartRate ?? null;
+  const effortScore     = dailyState?.effortScore     ?? null;
+  const caloriesBurned  = dailyState?.caloriesBurned  ?? null;
+  const recoveryScore   = dailyState?.recoveryScore   ?? null;
+  const steps           = dailyState?.steps           ?? null;
+  const distanceKm      = dailyState?.distanceKm
+    ? parseFloat(String(dailyState.distanceKm))
+    : null;
+  const avgHeartRate    = dailyState?.avgHeartRate    ?? null;
+  const totalVolume     = dailyState?.totalVolume     ?? null;
 
-  const dailyEnergyGoal = bodyProfile?.dailyEnergyGoal ?? 2500;
-  const activeTimeGoal = bodyProfile?.activeTimeGoal ?? 45;
+  const dailyEnergyGoal    = bodyProfile?.dailyEnergyGoal    ?? 2500;
+  const activeTimeGoal     = bodyProfile?.activeTimeGoal     ?? 45;
   const weeklyEffortTarget = bodyProfile?.weeklyEffortTarget ?? 500;
 
-  // Weekly effort calculation
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weeklyEffort = useMemo(() => {
     if (!workouts) return 0;
     return workouts
       .filter((w) => w.date && isAfter(new Date(w.date), weekStart) && w.completed)
-      .length * 50; // Placeholder: 50 points per completed workout
+      .length * 50;
   }, [workouts, weekStart]);
 
-  // Total volume for strength
-  const totalVolume = dailyState?.totalVolume ?? null;
+  // ── KPI definitions ───────────────────────────────────────────────────────────
+  // Each KpiDefinition is memoized so the grid doesn't re-initialise on every
+  // render. `render` is a closure that captures the latest metric values.
+  const kpis: KpiDefinition[] = useMemo(
+    () => [
+      {
+        id: "active_time",
+        label: "Active Time",
+        icon: Timer,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Active time"
+            value={activeMinutes || null}
+            unit="min"
+            goal={activeTimeGoal}
+            goalUnit="min"
+            metricKey="activeTime"
+          />
+        ),
+      },
+      {
+        id: "steps",
+        label: "Steps",
+        icon: ActivityIcon,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Steps"
+            value={steps}
+            unit="steps"
+            goal={8000}
+            wearableRequired
+            metricKey="steps"
+          />
+        ),
+      },
+      {
+        id: "distance",
+        label: "Distance",
+        icon: MapPin,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Distance"
+            value={distanceKm}
+            unit="km"
+            goal={5}
+            goalUnit="km"
+            wearableRequired
+            metricKey="distance"
+          />
+        ),
+      },
+      {
+        id: "avg_hr",
+        label: "Avg HR",
+        icon: Heart,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Avg HR today"
+            value={avgHeartRate}
+            unit="bpm"
+            wearableRequired
+            metricKey="avgHR"
+            subtitle="FC en journée"
+          />
+        ),
+      },
+      {
+        id: "effort_score",
+        label: "Effort Score",
+        icon: Zap,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Effort Score"
+            value={effortScore}
+            unit=""
+            metricKey="effortScore"
+          />
+        ),
+      },
+      {
+        id: "calories",
+        label: "Calories Burned",
+        icon: Flame,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Calories"
+            value={caloriesBurned}
+            unit="kcal"
+            metricKey="energyBurned"
+          />
+        ),
+      },
+      {
+        id: "recovery",
+        label: "Recovery",
+        icon: TrendingUp,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Recovery"
+            value={recoveryScore}
+            unit=""
+            metricKey="recoveryScore"
+          />
+        ),
+      },
+      {
+        id: "volume",
+        label: "Total Volume",
+        icon: Dumbbell,
+        defaultW: 1,
+        defaultH: 1,
+        visualizations: [{ id: "tile", label: "KPI Tile" }],
+        render: () => (
+          <KpiTile
+            label="Total Volume"
+            value={totalVolume}
+            unit="kg"
+            metricKey="volume"
+          />
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      activeMinutes, activeTimeGoal,
+      steps, distanceKm, avgHeartRate,
+      effortScore, caloriesBurned, recoveryScore, totalVolume,
+    ],
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl animate-in fade-in duration-700 pb-24">
@@ -89,12 +257,11 @@ export function ActivityPage() {
           </Button>
         </div>
 
-        {/* 2. Unified Status Banner */}
+        {/* 2. AI Briefing */}
         <ActivityAiBrief dailyData={dailyState} />
 
-        {/* 4. Three Rings Row */}
+        {/* 3. Hero metric rings (Effort / Energy / Recovery) */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {/* Effort */}
           <Card
             className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/activity/metric/effortScore")}
@@ -111,7 +278,6 @@ export function ActivityPage() {
             </CardContent>
           </Card>
 
-          {/* Energy */}
           <Card
             className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/activity/metric/energyBurned")}
@@ -129,7 +295,6 @@ export function ActivityPage() {
             </CardContent>
           </Card>
 
-          {/* Recovery */}
           <Card
             className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm"
             onClick={() => navigate("/body/sleep")}
@@ -147,43 +312,10 @@ export function ActivityPage() {
           </Card>
         </div>
 
-        {/* 5. Four KPI Tiles Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiTile
-            label="Active time"
-            value={activeMinutes || null}
-            unit="min"
-            goal={activeTimeGoal}
-            goalUnit="min"
-            metricKey="activeTime"
-          />
-          <KpiTile
-            label="Steps"
-            value={steps}
-            unit="steps"
-            goal={8000}
-            wearableRequired
-            metricKey="steps"
-          />
-          <KpiTile
-            label="Distance"
-            value={distanceKm}
-            unit="km"
-            goal={5}
-            goalUnit="km"
-            wearableRequired
-            metricKey="distance"
-          />
-          <KpiTile
-            label="Avg HR today"
-            value={avgHeartRate}
-            unit="bpm"
-            wearableRequired
-            metricKey="avgHR"
-            subtitle="FC en journée"
-          />
-        </div>
+        {/* 4. KPI Grid — drag, resize, add/remove */}
+        <KpiGrid kpis={kpis} storageKey="kpiGrid_activity_v1" />
 
+        {/* 5. Rest of the page */}
         <WeeklyEffortGauge currentEffort={weeklyEffort} target={weeklyEffortTarget} />
         <TodaySessions module="activity" />
         <PlannedActivities />
@@ -221,7 +353,10 @@ function ActivityAiBrief({ dailyData }: { dailyData: any }) {
     <ModuleBriefing
       title="Briefing"
       kicker="Sensei AI"
-      content={data?.brief || "It looks like we're just getting started with tracking your activity today! Every step counts, and we're here to cheer you on for whatever you choose to do. Let's make it a great one!"}
+      content={
+        data?.brief ||
+        "It looks like we're just getting started with tracking your activity today! Every step counts, and we're here to cheer you on for whatever you choose to do. Let's make it a great one!"
+      }
       isLoading={isLoading}
       accentColor="bg-amber-500/10"
     />
