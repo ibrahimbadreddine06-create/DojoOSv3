@@ -18,10 +18,12 @@ export function ModuleBriefing({
   content,
   isLoading = false,
   className,
-  accentColor = "bg-indigo-500/10"
-}: ModuleBriefingProps) {
+  accentColor = "bg-indigo-500/10",
+  ...rootProps
+}: ModuleBriefingProps & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("bg-card rounded-2xl p-5 border border-border/60 shadow-sm relative overflow-hidden", className)}>
+    <div {...rootProps} className={cn("flex h-full w-full flex-col bg-card rounded-2xl p-5 border border-border/60 shadow-sm relative overflow-hidden", className)}>
+      {rootProps.children}
       <div className={cn("absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -mr-10 -mt-10 opacity-50", accentColor)} />
       <div className="mb-4 space-y-0.5">
         {kicker && (

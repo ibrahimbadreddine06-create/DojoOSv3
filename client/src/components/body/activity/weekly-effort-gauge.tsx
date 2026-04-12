@@ -6,7 +6,7 @@ interface WeeklyEffortGaugeProps {
   target: number; // weeklyEffortTarget
 }
 
-export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugeProps) {
+export function WeeklyEffortGauge({ currentEffort, target, ...rootProps }: WeeklyEffortGaugeProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
   const percentage = target > 0 ? Math.round((currentEffort / target) * 100) : 0;
   // Fill maps to 0-200% range. At 100% the fill reaches the midpoint.
@@ -14,9 +14,11 @@ export function WeeklyEffortGauge({ currentEffort, target }: WeeklyEffortGaugePr
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm"
+      {...rootProps}
+      className={`cursor-pointer hover:shadow-md transition-shadow border-border/60 rounded-2xl shadow-sm h-full w-full ${rootProps.className ?? ""}`}
       onClick={() => navigate("/body/activity/metric/weeklyEffort")}
     >
+      {rootProps.children}
       <CardContent className="p-5 sm:p-6 flex flex-col items-center justify-center text-center">
         {/* Top: percentage */}
         <span className="text-4xl font-bold tabular-nums text-foreground leading-none">

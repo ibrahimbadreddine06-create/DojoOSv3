@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChevronRight, Plus, Search } from "lucide-react";
-import { SectionHeader } from "../section-header";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import type { ExerciseLibraryItem, MuscleStat } from "@shared/schema";
@@ -41,7 +40,7 @@ function getRecoveryDot(score: number) {
   return "bg-red-500";
 }
 
-export function ExercisesMusclesSection() {
+export function ExercisesMusclesSection(rootProps: React.HTMLAttributes<HTMLDivElement>) {
   const [view, setView] = useState<"muscles" | "exercises">("muscles");
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [chartMode, setChartMode] = useState<typeof CHART_MODES[number]>("Strength");
@@ -88,25 +87,26 @@ export function ExercisesMusclesSection() {
   };
 
   return (
-    <div>
-      <SectionHeader title="Exercises & muscles" kicker="Strength log" />
-
-      {/* Toggle */}
-      <ToggleGroup
-        type="single"
-        value={view}
-        onValueChange={(v) => { if (v) { setView(v as any); setSelectedItem(null); } }}
-        className="mb-4 justify-start"
+      <Card
+        {...rootProps}
+        className={`h-full w-full overflow-hidden border-border/60 shadow-sm ${rootProps.className ?? ""}`}
       >
-        <ToggleGroupItem value="muscles" className="text-xs px-4">Muscles</ToggleGroupItem>
-        <ToggleGroupItem value="exercises" className="text-xs px-4">Exercises</ToggleGroupItem>
-      </ToggleGroup>
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+        {rootProps.children}
+        <CardContent className="flex h-full flex-col p-0">
+          <div className="border-b border-border p-3">
+            <ToggleGroup
+              type="single"
+              value={view}
+              onValueChange={(v) => { if (v) { setView(v as any); setSelectedItem(null); } }}
+              className="justify-start"
+            >
+              <ToggleGroupItem value="muscles" className="h-7 px-3 text-xs">Muscles</ToggleGroupItem>
+              <ToggleGroupItem value="exercises" className="h-7 px-3 text-xs">Exercises</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
             {/* Left: List */}
-            <div className="p-4 max-h-[500px] overflow-y-auto">
+            <div className="min-h-0 overflow-y-auto p-4">
               {view === "exercises" && (
                 <div className="relative mb-3">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -174,7 +174,7 @@ export function ExercisesMusclesSection() {
             </div>
 
             {/* Right: Detail */}
-            <div className="p-4">
+            <div className="min-h-0 overflow-y-auto p-4">
               {!selectedItem ? (
                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground py-12">
                   Select a {view === "muscles" ? "muscle group" : "exercise"} to see details
@@ -290,6 +290,5 @@ export function ExercisesMusclesSection() {
           </div>
         </CardContent>
       </Card>
-    </div>
   );
 }

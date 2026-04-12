@@ -1,7 +1,6 @@
 import React from "react";
 import { type IntakeLog, type DailyState } from "@shared/schema";
 import { Link } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
 import { SectionHeader } from "../section-header";
 
 interface EnergyBalanceCardProps {
@@ -9,7 +8,7 @@ interface EnergyBalanceCardProps {
   dailyState?: DailyState;
 }
 
-export function EnergyBalanceCard({ intakeLogs, dailyState }: EnergyBalanceCardProps) {
+export function EnergyBalanceCard({ intakeLogs, dailyState, ...rootProps }: EnergyBalanceCardProps & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
   const consumed = intakeLogs.reduce((acc, log) => acc + Number(log.calories || 0), 0);
   const burned = dailyState?.caloriesBurned || 2000;
   const balance = consumed - burned;
@@ -19,8 +18,8 @@ export function EnergyBalanceCard({ intakeLogs, dailyState }: EnergyBalanceCardP
   const percentage = Math.min(100, Math.max(0, ((balance + range) / (range * 2)) * 100));
 
   return (
-    <Link href="/body/nutrition/metric/balance">
-      <div className="bg-card border-border/60 rounded-2xl p-5 space-y-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+    <Link {...rootProps} href="/body/nutrition/metric/balance" className={`flex h-full w-full flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 shadow-sm transition-shadow hover:shadow-md ${rootProps.className ?? ""}`}>
+        {rootProps.children}
         <div className="flex justify-between items-baseline">
           <div className="space-y-0.5">
             <SectionHeader title="Net Energy Balance" kicker="Metabolic" className="mb-0" />
@@ -62,7 +61,6 @@ export function EnergyBalanceCard({ intakeLogs, dailyState }: EnergyBalanceCardP
             </div>
           </div>
         </div>
-      </div>
     </Link>
   );
 }

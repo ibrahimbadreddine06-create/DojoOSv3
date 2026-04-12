@@ -31,7 +31,8 @@ export function TonightRhythmCard({
   bestFocusBlock = "09:00 – 11:30",
   energyDipTime = "14:00 – 15:30",
   rhythmConsistency = null,
-}: TonightRhythmCardProps) {
+  ...rootProps
+}: TonightRhythmCardProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
 
   const planningItems = [
@@ -42,7 +43,8 @@ export function TonightRhythmCard({
   ];
 
   return (
-    <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+    <div {...rootProps} className={`flex h-full w-full flex-col bg-card border border-border/60 rounded-2xl overflow-hidden ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       {/* Header */}
       <div className="px-5 pt-5 pb-3 border-b border-border/40 flex items-center justify-between">
         <SectionHeader title="Sleep planning & circadian guidance" kicker="Tonight & Rhythm" className="mb-0" />
@@ -89,7 +91,7 @@ export function TonightRhythmCard({
       </div>
 
       {/* Guidance chips */}
-      <div className="px-5 py-4 space-y-2">
+      <div className="px-5 py-4 space-y-2 flex-1 min-h-0 overflow-hidden">
         <div className="flex items-start gap-3">
           <Moon className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
           <div>

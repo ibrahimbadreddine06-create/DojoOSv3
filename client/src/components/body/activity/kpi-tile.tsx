@@ -27,16 +27,19 @@ export function KpiTile({
   wearableConnected = false,
   metricKey,
   subtitle,
-}: KpiTileProps) {
+  ...rootProps
+}: KpiTileProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
   const displayValue = value === null || value === undefined ? "–" : value;
   const showWearableBadge = wearableRequired && !wearableConnected;
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col border-border/60 rounded-2xl shadow-sm"
+      {...rootProps}
+      className={`cursor-pointer hover:shadow-md transition-shadow h-full flex flex-col border-border/60 rounded-2xl shadow-sm ${rootProps.className ?? ""}`}
       onClick={() => metricKey && navigate(`/body/activity/metric/${metricKey}`)}
     >
+      {rootProps.children}
       <CardContent className="p-5 pt-5 sm:p-5 sm:pt-5 flex flex-col h-full min-h-[110px]">
         {/* Label Row */}
         <div className="flex items-start justify-between gap-1 mb-1">

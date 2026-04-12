@@ -10,7 +10,7 @@ import type { Workout, WorkoutPreset } from "@shared/schema";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function ActivityLogCalendar() {
+export function ActivityLogCalendar(rootProps: React.HTMLAttributes<HTMLDivElement>) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -53,13 +53,13 @@ export function ActivityLogCalendar() {
   ) || [];
 
   return (
-    <div>
+    <Card {...rootProps} className={`h-full w-full overflow-visible ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       <SectionHeader title="Activity log" kicker="Chronology" />
-      <Card>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+      <CardContent className="h-full p-0">
+        <div className="grid h-full grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
             {/* Left: Calendar */}
-            <div className="p-4">
+            <div className="min-h-0 overflow-hidden p-4">
               {/* Month nav */}
               <div className="flex items-center justify-between mb-3">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
@@ -128,7 +128,7 @@ export function ActivityLogCalendar() {
             </div>
 
             {/* Right: Day detail */}
-            <div className="p-4">
+            <div className="min-h-0 overflow-y-auto p-4">
               <h4 className="text-sm font-semibold mb-3">{format(selectedDate, "EEEE, MMM d")}</h4>
 
               {dayWorkouts.length === 0 && dayActivities.length === 0 ? (
@@ -160,10 +160,9 @@ export function ActivityLogCalendar() {
                 <Plus className="w-3 h-3" /> Add activity to this day
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

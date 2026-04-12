@@ -5,7 +5,7 @@ import { Play, Calendar, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import type { TimeBlock, Workout } from "@shared/schema";
 
-export function PlannedActivities() {
+export function PlannedActivities(rootProps: React.HTMLAttributes<HTMLDivElement>) {
   const today = format(new Date(), "yyyy-MM-dd");
 
   const { data: timeBlocks } = useQuery<TimeBlock[]>({
@@ -25,7 +25,8 @@ export function PlannedActivities() {
   ) || [];
 
   return (
-    <Card>
+    <Card {...rootProps} className={`h-full w-full overflow-hidden ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       <CardHeader className="py-3 px-4 border-b">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Calendar className="w-4 h-4" />

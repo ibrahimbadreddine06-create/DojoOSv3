@@ -9,7 +9,7 @@ interface FastingCardProps {
   onConfigureClick: () => void;
 }
 
-export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: FastingCardProps) {
+export function FastingCard({ activeLog, bodyProfile, onConfigureClick, ...rootProps }: FastingCardProps & React.HTMLAttributes<HTMLDivElement>) {
   const isConfigured = !!bodyProfile?.fastingProgram;
   const isActive = activeLog?.status === "active";
 
@@ -19,7 +19,8 @@ export function FastingCard({ activeLog, bodyProfile, onConfigureClick }: Fastin
   const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
 
   return (
-    <div className="bg-card border-border/60 rounded-2xl p-5 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden min-h-[180px] shadow-sm">
+    <div {...rootProps} className={`bg-card border-border/60 rounded-2xl p-5 flex h-full w-full flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden shadow-sm ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       <div className="flex justify-between items-start relative z-10">
         <div className="space-y-1">
           <div className="flex items-center gap-2 group-hover:text-orange-600 transition-colors">

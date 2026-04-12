@@ -72,7 +72,7 @@ function calculateWeightedCompletion(tasks?: Array<{ completed: boolean; importa
   return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
 }
 
-export function TodaySessions({ module, itemId, naked = false, hideHeader = false, className }: TodaySessionsProps) {
+export function TodaySessions({ module, itemId, naked = false, hideHeader = false, className, ...rootProps }: TodaySessionsProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
   const today = format(new Date(), "yyyy-MM-dd");
   const { toast } = useToast();
@@ -133,7 +133,8 @@ export function TodaySessions({ module, itemId, naked = false, hideHeader = fals
   if (isLoading) {
     if (naked) return <div className={cn("animate-pulse text-muted-foreground text-sm", className)}>Loading...</div>;
     return (
-      <Card className={className}>
+      <Card {...rootProps} className={cn("h-full w-full overflow-hidden", className)}>
+        {rootProps.children}
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4" />
@@ -159,14 +160,15 @@ export function TodaySessions({ module, itemId, naked = false, hideHeader = fals
       );
     }
     return (
-      <Card className={className}>
+      <Card {...rootProps} className={cn("h-full w-full overflow-hidden", className)}>
+        {rootProps.children}
         <CardHeader className="py-3 px-4">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Today's Sessions
           </CardTitle>
         </CardHeader>
-        <CardContent className="py-10 px-4 flex flex-col items-center justify-center gap-4">
+        <CardContent className="flex h-full flex-col items-center justify-center gap-4 px-4 py-6">
           <div className="text-center space-y-1">
             <p className="text-sm font-medium">
               No sessions scheduled for today
@@ -288,7 +290,8 @@ export function TodaySessions({ module, itemId, naked = false, hideHeader = fals
   if (naked) return content;
 
   return (
-    <Card className={className}>
+    <Card {...rootProps} className={cn("flex h-full w-full flex-col overflow-hidden", className)}>
+      {rootProps.children}
       <CardHeader className="py-3 px-4 border-b">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Calendar className="w-4 h-4" />
@@ -298,7 +301,7 @@ export function TodaySessions({ module, itemId, naked = false, hideHeader = fals
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto p-0">
         {content}
       </CardContent>
     </Card>

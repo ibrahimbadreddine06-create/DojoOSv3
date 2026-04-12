@@ -10,7 +10,7 @@ interface IntakeRoutinesProps {
   date: string;
 }
 
-export function IntakeRoutines({ date }: IntakeRoutinesProps) {
+export function IntakeRoutines({ date, ...rootProps }: IntakeRoutinesProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
 
@@ -32,13 +32,14 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
     }
   });
 
-  if (routinesLoading || checkinsLoading) return <div className="h-40 bg-card border rounded-xl animate-pulse" />;
+  if (routinesLoading || checkinsLoading) return <div className="h-full w-full bg-card border rounded-xl animate-pulse" />;
 
   const routineList = routines || [];
   const checkedIds = new Set(checkins?.map(c => c.routineId) || []);
 
   return (
-    <div className="space-y-3">
+    <div {...rootProps} className={`flex h-full w-full flex-col rounded-2xl border border-border/60 bg-card p-5 shadow-sm ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       <div className="flex justify-between items-baseline px-1">
         <div className="space-y-0.5">
           <SectionHeader title="Daily Intake Routines" kicker="Cadence" className="mb-0" />
@@ -52,7 +53,7 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
         </button>
       </div>
 
-      <div className="bg-card border-border/60 rounded-2xl overflow-hidden divide-y divide-border/40 shadow-sm">
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto rounded-xl divide-y divide-border/40">
         {routineList.length === 0 ? (
           <div className="p-10 text-center space-y-3">
             <p className="text-sm text-muted-foreground/50">No routines configured.</p>
@@ -101,7 +102,7 @@ export function IntakeRoutines({ date }: IntakeRoutinesProps) {
         )}
       </div>
 
-      <div className="px-1 flex justify-between items-center">
+      <div className="mt-3 px-1 flex justify-between items-center">
         <span className="text-[10px] text-muted-foreground/40 font-medium">
           Schedules sync to your daily planner automatically
         </span>

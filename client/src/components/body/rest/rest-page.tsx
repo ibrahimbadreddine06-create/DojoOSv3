@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Moon, Plus, Sparkles, BarChart2, ListChecks, Waves, Clock, Activity, TrendingUp } from "lucide-react";
+import { Moon, Plus, Sparkles, ListChecks, Waves, Clock, Activity, TrendingUp, Brain, Dumbbell, Coffee, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 
@@ -11,17 +10,49 @@ import { MetricRing } from "@/components/body/metric-ring";
 import { LogRestDialog } from "./log-rest-dialog";
 import { TonightRhythmCard } from "./tonight-rhythm-card";
 import { TodaySessions } from "@/components/today-sessions";
-import { LastNightBreakdown } from "./last-night-breakdown";
-import { RecoveryPhysiology } from "./recovery-physiology";
-import { TodaysRestImpact } from "./todays-rest-impact";
 import { RestChronology } from "./rest-chronology";
-import { RestTrends } from "./rest-trends";
 import { Button } from "@/components/ui/button";
 import { ModuleBriefing } from "../module-briefing";
 import { ModuleGrid } from "@/components/body/module-grid";
-import type { WidgetDefinition } from "@/components/body/module-grid";
+import type { WidgetDefinition, WidgetRenderContext } from "@/components/body/module-grid";
 
 const SLEEP_GOAL = 8;
+
+function ringSizeFor(ctx: WidgetRenderContext): "sm" | "md" | "lg" {
+  if (ctx.size.h <= 1 || ctx.size.w <= 1 && ctx.shape === "square") return "sm";
+  if (ctx.shape === "horizontal" || ctx.size.h === 2) return "md";
+  return "lg";
+}
+
+function RestMetricCard({ label, value, unit, color, onClick, icon: Icon = Activity, detail, ...rootProps }: {
+  label: string;
+  value: number | string | null;
+  unit?: string;
+  color?: string;
+  onClick?: () => void;
+  icon?: any;
+  detail?: string;
+} & React.HTMLAttributes<HTMLButtonElement>) {
+  const displayValue = value === null || value === undefined ? "-" : value;
+  return (
+    <button {...rootProps} type="button" onClick={onClick} className={`flex h-full w-full flex-col justify-between rounded-2xl border border-border/60 bg-card p-5 text-left shadow-sm transition-shadow hover:shadow-md ${rootProps.className ?? ""}`}>
+      {rootProps.children}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{label}</p>
+        <Icon className="h-4 w-4 text-muted-foreground/40" />
+      </div>
+      <div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-black tabular-nums tracking-tight leading-none" style={color && displayValue !== "-" ? { color } : undefined}>
+            {displayValue}
+          </span>
+          {displayValue !== "-" && unit && <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground">{unit}</span>}
+        </div>
+        {detail && <p className="mt-2 text-xs font-medium text-muted-foreground">{detail}</p>}
+      </div>
+    </button>
+  );
+}
 
 function calcRestScore(log: any): number {
   const quality = log?.quality || 3;
@@ -58,6 +89,7 @@ export function RestPage() {
     {
       id: "briefing", label: "AI Briefing", icon: Sparkles,
       defaultW: 3, defaultH: 2,
+      allowedSizes: [{ w: 3, h: 2 }, { w: 3, h: 3 }],
       visualizations: [{ id: "default", label: "Briefing Card" }],
       render: () => (
         <RestAiBrief dailyState={dailyState}
@@ -68,13 +100,16 @@ export function RestPage() {
     {
       id: "rest_score_ring", label: "Rest Score", icon: Moon,
       defaultW: 1, defaultH: 2,
-      visualizations: [{ id: "ring", label: "Ring" }],
-      render: () => (
+      visualizations: [
+        { id: "ring", label: "Ring" },
+        { id: "gauge", label: "Gauge" },
+      ],
+      render: (ctx: WidgetRenderContext) => (
         <Card className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm h-full"
           onClick={() => navigate("/body/sleep/metric/restScore")}>
           <CardContent className="p-5 flex items-center justify-center h-full">
             <MetricRing value={restScore ?? 0} max={100} label="Rest Score"
-              color={restScoreColor} size="lg" sublabel="last night" />
+              color={restScoreColor} size={ringSizeFor(ctx)} sublabel="last night" />
           </CardContent>
         </Card>
       ),
@@ -82,13 +117,16 @@ export function RestPage() {
     {
       id: "duration_ring", label: "Sleep Duration", icon: Clock,
       defaultW: 1, defaultH: 2,
-      visualizations: [{ id: "ring", label: "Ring" }],
-      render: () => (
+      visualizations: [
+        { id: "ring", label: "Ring" },
+        { id: "gauge", label: "Gauge" },
+      ],
+      render: (ctx: WidgetRenderContext) => (
         <Card className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm h-full"
           onClick={() => navigate("/body/sleep/metric/sleepDuration")}>
           <CardContent className="p-5 flex items-center justify-center h-full">
             <MetricRing value={sleepDuration ?? 0} max={sleepGoal} label="Duration"
-              unit="h" color="#6366f1" size="lg" sublabel={`/ ${sleepGoal}h goal`} />
+              unit="h" color="#6366f1" size={ringSizeFor(ctx)} sublabel={`/ ${sleepGoal}h goal`} />
           </CardContent>
         </Card>
       ),
@@ -96,15 +134,16 @@ export function RestPage() {
     {
       id: "readiness_ring", label: "Readiness", icon: Activity,
       defaultW: 1, defaultH: 2,
-      visualizations: [{ id: "ring", label: "Ring" }],
-      render: () => (
-        <Popover>
-          <PopoverTrigger asChild>
+      visualizations: [
+        { id: "ring", label: "Ring" },
+        { id: "gauge", label: "Gauge" },
+      ],
+      render: (ctx: WidgetRenderContext) => (
             <Card className="cursor-pointer hover:shadow-md transition-all border-border/60 rounded-2xl shadow-sm h-full">
               <CardContent className="p-5 flex items-center justify-center h-full">
                 {recoveryReadiness !== null ? (
                   <MetricRing value={recoveryReadiness} max={100} label="Readiness"
-                    color={recoveryColor} size="lg" sublabel="recovery" />
+                    color={recoveryColor} size={ringSizeFor(ctx)} sublabel="recovery" />
                 ) : (
                   <div className="flex flex-col items-center">
                     <div className="relative" style={{ width: 140, height: 140 }}>
@@ -123,23 +162,17 @@ export function RestPage() {
                 )}
               </CardContent>
             </Card>
-          </PopoverTrigger>
-          {recoveryReadiness === null && (
-            <PopoverContent className="w-72">
-              <h4 className="text-sm font-semibold mb-1">Recovery Readiness</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Calculated from overnight HRV and resting HR. Requires a connected wearable.
-              </p>
-            </PopoverContent>
-          )}
-        </Popover>
       ),
     },
     // ── Sections ─────────────────────────────────────────────────────────────
     {
       id: "tonight_rhythm", label: "Tonight's Rhythm", icon: Moon,
       defaultW: 3, defaultH: 2,
-      visualizations: [{ id: "default", label: "Rhythm Card" }],
+      allowedSizes: [{ w: 3, h: 3 }, { w: 3, h: 4 }],
+      visualizations: [
+        { id: "timeline", label: "Timeline" },
+        { id: "wave", label: "Wave" },
+      ],
       render: () => (
         <TonightRhythmCard windDownTime={bodyProfile?.windDownTime ?? "22:00"}
           bedTarget={bodyProfile?.bedTarget ?? "23:00"} wakeTarget={bodyProfile?.wakeTarget ?? "07:00"}
@@ -149,52 +182,72 @@ export function RestPage() {
     {
       id: "today_sessions", label: "Today's Sessions", icon: ListChecks,
       defaultW: 3, defaultH: 2,
+      allowedSizes: [{ w: 3, h: 2 }, { w: 3, h: 3 }],
       visualizations: [{ id: "default", label: "Sessions List" }],
       render: () => <TodaySessions module="rest" />,
     },
-    {
-      id: "last_night", label: "Last Night Breakdown", icon: Moon,
-      defaultW: 3, defaultH: 2,
-      visualizations: [{ id: "default", label: "Breakdown Card" }],
-      render: () => (
-        <LastNightBreakdown
-          timeInBed={lastLog ? parseFloat(lastLog.actualHours || 0) : null}
-          efficiency={lastLog
-            ? Math.min(100, Math.round((parseFloat(lastLog.actualHours || 0) / parseFloat(lastLog.plannedHours || sleepGoal)) * 100))
-            : null}
-          bedtime={lastLog?.bedtime ?? null} wakeTime={lastLog?.wakeTime ?? null} />
-      ),
-    },
-    {
-      id: "recovery_physiology", label: "Recovery Physiology", icon: Activity,
-      defaultW: 3, defaultH: 3,
-      visualizations: [{ id: "default", label: "Physiology Card" }],
-      render: () => <RecoveryPhysiology />,
-    },
-    {
-      id: "rest_impact", label: "Today's Rest Impact", icon: TrendingUp,
-      defaultW: 3, defaultH: 2,
-      visualizations: [{ id: "default", label: "Impact Card" }],
-      render: () => <TodaysRestImpact restScore={restScore} recoveryReadiness={recoveryReadiness} />,
-    },
+    ...([
+      { id: "time_in_bed", label: "Time in Bed", value: lastLog ? parseFloat(lastLog.actualHours || 0) : null, unit: "h", metric: "timeInBed", color: "#6366f1", icon: Moon },
+      { id: "sleep_efficiency", label: "Efficiency", value: lastLog ? Math.min(100, Math.round((parseFloat(lastLog.actualHours || 0) / parseFloat(lastLog.plannedHours || sleepGoal)) * 100)) : null, unit: "%", metric: "sleepEfficiency", color: "#22c55e", icon: TrendingUp },
+      { id: "bedtime", label: "Bedtime", value: lastLog?.bedtime ?? null, metric: "bedtime", icon: Clock },
+      { id: "wake_time", label: "Wake Time", value: lastLog?.wakeTime ?? null, metric: "wakeTime", icon: Clock },
+      { id: "sleep_latency", label: "Sleep Latency", value: null, unit: "min", metric: "sleepLatency", icon: Activity },
+      { id: "rem_sleep", label: "REM", value: null, unit: "h", metric: "rem", color: "#818cf8", icon: Waves },
+      { id: "deep_sleep", label: "Deep Sleep", value: null, unit: "h", metric: "deepSleep", color: "#6366f1", icon: Moon },
+      { id: "awake_time", label: "Awake", value: null, unit: "min", metric: "awakeTime", color: "#ef4444", icon: Activity },
+      { id: "overnight_hr", label: "Overnight HR", value: null, unit: "bpm", metric: "overnightHR", color: "#ef4444", icon: Activity },
+      { id: "overnight_hrv", label: "Overnight HRV", value: null, unit: "ms", metric: "overnightHRV", color: "#14b8a6", icon: Activity },
+      { id: "respiratory_rate", label: "Respiratory Rate", value: null, unit: "rpm", metric: "respiratoryRate", color: "#3b82f6", icon: Waves },
+      { id: "temperature_deviation", label: "Temperature", value: null, unit: "C", metric: "tempDeviation", color: "#f59e0b", icon: Activity },
+      { id: "spo2", label: "SpO2", value: null, unit: "%", metric: "spO2", color: "#22c55e", icon: Activity },
+    ].map((metric) => ({
+      id: metric.id, label: metric.label, icon: metric.icon,
+      defaultW: 1, defaultH: 1,
+      visualizations: metric.id === "sleep_efficiency"
+        ? [{ id: "gauge", label: "Gauge" }, { id: "bar", label: "Bar" }]
+        : metric.id === "bedtime" || metric.id === "wake_time"
+          ? [{ id: "timeline", label: "Timeline" }, { id: "number", label: "Number" }]
+          : metric.id === "rem_sleep" || metric.id === "deep_sleep" || metric.id === "awake_time"
+            ? [{ id: "stacked", label: "Stacked" }, { id: "timeline", label: "Timeline" }]
+            : metric.id.startsWith("overnight") || metric.id === "respiratory_rate" || metric.id === "temperature_deviation" || metric.id === "spo2"
+              ? [{ id: "sparkline", label: "Sparkline" }, { id: "bar", label: "Bar" }]
+              : [{ id: "bar", label: "Bar" }, { id: "number", label: "Number" }],
+      render: () => <RestMetricCard label={metric.label} value={metric.value} unit={metric.unit} color={metric.color} icon={metric.icon} onClick={() => navigate(`/body/rest/metric/${metric.metric}`)} />,
+    }))),
+    ...([
+      { id: "focus_capacity", label: "Focus Capacity", value: recoveryReadiness === null && restScore === null ? "-" : (recoveryReadiness ?? restScore ?? 0) >= 70 ? "High" : (recoveryReadiness ?? restScore ?? 0) >= 40 ? "Moderate" : "Low", detail: "Mental output guidance", icon: Brain },
+      { id: "workout_readiness", label: "Workout Readiness", value: recoveryReadiness === null && restScore === null ? "-" : (recoveryReadiness ?? restScore ?? 0) >= 75 ? "Ready" : (recoveryReadiness ?? restScore ?? 0) >= 45 ? "Light only" : "Rest day", detail: "Training guidance", icon: Dumbbell },
+      { id: "energy_dip", label: "Energy Dip", value: "14:00", detail: "Likely dip window", icon: Zap },
+      { id: "nap_recommendation", label: "Nap", value: (recoveryReadiness ?? restScore ?? 100) < 60 ? "Recommended" : "Optional", detail: "Before 15:00", icon: Coffee },
+    ].map((impact) => ({
+      id: impact.id, label: impact.label, icon: impact.icon,
+      defaultW: 1, defaultH: 1,
+      visualizations: [
+        { id: "impact", label: "Impact Card" },
+        { id: "number", label: "Number" },
+      ],
+      render: () => <RestMetricCard label={impact.label} value={impact.value} detail={impact.detail} icon={impact.icon} onClick={() => navigate("/planner")} />,
+    }))),
     {
       id: "rest_chronology", label: "Rest Chronology", icon: Waves,
       defaultW: 3, defaultH: 3,
-      visualizations: [{ id: "default", label: "Sleep Timeline" }],
+      allowedSizes: [{ w: 3, h: 3 }, { w: 3, h: 4 }, { w: 3, h: 5 }],
+      visualizations: [
+        { id: "timeline", label: "Timeline" },
+        { id: "stacked", label: "Stacked Blocks" },
+      ],
       render: () => <RestChronology />,
-    },
-    {
-      id: "rest_trends", label: "Rest Trends", icon: BarChart2,
-      defaultW: 3, defaultH: 3,
-      visualizations: [{ id: "default", label: "Trend Chart" }],
-      render: () => <RestTrends restScore={restScore} sleepDuration={sleepDuration} />,
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [restScore, sleepDuration, recoveryReadiness, sleepGoal, lastLog, bodyProfile, dailyState, showNoDataBanner, showWarningBanner, restScoreColor, recoveryColor]);
 
   return (
     <div className="p-4 sm:p-6 pb-24 max-w-7xl mx-auto animate-in fade-in duration-700">
-      <div className="flex justify-end mb-3">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Body</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">Rest</h1>
+        </div>
         <LogRestDialog>
           <Button size="sm"
             className="gap-1.5 shadow-sm rounded-xl bg-indigo-500 hover:bg-indigo-600 border-none text-white">
@@ -208,9 +261,9 @@ export function RestPage() {
   );
 }
 
-function RestAiBrief({ dailyState, showNoDataWarning, lowRecoveryWarning }: {
+function RestAiBrief({ dailyState, showNoDataWarning, lowRecoveryWarning, ...rootProps }: {
   dailyState: any; showNoDataWarning?: boolean; lowRecoveryWarning?: boolean;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   const { data, isLoading } = useQuery({
     queryKey: ["/api/rest/ai-brief", JSON.stringify(dailyState)],
     queryFn: async () => {
@@ -225,6 +278,6 @@ function RestAiBrief({ dailyState, showNoDataWarning, lowRecoveryWarning }: {
   return (
     <ModuleBriefing title="Briefing" kicker="Sensei AI"
       content={data?.brief ? warningPrefix + data.brief : (showNoDataWarning ? fallback : data?.brief)}
-      isLoading={isLoading} accentColor="bg-indigo-500/10" />
+      isLoading={isLoading} accentColor="bg-indigo-500/10" {...rootProps} />
   );
 }

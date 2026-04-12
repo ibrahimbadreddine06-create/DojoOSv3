@@ -1,10 +1,11 @@
+import type React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Watch } from "lucide-react";
-import { SectionHeader } from "../section-header";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
 
 const HR_ZONES = [
   { zone: 0, name: "Rest", color: "#6b7280", range: "0–100 bpm" },
@@ -27,7 +28,8 @@ export function HrZonesSection({
   cardioFocus,
   cardioLoad,
   wearableConnected = false,
-}: HrZonesSectionProps) {
+  ...rootProps
+}: HrZonesSectionProps & React.HTMLAttributes<HTMLDivElement>) {
   const [, navigate] = useLocation();
   const totalMinutes = zoneData?.reduce((s, z) => s + z.minutes, 0) || 0;
 
@@ -46,18 +48,21 @@ export function HrZonesSection({
   };
 
   return (
-    <div>
-      <SectionHeader title="HR zones & cardio focus" kicker="Heart Rate">
-        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-1">
-          <Watch className="w-2.5 h-2.5" /> Wearable
-        </Badge>
-      </SectionHeader>
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
+      <Card
+        {...rootProps}
+        className={cn("h-full w-full overflow-hidden border-border/60 shadow-sm", rootProps.className)}
+      >
+        {rootProps.children}
+        <CardContent className="flex h-full flex-col p-0">
+          <div className="flex items-center justify-between gap-3 border-b border-border p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">HR zones</p>
+            <Badge variant="outline" className="h-4 gap-1 px-1.5 py-0 text-[10px]">
+              <Watch className="h-2.5 w-2.5" /> Wearable
+            </Badge>
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
             {/* Left: HR Zones */}
-            <div className="p-4">
+            <div className="min-h-0 overflow-y-auto p-4">
               <h4 className="text-xs font-semibold mb-3">HR zones today</h4>
               <div className="space-y-2">
                 {HR_ZONES.map((zone) => {
@@ -85,7 +90,7 @@ export function HrZonesSection({
             </div>
 
             {/* Right: Cardio Focus + Cardio Load */}
-            <div className="p-4">
+            <div className="min-h-0 overflow-y-auto p-4">
               <h4 className="text-xs font-semibold mb-3">Cardio focus</h4>
 
               <div className="flex items-center gap-4">
@@ -138,6 +143,5 @@ export function HrZonesSection({
           </div>
         </CardContent>
       </Card>
-    </div>
   );
 }

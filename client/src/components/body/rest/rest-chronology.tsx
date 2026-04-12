@@ -50,7 +50,7 @@ function deriveEvents(logs: any[]): ChronologyEvent[] {
   });
 }
 
-export function RestChronology() {
+export function RestChronology(rootProps: React.HTMLAttributes<HTMLDivElement>) {
   const { data: allLogs, isLoading } = useQuery<any[]>({
     queryKey: ["/api/sleep-logs/all"],
   });
@@ -58,7 +58,8 @@ export function RestChronology() {
   const events = deriveEvents(allLogs?.slice(0, 7) || []);
 
   return (
-    <div className="space-y-4">
+    <div {...rootProps} className={`flex h-full w-full flex-col rounded-2xl border border-border/60 bg-card p-5 shadow-sm ${rootProps.className ?? ""}`}>
+      {rootProps.children}
       <SectionHeader title="Chronology" kicker="Timeline" />
 
       {isLoading ? (
@@ -73,7 +74,7 @@ export function RestChronology() {
           <p className="text-sm text-muted-foreground/60">No rest events logged yet</p>
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative min-h-0 flex-1 overflow-y-auto">
           {/* Timeline line */}
           <div className="absolute left-5 top-2 bottom-2 w-px bg-border/50" />
 
