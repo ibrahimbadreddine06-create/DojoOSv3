@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, ImageIcon, Plus, Settings2, Type, Upload, X } from "lucide-react";
+import { Clock, ImageIcon, Plus, Settings2, Type, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Visualization {
@@ -12,6 +12,21 @@ export interface Visualization {
   label: string;
 }
 
+/**
+ * Body-module language for Vision 2:
+ * - A body page is one section of the Body module, for example Hub, Rest,
+ *   Activity, Nutrition, or Hygiene.
+ * - A card is the conceptual unit on a body page, for example Effort Score.
+ *   The current code still calls this a WidgetDefinition for historical reasons.
+ * - A widget is a display form inside that card, for example Ring, Bar,
+ *   Gauge, Sparkline, Heatmap, Timeline, List, or Number.
+ *   The current code stores these under `visualizations`.
+ * - A size is the grid footprint for that widget/card, for example 1x1,
+ *   2x1, 1x2, 2x2, or 3x2.
+ *
+ * So "Effort Score" is one card. "Effort Score Ring" and "Effort Score Bar"
+ * are widgets/display forms inside that card, not separate cards.
+ */
 export type WidgetSize = {
   w: number;
   h: number;
@@ -32,9 +47,22 @@ export interface WidgetDefinition {
   icon: React.ComponentType<{ className?: string }>;
   defaultW: number;
   defaultH: number;
+  /**
+   * Returns widget content only.
+   * ModuleGrid owns the outer shell, controls, sizing, drag, and resize behavior.
+   */
   render: (context: WidgetRenderContext) => React.ReactNode;
   visualizations: Visualization[];
   allowedSizes?: WidgetSize[];
+}
+
+export function defineWidget(definition: WidgetDefinition): WidgetDefinition {
+  return {
+    ...definition,
+    visualizations: definition.visualizations?.length
+      ? definition.visualizations
+      : [{ id: "default", label: "Default" }],
+  };
 }
 
 interface ModuleGridState {
@@ -81,25 +109,28 @@ type GridPlacement = {
   column: number;
 };
 
+type ActiveWidget = {
+  key: string;
+  widget: WidgetDefinition;
+  visualizationId: string;
+  label: string;
+};
+
 type ResizeHandle = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
 
-const STORAGE_VERSION = 12;
+const STORAGE_VERSION = 18;
 const MIN_CELL_SIZE = 112;
 const MAX_GRID_COLUMNS = 12;
 const MAX_WIDGET_ROWS = 8;
-const DRAG_SETTLE_MS = 650;
+const DRAG_SETTLE_MS = 0;
 const DRAG_START_THRESHOLD = 8;
-const DEFAULT_ALLOWED_SIZES: WidgetSize[] = [
-  { w: 1, h: 1 },
-  { w: 2, h: 1 },
-  { w: 3, h: 1 },
-  { w: 1, h: 2 },
-  { w: 2, h: 2 },
-  { w: 3, h: 2 },
-  { w: 1, h: 3 },
-  { w: 2, h: 3 },
-  { w: 3, h: 3 },
-];
+
+const ALL_WIDGET_SIZES: WidgetSize[] = Array.from({ length: MAX_GRID_COLUMNS }, (_, wIndex) =>
+  Array.from({ length: MAX_WIDGET_ROWS }, (_, hIndex) => ({
+    w: wIndex + 1,
+    h: hIndex + 1,
+  })),
+).flat();
 
 
 function clamp(n: number, min: number, max: number) {
@@ -120,7 +151,7 @@ function shapeFor(size: WidgetSize): WidgetShape {
 }
 
 function allowedSizes(widget: WidgetDefinition): WidgetSize[] {
-  const sizes = widget.allowedSizes?.length ? widget.allowedSizes : DEFAULT_ALLOWED_SIZES;
+  const sizes = widget.allowedSizes?.length ? widget.allowedSizes : ALL_WIDGET_SIZES;
   const fallback = defaultSize(widget);
   const all = sizes.some((size) => size.w === fallback.w && size.h === fallback.h)
     ? sizes
@@ -132,6 +163,25 @@ function visualizationOptions(widget: WidgetDefinition): Visualization[] {
   return widget.visualizations.length
     ? widget.visualizations
     : [{ id: "default", label: "Current" }];
+}
+
+function widgetVariantKey(widgetId: string, visualizationId: string) {
+  return `${widgetId}::${visualizationId}`;
+}
+
+function defaultVisualizationId(widget: WidgetDefinition) {
+  return visualizationOptions(widget)[0]?.id ?? "default";
+}
+
+function defaultWidgetKey(widget: WidgetDefinition) {
+  return widgetVariantKey(widget.id, defaultVisualizationId(widget));
+}
+
+function widgetVariantLabel(widget: WidgetDefinition, visualizationId: string) {
+  const options = visualizationOptions(widget);
+  if (options.length <= 1) return widget.label;
+  const visualization = options.find((option) => option.id === visualizationId);
+  return visualization ? `${widget.label} ${visualization.label}` : widget.label;
 }
 
 function realVisualizationId(widget: WidgetDefinition, visualizationId: string) {
@@ -153,50 +203,88 @@ function fitSizeToColumns(size: WidgetSize, columns: number): WidgetSize {
   return { ...size, w: clamp(Math.round(size.w), 1, columns) };
 }
 
-function freshState(widgets: WidgetDefinition[]): ModuleGridState {
+function freshState(widgets: WidgetDefinition[], initialActiveWidgetIds?: string[]): ModuleGridState {
+  const activeIds = initialActiveWidgetIds?.length
+    ? widgets
+      .filter((widget) => initialActiveWidgetIds.includes(widget.id))
+      .map(defaultWidgetKey)
+    : widgets.map(defaultWidgetKey);
   return {
-    activeIds: widgets.map((widget) => widget.id),
-    sizes: Object.fromEntries(widgets.map((widget) => [widget.id, defaultSize(widget)])),
-    visualizations: Object.fromEntries(widgets.map((widget) => [widget.id, widget.visualizations[0]?.id ?? "default"])),
+    activeIds,
+    sizes: Object.fromEntries(widgets.map((widget) => [defaultWidgetKey(widget), defaultSize(widget)])),
+    visualizations: Object.fromEntries(widgets.map((widget) => {
+      const visualizationId = defaultVisualizationId(widget);
+      return [widgetVariantKey(widget.id, visualizationId), visualizationId];
+    })),
     gridColumns: undefined,
     customWidgets: [],
   };
 }
 
-function loadState(key: string, widgets: WidgetDefinition[]): ModuleGridState {
+function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidgetIds?: string[]): ModuleGridState {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return freshState(widgets);
+    if (!raw) return freshState(widgets, initialActiveWidgetIds);
 
     const parsed = JSON.parse(raw) as ModuleGridState & { version?: number };
-    if (parsed.version !== STORAGE_VERSION) return freshState(widgets);
+    if (parsed.version !== STORAGE_VERSION && parsed.version !== 12) return freshState(widgets, initialActiveWidgetIds);
 
-    const ids = new Set(widgets.map((widget) => widget.id));
     const customWidgets = parsed.customWidgets ?? [];
-    customWidgets.forEach((widget) => ids.add(widget.id));
-    const activeIds = (parsed.activeIds ?? []).filter((id) => ids.has(id));
-    const sizes = Object.fromEntries(
-      widgets.map((widget) => {
-        const saved = parsed.sizes?.[widget.id];
-        return [widget.id, saved ? nearestAllowed(widget, saved) : defaultSize(widget)];
-      }),
-    );
+    const widgetById = new Map(widgets.map((widget) => [widget.id, widget]));
+    const validKeys = new Set<string>();
+    widgets.forEach((widget) => {
+      visualizationOptions(widget).forEach((visualization) => {
+        validKeys.add(widgetVariantKey(widget.id, visualization.id));
+      });
+    });
+    customWidgets.forEach((widget) => validKeys.add(widgetVariantKey(widget.id, widget.type)));
+
+    const normalizeActiveId = (id: string) => {
+      if (validKeys.has(id)) return id;
+      const widget = widgetById.get(id);
+      if (widget) {
+        const savedVisualization = parsed.visualizations?.[id] ?? defaultVisualizationId(widget);
+        return widgetVariantKey(widget.id, realVisualizationId(widget, savedVisualization));
+      }
+      const custom = customWidgets.find((widget) => widget.id === id);
+      if (custom) return widgetVariantKey(custom.id, custom.type);
+      return null;
+    };
+
+    const activeIds = Array.from(new Set((parsed.activeIds ?? [])
+      .map(normalizeActiveId)
+      .filter((id): id is string => id !== null && validKeys.has(id))));
+
+    const sizes: Record<string, WidgetSize> = {};
+    widgets.forEach((widget) => {
+      visualizationOptions(widget).forEach((visualization) => {
+        const variantKey = widgetVariantKey(widget.id, visualization.id);
+        const saved = parsed.sizes?.[variantKey] ?? parsed.sizes?.[widget.id];
+        sizes[variantKey] = saved ? nearestAllowed(widget, saved) : defaultSize(widget);
+      });
+    });
     customWidgets.forEach((widget) => {
-      sizes[widget.id] = parsed.sizes?.[widget.id] ?? { w: widget.type === "text" ? 2 : 1, h: 1 };
+      const variantKey = widgetVariantKey(widget.id, widget.type);
+      sizes[variantKey] = parsed.sizes?.[variantKey] ?? parsed.sizes?.[widget.id] ?? { w: widget.type === "text" ? 2 : 1, h: 1 };
     });
 
     return {
       activeIds,
       sizes,
       visualizations: {
-        ...Object.fromEntries(widgets.map((widget) => [widget.id, widget.visualizations[0]?.id ?? "default"])),
-        ...(parsed.visualizations ?? {}),
+        ...Object.fromEntries(widgets.flatMap((widget) => (
+          visualizationOptions(widget).map((visualization) => [
+            widgetVariantKey(widget.id, visualization.id),
+            visualization.id,
+          ])
+        ))),
+        ...Object.fromEntries(customWidgets.map((widget) => [widgetVariantKey(widget.id, widget.type), widget.type])),
       },
       gridColumns: parsed.gridColumns,
       customWidgets,
     };
   } catch {
-    return freshState(widgets);
+    return freshState(widgets, initialActiveWidgetIds);
   }
 }
 
@@ -258,7 +346,7 @@ function buildPlacements(
   let cursorCell = 0;
 
   if (pinned) {
-    const pinnedSize = sizes[pinned.id] ?? { w: 1, h: 1 };
+    const pinnedSize = fitSizeToColumns(sizes[pinned.id] ?? { w: 1, h: 1 }, columns);
     const column = clamp(pinned.column, 0, Math.max(0, columns - pinnedSize.w));
     const row = Math.max(0, pinned.row);
     markPlaced(occupied, row, column, pinnedSize);
@@ -267,7 +355,7 @@ function buildPlacements(
 
   ids.forEach((id) => {
     if (id === pinned?.id) return;
-    const size = sizes[id] ?? { w: 1, h: 1 };
+    const size = fitSizeToColumns(sizes[id] ?? { w: 1, h: 1 }, columns);
     let cell = cursorCell;
     let placed = false;
 
@@ -427,17 +515,21 @@ function CustomImageWidget({
 
 function AvailableWidgetPanel({
   widget,
+  activeVisualizationIds,
   selectedVisualizationId,
   onSelectVisualization,
   onAdd,
 }: {
   widget: WidgetDefinition;
+  activeVisualizationIds: string[];
   selectedVisualizationId?: string;
   onSelectVisualization: (id: string) => void;
   onAdd: (visualizationId?: string) => void;
 }) {
-  const options = visualizationOptions(widget);
-  const selected = selectedVisualizationId ?? options[0]?.id ?? "default";
+  const options = visualizationOptions(widget).filter((visualization) => !activeVisualizationIds.includes(visualization.id));
+  const selected = selectedVisualizationId && options.some((option) => option.id === selectedVisualizationId)
+    ? selectedVisualizationId
+    : options[0]?.id ?? defaultVisualizationId(widget);
   const renderVisualization = realVisualizationId(widget, selected);
   const previewSize = defaultSize(widget);
   const preview = widget.render({
@@ -451,7 +543,7 @@ function AvailableWidgetPanel({
     <div className="space-y-3">
       <div>
         <p className="truncate text-sm font-black">{widget.label}</p>
-        <p className="mt-0.5 text-xs font-medium text-muted-foreground">Pick a style, then click the preview to add it.</p>
+        <p className="mt-0.5 text-xs font-medium text-muted-foreground">Pick a widget variant, then click the preview to add it.</p>
       </div>
 
       <div className="flex gap-1 overflow-x-auto pb-1">
@@ -471,7 +563,7 @@ function AvailableWidgetPanel({
         type="button"
         className="dojo-available-preview"
         onClick={() => onAdd(renderVisualization)}
-        aria-label={`Add ${widget.label}`}
+        aria-label={`Add ${widgetVariantLabel(widget, renderVisualization)}`}
       >
         <div className="dojo-available-preview-content">
           {preview}
@@ -487,11 +579,16 @@ function AvailableWidgetPanel({
 export interface ModuleGridProps {
   widgets: WidgetDefinition[];
   storageKey: string;
+  initialActiveWidgetIds?: string[];
 }
 
-export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
+export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds }: ModuleGridProps) {
+  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} />;
+}
+
+function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: ModuleGridProps) {
   const [editing, setEditing] = useState(false);
-  const [state, setState] = useState<ModuleGridState>(() => loadState(storageKey, widgets));
+  const [state, setState] = useState<ModuleGridState>(() => loadState(storageKey, widgets, initialActiveWidgetIds));
   const [addPopoverOpen, setAddPopoverOpen] = useState(false);
   const [availablePopoverId, setAvailablePopoverId] = useState<string | null>(null);
   const [availableVisualizationId, setAvailableVisualizationId] = useState<string | undefined>();
@@ -612,9 +709,9 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
     setState((prev) => ({
       ...prev,
       customWidgets: [...(prev.customWidgets ?? []), customWidget],
-      activeIds: [...prev.activeIds, id],
-      sizes: { ...prev.sizes, [id]: size },
-      visualizations: { ...prev.visualizations, [id]: type },
+      activeIds: [...prev.activeIds, widgetVariantKey(id, type)],
+      sizes: { ...prev.sizes, [widgetVariantKey(id, type)]: size },
+      visualizations: { ...prev.visualizations, [widgetVariantKey(id, type)]: type },
     }));
     setAddPopoverOpen(false);
     if (type === "text") {
@@ -659,19 +756,67 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
   const activeWidgets = useMemo(() => {
     const byId = new Map(allWidgets.map((widget) => [widget.id, widget]));
     return state.activeIds
-      .map((id) => byId.get(id))
-      .filter((widget): widget is WidgetDefinition => Boolean(widget));
-  }, [allWidgets, state.activeIds]);
+      .map((key) => {
+        const [widgetId, savedVisualizationId] = key.split("::");
+        const widget = byId.get(widgetId);
+        if (!widget) return null;
+        const visualizationId = realVisualizationId(widget, state.visualizations[key] ?? savedVisualizationId ?? defaultVisualizationId(widget));
+        return {
+          key,
+          widget,
+          visualizationId,
+          label: widgetVariantLabel(widget, visualizationId),
+        };
+      })
+      .filter((entry): entry is ActiveWidget => Boolean(entry));
+  }, [allWidgets, customDefinitions, state.activeIds, state.visualizations]);
 
   const hiddenWidgets = useMemo(
-    () => widgets.filter((widget) => !state.activeIds.includes(widget.id)),
+    () => widgets.filter((widget) => visualizationOptions(widget).some((visualization) => (
+      !state.activeIds.includes(widgetVariantKey(widget.id, visualization.id))
+    ))),
     [widgets, state.activeIds],
   );
 
   const draggedWidget = useMemo(
-    () => allWidgets.find((widget) => widget.id === dragOverlay?.id) ?? null,
-    [allWidgets, dragOverlay?.id],
+    () => activeWidgets.find((entry) => entry.key === dragOverlay?.id) ?? null,
+    [activeWidgets, dragOverlay?.id],
   );
+
+  const renderWidgetShell = useCallback((
+    content: React.ReactNode,
+    shellProps: React.HTMLAttributes<HTMLDivElement>,
+    controls?: React.ReactNode,
+  ) => {
+    if (React.isValidElement<{ className?: string; children?: React.ReactNode; style?: React.CSSProperties }>(content) && content.type !== React.Fragment) {
+      return React.cloneElement(content, {
+        ...shellProps,
+        className: cn("dojo-widget-root cursor-pointer", content.props.className, shellProps.className),
+        style: { ...content.props.style, ...shellProps.style },
+        children: (
+          <>
+            {controls}
+            {content.props.children}
+          </>
+        ),
+      });
+    }
+
+    return (
+      <div
+        {...shellProps}
+        className={cn(
+          "dojo-widget-root bg-card border border-border/60 shadow-sm rounded-2xl flex flex-col p-4 transition-shadow hover:shadow-md cursor-pointer overflow-visible",
+          shellProps.className,
+        )}
+      >
+        {controls}
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          {content}
+        </div>
+      </div>
+    );
+  }, []);
 
   const placementsById = useMemo(() => {
     return new Map(
@@ -732,44 +877,37 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
     previousRectsRef.current = nextRects;
   }, [dragId, effectiveColumns, hardPlacement, placementsById, state.activeIds, state.sizes]);
 
-  const setWidgetSize = useCallback((widget: WidgetDefinition, size: WidgetSize) => {
+  const setWidgetSize = useCallback((entry: ActiveWidget, size: WidgetSize) => {
     setState((prev) => ({
       ...prev,
       sizes: {
         ...prev.sizes,
-        [widget.id]: fitSizeToColumns(nearestAllowed(widget, size), effectiveColumns),
+        [entry.key]: fitSizeToColumns(nearestAllowed(entry.widget, size), effectiveColumns),
       },
     }));
   }, [effectiveColumns]);
 
-  const removeWidget = useCallback((id: string) => {
-    setHardPlacement((placement) => placement?.id === id ? null : placement);
-    setState((prev) => ({
-      ...prev,
-      activeIds: prev.activeIds.filter((activeId) => activeId !== id),
-      customWidgets: (prev.customWidgets ?? []).filter((widget) => widget.id !== id),
-    }));
-  }, []);
-
   const addWidget = useCallback((id: string, visualizationId?: string) => {
     const widget = widgets.find((w) => w.id === id);
     if (!widget) return;
+    const realVisualization = realVisualizationId(widget, visualizationId ?? defaultVisualizationId(widget));
+    const variantKey = widgetVariantKey(id, realVisualization);
 
     setState((prev) => ({
       ...prev,
-      activeIds: prev.activeIds.includes(id) ? prev.activeIds : [...prev.activeIds, id],
+      activeIds: prev.activeIds.includes(variantKey) ? prev.activeIds : [...prev.activeIds, variantKey],
       sizes: {
         ...prev.sizes,
-        [id]: fitSizeToColumns(prev.sizes[id] ?? defaultSize(widget), effectiveColumns),
+        [variantKey]: fitSizeToColumns(prev.sizes[variantKey] ?? defaultSize(widget), effectiveColumns),
       },
       visualizations: {
         ...prev.visualizations,
-        [id]: visualizationId ?? prev.visualizations[id] ?? widget.visualizations[0]?.id ?? "default",
+        [variantKey]: realVisualization,
       },
     }));
   }, [effectiveColumns, widgets]);
 
-  const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>, widget: WidgetDefinition) => {
+  const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>, entry: ActiveWidget) => {
     if (!editing) return;
     if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
 
@@ -777,9 +915,9 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
     event.stopPropagation();
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const size = state.sizes[widget.id] ?? defaultSize(widget);
+    const size = state.sizes[entry.key] ?? defaultSize(entry.widget);
     dragRef.current = {
-      id: widget.id,
+      id: entry.key,
       startX: event.clientX,
       startY: event.clientY,
       hasMoved: false,
@@ -791,10 +929,11 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
       width: rect.width,
       height: rect.height,
     };
-    setHardPlacement(null);
-    setDragId(widget.id);
+    const initialPlacement = gridRef.current ? hardPlacementFromRect(gridRef.current, { left: rect.left, top: rect.top }, size) : null;
+    setHardPlacement(initialPlacement ? { id: entry.key, ...initialPlacement } : null);
+    setDragId(entry.key);
     setDragOverlay({
-      id: widget.id,
+      id: entry.key,
       x: rect.left,
       y: rect.top,
       width: rect.width,
@@ -888,7 +1027,7 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
 
   const beginResize = useCallback((
     event: React.PointerEvent,
-    widget: WidgetDefinition,
+    entry: ActiveWidget,
     handle: ResizeHandle,
   ) => {
     event.preventDefault();
@@ -900,10 +1039,10 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
     const metrics = getGridMetrics(grid);
     const startX = event.clientX;
     const startY = event.clientY;
-    const start = state.sizes[widget.id] ?? defaultSize(widget);
+    const start = state.sizes[entry.key] ?? defaultSize(entry.widget);
     let lastSize = start;
     resizingRef.current = true;
-    setResizeId(widget.id);
+    setResizeId(entry.key);
 
     const affectsLeft = handle.includes("w");
     const affectsRight = handle.includes("e");
@@ -921,7 +1060,7 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
       };
       if (nextSize.w === lastSize.w && nextSize.h === lastSize.h) return;
       lastSize = nextSize;
-      setWidgetSize(widget, nextSize);
+      setWidgetSize(entry, nextSize);
     };
 
     const onUp = () => {
@@ -963,7 +1102,10 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
                   Add widget
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 rounded-2xl p-2">
+              <PopoverContent align="end" className="w-64 rounded-2xl p-2 max-h-[80vh] overflow-y-auto">
+                <div className="mb-2 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 border-b border-border/40">
+                  Custom Widgets
+                </div>
                 <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("image")}>
                   <ImageIcon className="h-4 w-4" />
                   <span>Image</span>
@@ -976,6 +1118,28 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
                   <Clock className="h-4 w-4" />
                   <span>Clock</span>
                 </button>
+
+                {hiddenWidgets.length > 0 && (
+                  <>
+                    <div className="mt-4 mb-2 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 border-b border-border/40">
+                      Available Biometrics
+                    </div>
+                    {hiddenWidgets.map((widget) => (
+                      <button
+                        key={widget.id}
+                        type="button"
+                        className="dojo-add-widget-option"
+                        onClick={() => {
+                          addWidget(widget.id);
+                          setAddPopoverOpen(false);
+                        }}
+                      >
+                        {widget.icon ? <widget.icon className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        <span>{widget.label}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
               </PopoverContent>
             </Popover>
           )}
@@ -1000,81 +1164,46 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
             ...(cellSize ? { "--dojo-cell-size": `${cellSize}px` } : null),
           } as React.CSSProperties}
         >
-          {activeWidgets.map((widget) => {
-            const size = state.sizes[widget.id] ?? defaultSize(widget);
-            const visualizationId = state.visualizations[widget.id] ?? widget.visualizations[0]?.id ?? "default";
-            const content = widget.render({
+          {activeWidgets.map((entry) => {
+            const size = state.sizes[entry.key] ?? defaultSize(entry.widget);
+            const visualizationId = entry.visualizationId;
+            const content = entry.widget.render({
               size,
               shape: shapeFor(size),
               isEditing: editing,
               visualizationId,
             });
             const gridProps = {
-              key: widget.id,
-              onPointerDown: (event: React.PointerEvent<HTMLElement>) => beginDrag(event, widget),
-              onClickCapture: (event: React.MouseEvent<HTMLElement>) => {
+              key: entry.key,
+              onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => beginDrag(event, entry),
+              onClickCapture: (event: React.MouseEvent<HTMLDivElement>) => {
                 if (!editing) return;
                 if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
                 event.preventDefault();
                 event.stopPropagation();
               },
               style: {
-                gridColumn: `${(placementsById.get(widget.id)?.column ?? 0) + 1} / span ${size.w}`,
-                gridRow: `${(placementsById.get(widget.id)?.row ?? 0) + 1} / span ${size.h}`,
+                gridColumn: `${(placementsById.get(entry.key)?.column ?? 0) + 1} / span ${size.w}`,
+                gridRow: `${(placementsById.get(entry.key)?.row ?? 0) + 1} / span ${size.h}`,
               } as React.CSSProperties,
-              className: "",
-              "data-widget-id": widget.id,
+              "data-widget-id": entry.key,
               "data-widget-shape": shapeFor(size),
               "data-widget-w": size.w,
               "data-widget-h": size.h,
-              "data-dragging": dragId === widget.id ? "true" : undefined,
-              "data-resizing": resizeId === widget.id ? "true" : undefined,
+              "data-dragging": dragId === entry.key ? "true" : undefined,
+              "data-resizing": resizeId === entry.key ? "true" : undefined,
+              className: cn(editing && "is-editing select-none"),
             };
-
             const controls = editing ? (
               <>
-                <button
-                  type="button"
-                  className="dojo-widget-action dojo-remove-action"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    removeWidget(widget.id);
-                  }}
-                  aria-label={`Hide ${widget.label}`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-                <span className="dojo-resize-handle dojo-resize-n" onPointerDown={(event) => beginResize(event, widget, "n")} />
-                <span className="dojo-resize-handle dojo-resize-e" onPointerDown={(event) => beginResize(event, widget, "e")} />
-                <span className="dojo-resize-handle dojo-resize-s" onPointerDown={(event) => beginResize(event, widget, "s")} />
-                <span className="dojo-resize-handle dojo-resize-w" onPointerDown={(event) => beginResize(event, widget, "w")} />
-                <span className="dojo-resize-handle dojo-resize-ne" onPointerDown={(event) => beginResize(event, widget, "ne")} />
-                <span className="dojo-resize-handle dojo-resize-nw" onPointerDown={(event) => beginResize(event, widget, "nw")} />
-                <span className="dojo-resize-handle dojo-resize-se" onPointerDown={(event) => beginResize(event, widget, "se")} />
-                <span className="dojo-resize-handle dojo-resize-sw" onPointerDown={(event) => beginResize(event, widget, "sw")} />
+                <span className="dojo-resize-handle dojo-resize-n" onPointerDown={(event) => beginResize(event, entry, "n")} />
+                <span className="dojo-resize-handle dojo-resize-e" onPointerDown={(event) => beginResize(event, entry, "e")} />
+                <span className="dojo-resize-handle dojo-resize-s" onPointerDown={(event) => beginResize(event, entry, "s")} />
+                <span className="dojo-resize-handle dojo-resize-w" onPointerDown={(event) => beginResize(event, entry, "w")} />
               </>
             ) : null;
 
-            if (React.isValidElement<{ className?: string; children?: React.ReactNode; style?: React.CSSProperties }>(content) && content.type !== React.Fragment) {
-              return React.cloneElement(content, {
-                ...gridProps,
-                className: cn("dojo-widget-root", content.props.className, editing && "is-editing select-none"),
-                style: { ...content.props.style, ...gridProps.style },
-                children: (
-                  <>
-                    {controls}
-                    {content.props.children}
-                  </>
-                ),
-              });
-            }
-
-            return (
-              <div {...gridProps} className={cn("dojo-widget-root", editing && "is-editing select-none")}>
-                {controls}
-                {content}
-              </div>
-            );
+            return renderWidgetShell(content, gridProps, controls);
           })}
         </div>
       ) : (
@@ -1089,16 +1218,16 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
       )}
 
       {dragOverlay && draggedWidget && (() => {
-        const size = state.sizes[draggedWidget.id] ?? defaultSize(draggedWidget);
-        const visualizationId = state.visualizations[draggedWidget.id] ?? draggedWidget.visualizations[0]?.id ?? "default";
-        const content = draggedWidget.render({
+        const size = state.sizes[draggedWidget.key] ?? defaultSize(draggedWidget.widget);
+        const visualizationId = draggedWidget.visualizationId;
+        const content = draggedWidget.widget.render({
           size,
           shape: shapeFor(size),
           isEditing: true,
           visualizationId,
         });
         const overlayProps = {
-          className: "dojo-widget-root dojo-drag-overlay",
+          className: "dojo-drag-overlay",
           style: {
             left: dragOverlay.x,
             top: dragOverlay.y,
@@ -1107,22 +1236,10 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
           } as React.CSSProperties,
         };
 
-        if (React.isValidElement<{ className?: string; children?: React.ReactNode; style?: React.CSSProperties }>(content) && content.type !== React.Fragment) {
-          return React.cloneElement(content, {
-            ...overlayProps,
-            className: cn(overlayProps.className, content.props.className),
-            style: { ...content.props.style, ...overlayProps.style },
-          });
-        }
-
-        return (
-          <div {...overlayProps}>
-            {content}
-          </div>
-        );
+        return renderWidgetShell(content, overlayProps);
       })()}
 
-      {hiddenWidgets.length > 0 && (
+      {editing && hiddenWidgets.length > 0 && (
         <div className="mt-6">
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/45">
             Available widgets
@@ -1130,6 +1247,10 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {hiddenWidgets.map((widget) => {
               const Icon = widget.icon;
+              const activeVisualizationIds = visualizationOptions(widget)
+                .map((visualization) => visualization.id)
+                .filter((visualizationId) => state.activeIds.includes(widgetVariantKey(widget.id, visualizationId)));
+              const availableCount = visualizationOptions(widget).length - activeVisualizationIds.length;
               return (
                 <Popover
                   key={widget.id}
@@ -1151,7 +1272,7 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-bold">{widget.label}</span>
                         <span className="block truncate text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                          {visualizationOptions(widget).length} visualization{visualizationOptions(widget).length === 1 ? "" : "s"}
+                          {availableCount} widget{availableCount === 1 ? "" : "s"} available
                         </span>
                       </span>
                     </button>
@@ -1159,6 +1280,7 @@ export function ModuleGrid({ widgets, storageKey }: ModuleGridProps) {
                   <PopoverContent align="start" side="top" className="dojo-available-popover">
                     <AvailableWidgetPanel
                       widget={widget}
+                      activeVisualizationIds={activeVisualizationIds}
                       selectedVisualizationId={availableVisualizationId}
                       onSelectVisualization={setAvailableVisualizationId}
                       onAdd={(visualizationId) => {

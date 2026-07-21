@@ -14,6 +14,9 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { cn } from "@/lib/utils";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import { SenseiChatSidebar } from "@/components/sensei-chat-sidebar";
+import { Canvas } from "@react-three/fiber";
+import { View } from "@react-three/drei";
+import * as THREE from "three";
 
 import { ThemeProvider } from "@/contexts/theme-context";
 import { useQuery } from "@tanstack/react-query";
@@ -30,6 +33,7 @@ import CourseDetail from "@/pages/course-detail";
 import Disciplines from "@/pages/disciplines";
 import DisciplineDetail from "@/pages/discipline-detail";
 import Body from "@/pages/body";
+import BodyMetricDetail from "@/pages/body-metric-detail";
 import Worship from "@/pages/worship";
 import Finances from "@/pages/finances";
 import Masterpieces from "@/pages/masterpieces";
@@ -99,6 +103,7 @@ const ProtectedLanguages = () => <ProtectedRoute component={Languages} />;
 const ProtectedDisciplines = () => <ProtectedRoute component={Disciplines} />;
 const ProtectedDisciplineDetail = () => <ProtectedRoute component={DisciplineDetail} />;
 const ProtectedBody = () => <ProtectedRoute component={Body} />;
+const ProtectedBodyMetricDetail = () => <ProtectedRoute component={BodyMetricDetail} />;
 const ProtectedActivityDrilldown = () => <ProtectedRoute component={ActivityDrilldown} />;
 const ProtectedNutritionDrilldown = () => <ProtectedRoute component={NutritionDrilldown} />;
 const ProtectedRestDrilldown = () => <ProtectedRoute component={RestDrilldown} />;
@@ -129,6 +134,7 @@ function AuthenticatedRouter() {
       <Route path="/disciplines" component={ProtectedDisciplines} />
       <Route path="/disciplines/:id" component={ProtectedDisciplineDetail} />
       <Route path="/body" component={ProtectedBody} />
+      <Route path="/body/metric/:metricKey" component={ProtectedBodyMetricDetail} />
       <Route path="/body/activity/metric/:metricKey" component={ProtectedActivityDrilldown} />
       <Route path="/body/nutrition/metric/:metricKey" component={ProtectedNutritionDrilldown} />
       <Route path="/body/rest/metric/:metricKey" component={ProtectedRestDrilldown} />
@@ -303,7 +309,7 @@ function MainLayout() {
   if (isFullScreen) {
     return (
       <SidebarProvider style={sidebarStyle as React.CSSProperties} defaultOpen={true}>
-      <div className="flex h-[100dvh] w-full overflow-hidden">
+        <div className="flex h-[100dvh] w-full overflow-hidden">
           <FullScreenRouter />
         </div>
       </SidebarProvider>
@@ -440,6 +446,18 @@ export default function App() {
         <TooltipProvider>
           <AppContent />
           <Toaster />
+          {/* Global R3F Canvas for Dimensional UI Views */}
+          <Canvas
+            className="fixed inset-0 pointer-events-none z-[100]"
+            eventSource={typeof document !== 'undefined' ? document.body : undefined}
+            gl={{ antialias: true, alpha: true }}
+            style={{ background: "transparent" }}
+            onCreated={({ gl }) => {
+              gl.setClearColor(new THREE.Color("#000000"), 0);
+            }}
+          >
+            <View.Port />
+          </Canvas>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

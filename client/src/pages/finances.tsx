@@ -1,12 +1,12 @@
-import ComingSoon from "./coming-soon";
-import { DollarSign } from "lucide-react";
+import ComingSoon, { lockedModules } from "./coming-soon";
+import { Coins } from "lucide-react";
 
 export default function Finances() {
   return (
     <ComingSoon
-      moduleName="Finances"
-      description="Monitor your income, expenses, and savings to achieve financial freedom."
-      icon={<DollarSign className="h-10 w-10 text-muted-foreground" />}
+      moduleName={lockedModules.finances.name}
+      description={lockedModules.finances.description}
+      icon={<Coins className="h-10 w-10 text-primary" />}
     />
   );
 }

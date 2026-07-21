@@ -128,10 +128,10 @@ export interface IStorage {
   deleteNote(id: string): Promise<void>;
 
   // Body
-  getWorkouts(date: string): Promise<Workout[]>;
-  getWorkout(id: string): Promise<Workout | undefined>; // Added
-  createWorkout(data: InsertWorkout): Promise<Workout>;
-  updateWorkout(id: string, data: Partial<InsertWorkout>): Promise<Workout>; // Added update
+  getWorkouts(userId: string, date: string): Promise<Workout[]>;
+  getWorkout(userId: string, id: string): Promise<Workout | undefined>; // Added
+  createWorkout(data: InsertWorkout & { userId: string }): Promise<Workout>;
+  updateWorkout(userId: string, id: string, data: Partial<InsertWorkout>): Promise<Workout>; // Added update
 
   getExerciseLibrary(): Promise<ExerciseLibraryItem[]>;
   createExerciseLibraryItem(data: InsertExerciseLibraryItem): Promise<ExerciseLibraryItem>;
@@ -145,42 +145,38 @@ export interface IStorage {
   getMuscleStats(userId: string): Promise<MuscleStat[]>;
   upsertMuscleStat(userId: string, muscleId: string, recoveryScore: number): Promise<MuscleStat>;
 
-  getIntakeLogs(date: string): Promise<IntakeLog[]>;
-  createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
-  updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
-  deleteIntakeLog(id: string): Promise<void>;
   // Nutrition & Intake
-  getIntakeLogs(date: string): Promise<IntakeLog[]>;
-  createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog>;
-  updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
-  deleteIntakeLog(id: string): Promise<void>;
-  getSleepLogs(date: string): Promise<SleepLog[]>;
-  getAllSleepLogs(): Promise<SleepLog[]>;
-  createSleepLog(data: InsertSleepLog): Promise<SleepLog>;
-  // Hygiene — global templates, not date-specific
-  getHygieneRoutines(): Promise<HygieneRoutine[]>;
-  createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine>;
-  updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine>;
-  deleteHygieneRoutine(id: string): Promise<void>;
+  getIntakeLogs(userId: string, date: string): Promise<IntakeLog[]>;
+  createIntakeLog(data: InsertIntakeLog & { userId: string }): Promise<IntakeLog>;
+  updateIntakeLog(userId: string, id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog>;
+  deleteIntakeLog(userId: string, id: string): Promise<void>;
+  getSleepLogs(userId: string, date: string): Promise<SleepLog[]>;
+  getAllSleepLogs(userId: string): Promise<SleepLog[]>;
+  createSleepLog(data: InsertSleepLog & { userId: string }): Promise<SleepLog>;
+  // Hygiene — user-scoped recurring templates, not global data.
+  getHygieneRoutines(userId: string): Promise<HygieneRoutine[]>;
+  createHygieneRoutine(data: InsertHygieneRoutine & { userId: string }): Promise<HygieneRoutine>;
+  updateHygieneRoutine(userId: string, id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine>;
+  deleteHygieneRoutine(userId: string, id: string): Promise<void>;
   // Supplements & Fasting
-  getSupplementLogs(date: string): Promise<SupplementLog[]>;
-  createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog>;
-  updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog>;
-  deleteSupplementLog(id: string): Promise<void>;
-  getFastingLogs(): Promise<FastingLog[]>;
-  getActiveFastingLog(): Promise<FastingLog | undefined>;
-  createFastingLog(data: InsertFastingLog): Promise<FastingLog>;
-  updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog>;
-  stopFastingLog(id: string): Promise<FastingLog>;
-  completeFastingLog(id: string): Promise<FastingLog>;
-  deleteFastingLog(id: string): Promise<void>;
+  getSupplementLogs(userId: string, date: string): Promise<SupplementLog[]>;
+  createSupplementLog(data: InsertSupplementLog & { userId: string }): Promise<SupplementLog>;
+  updateSupplementLog(userId: string, id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog>;
+  deleteSupplementLog(userId: string, id: string): Promise<void>;
+  getFastingLogs(userId: string): Promise<FastingLog[]>;
+  getActiveFastingLog(userId: string): Promise<FastingLog | undefined>;
+  createFastingLog(data: InsertFastingLog & { userId: string }): Promise<FastingLog>;
+  updateFastingLog(userId: string, id: string, data: Partial<InsertFastingLog>): Promise<FastingLog>;
+  stopFastingLog(userId: string, id: string): Promise<FastingLog>;
+  completeFastingLog(userId: string, id: string): Promise<FastingLog>;
+  deleteFastingLog(userId: string, id: string): Promise<void>;
   // Intake Routines
-  getIntakeRoutines(): Promise<IntakeRoutine[]>;
-  createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine>;
-  updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine>;
-  deleteIntakeRoutine(id: string): Promise<void>;
-  getIntakeRoutineCheckins(date: string): Promise<IntakeRoutineCheckin[]>;
-  toggleIntakeRoutineCheckin(routineId: string, date: string): Promise<IntakeRoutineCheckin | null>;
+  getIntakeRoutines(userId: string): Promise<IntakeRoutine[]>;
+  createIntakeRoutine(data: InsertIntakeRoutine & { userId: string }): Promise<IntakeRoutine>;
+  updateIntakeRoutine(userId: string, id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine>;
+  deleteIntakeRoutine(userId: string, id: string): Promise<void>;
+  getIntakeRoutineCheckins(userId: string, date: string): Promise<IntakeRoutineCheckin[]>;
+  toggleIntakeRoutineCheckin(userId: string, routineId: string, date: string): Promise<IntakeRoutineCheckin | null>;
   // Nutrition Aggregations
   getFuelFingerprintWeek(): Promise<Record<string, number>>;
   getNutritionTrends(metric: string, days: number): Promise<{ date: string; value: number }[]>;
@@ -190,20 +186,20 @@ export interface IStorage {
   getRestTrends(userId: string, metric: string, days: number): Promise<{ date: string; value: number }[]>;
   getBodySignals(userId: string): Promise<{ balance: number; stress: number; momentum: number }>;
   // Meal Presets
-  getMealPresets(): Promise<MealPreset[]>;
-  createMealPreset(data: InsertMealPreset): Promise<MealPreset>;
-  deleteMealPreset(id: string): Promise<void>;
+  getMealPresets(userId: string): Promise<MealPreset[]>;
+  createMealPreset(data: InsertMealPreset & { userId: string }): Promise<MealPreset>;
+  deleteMealPreset(userId: string, id: string): Promise<void>;
 
   // Body Profile
-  getBodyProfile(): Promise<BodyProfile | undefined>;
-  upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile>;
+  getBodyProfile(userId: string): Promise<BodyProfile | undefined>;
+  upsertBodyProfile(userId: string, data: InsertBodyProfile): Promise<BodyProfile>;
   // Daily State
   getDailyState(userId: string, date: string): Promise<DailyState | undefined>;
   upsertDailyState(userId: string, date: string, data: Partial<InsertDailyState>): Promise<DailyState>;
 
   // Activity Logs
-  getActivityLogs(date: string): Promise<ActivityLog[]>;
-  getAllActivityLogs(): Promise<ActivityLog[]>;
+  getActivityLogs(userId: string, date: string): Promise<ActivityLog[]>;
+  getAllActivityLogs(userId: string): Promise<ActivityLog[]>;
   createActivityLog(data: InsertActivityLog): Promise<ActivityLog>;
 
   // Worship
@@ -217,9 +213,9 @@ export interface IStorage {
   createDuaLog(data: InsertDuaLog): Promise<DuaLog>;
 
   // Workout Presets
-  getWorkoutPresets(): Promise<WorkoutPreset[]>;
-  createWorkoutPreset(data: InsertWorkoutPreset): Promise<WorkoutPreset>;
-  deleteWorkoutPreset(id: string): Promise<void>;
+  getWorkoutPresets(userId: string): Promise<WorkoutPreset[]>;
+  createWorkoutPreset(data: InsertWorkoutPreset & { userId: string }): Promise<WorkoutPreset>;
+  deleteWorkoutPreset(userId: string, id: string): Promise<void>;
 
   // Finances
   getTransactions(): Promise<Transaction[]>;
@@ -732,20 +728,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Workout Presets
-  async getWorkoutPresets(): Promise<WorkoutPreset[]> {
+  async getWorkoutPresets(userId: string): Promise<WorkoutPreset[]> {
     this.ensureDb();
-    return await db.select().from(workoutPresets).orderBy(desc(workoutPresets.createdAt));
+    return await db.select().from(workoutPresets).where(eq(workoutPresets.userId, userId)).orderBy(desc(workoutPresets.createdAt));
   }
 
-  async createWorkoutPreset(data: InsertWorkoutPreset): Promise<WorkoutPreset> {
+  async createWorkoutPreset(data: InsertWorkoutPreset & { userId: string }): Promise<WorkoutPreset> {
     this.ensureDb();
     const [preset] = await db.insert(workoutPresets).values(data).returning();
     return preset;
   }
 
-  async deleteWorkoutPreset(id: string): Promise<void> {
+  async deleteWorkoutPreset(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(workoutPresets).where(eq(workoutPresets.id, id));
+    await db.delete(workoutPresets).where(and(eq(workoutPresets.id, id), eq(workoutPresets.userId, userId)));
   }
 
   async getFlashcardsByChapterWithChildren(chapterId: string, childChapterIds: string[]): Promise<Flashcard[]> {
@@ -826,7 +822,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Body
-  async getWorkouts(date: string): Promise<Workout[]> {
+  async getWorkouts(userId: string, date: string): Promise<Workout[]> {
     // Cast date string to timestamp for comparison, or use BETWEEN for day range
     // Since date is now timestamp in schema but passed as YYYY-MM-DD string here,
     // we need to handle it. Assuming input is YYYY-MM-DD.
@@ -838,25 +834,26 @@ export class DatabaseStorage implements IStorage {
     // Using any for the between clause as Drizzle type inference can be strict
     return await db.select().from(workouts)
       .where(and(
+        eq(workouts.userId, userId),
         sql`${workouts.date} >= ${startOfDay}`,
         sql`${workouts.date} <= ${endOfDay}`
       ));
   }
 
-  async getWorkout(id: string): Promise<Workout | undefined> {
-    const [workout] = await db.select().from(workouts).where(eq(workouts.id, id));
+  async getWorkout(userId: string, id: string): Promise<Workout | undefined> {
+    const [workout] = await db.select().from(workouts).where(and(eq(workouts.id, id), eq(workouts.userId, userId)));
     return workout;
   }
 
-  async createWorkout(data: InsertWorkout): Promise<Workout> {
+  async createWorkout(data: InsertWorkout & { userId: string }): Promise<Workout> {
     this.ensureDb();
     const [workout] = await db.insert(workouts).values(data).returning();
     return workout;
   }
 
-  async updateWorkout(id: string, data: Partial<InsertWorkout>): Promise<Workout> {
+  async updateWorkout(userId: string, id: string, data: Partial<InsertWorkout>): Promise<Workout> {
     this.ensureDb();
-    const [workout] = await db.update(workouts).set(data).where(eq(workouts.id, id)).returning();
+    const [workout] = await db.update(workouts).set(data).where(and(eq(workouts.id, id), eq(workouts.userId, userId))).returning();
     return workout;
   }
 
@@ -949,164 +946,164 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getIntakeLogs(date: string): Promise<IntakeLog[]> {
+  async getIntakeLogs(userId: string, date: string): Promise<IntakeLog[]> {
     this.ensureDb();
-    return await db.select().from(intakeLogs).where(eq(intakeLogs.date, new Date(date)));
+    return await db.select().from(intakeLogs).where(and(eq(intakeLogs.userId, userId), sql`DATE(${intakeLogs.date}) = ${date}`));
   }
 
-  async createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog> {
+  async createIntakeLog(data: InsertIntakeLog & { userId: string }): Promise<IntakeLog> {
     this.ensureDb();
     const [log] = await db.insert(intakeLogs).values(data).returning();
     return log;
   }
 
-  async getSleepLogs(date: string): Promise<SleepLog[]> {
+  async getSleepLogs(userId: string, date: string): Promise<SleepLog[]> {
     this.ensureDb();
-    return await db.select().from(sleepLogs).where(eq(sleepLogs.date, date));
+    return await db.select().from(sleepLogs).where(and(eq(sleepLogs.userId, userId), eq(sleepLogs.date, date)));
   }
 
-  async getAllSleepLogs(): Promise<SleepLog[]> {
+  async getAllSleepLogs(userId: string): Promise<SleepLog[]> {
     this.ensureDb();
-    return await db.select().from(sleepLogs).orderBy(desc(sleepLogs.date));
+    return await db.select().from(sleepLogs).where(eq(sleepLogs.userId, userId)).orderBy(desc(sleepLogs.date));
   }
 
-  async createSleepLog(data: InsertSleepLog): Promise<SleepLog> {
+  async createSleepLog(data: InsertSleepLog & { userId: string }): Promise<SleepLog> {
     this.ensureDb();
     const [log] = await db.insert(sleepLogs).values(data).returning();
     return log;
   }
 
-  async getHygieneRoutines(): Promise<HygieneRoutine[]> {
+  async getHygieneRoutines(userId: string): Promise<HygieneRoutine[]> {
     this.ensureDb();
-    return await db.select().from(hygieneRoutines).orderBy(asc(hygieneRoutines.name));
+    return await db.select().from(hygieneRoutines).where(eq(hygieneRoutines.userId, userId)).orderBy(asc(hygieneRoutines.name));
   }
 
-  async createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine> {
+  async createHygieneRoutine(data: InsertHygieneRoutine & { userId: string }): Promise<HygieneRoutine> {
     this.ensureDb();
     const [routine] = await db.insert(hygieneRoutines).values(data).returning();
     return routine;
   }
 
-  async updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
+  async updateHygieneRoutine(userId: string, id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
     this.ensureDb();
-    const [updated] = await db.update(hygieneRoutines).set(data).where(eq(hygieneRoutines.id, id)).returning();
+    const [updated] = await db.update(hygieneRoutines).set(data).where(and(eq(hygieneRoutines.userId, userId), eq(hygieneRoutines.id, id))).returning();
     return updated;
   }
 
-  async deleteHygieneRoutine(id: string): Promise<void> {
+  async deleteHygieneRoutine(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(hygieneRoutines).where(eq(hygieneRoutines.id, id));
+    await db.delete(hygieneRoutines).where(and(eq(hygieneRoutines.userId, userId), eq(hygieneRoutines.id, id)));
   }
 
-  async getSupplementLogs(date: string): Promise<SupplementLog[]> {
+  async getSupplementLogs(userId: string, date: string): Promise<SupplementLog[]> {
     this.ensureDb();
-    return await db.select().from(supplementLogs).where(eq(supplementLogs.date, date));
+    return await db.select().from(supplementLogs).where(and(eq(supplementLogs.userId, userId), eq(supplementLogs.date, date)));
   }
 
-  async createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog> {
+  async createSupplementLog(data: InsertSupplementLog & { userId: string }): Promise<SupplementLog> {
     this.ensureDb();
     const [log] = await db.insert(supplementLogs).values(data).returning();
     return log;
   }
 
-  async updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
+  async updateSupplementLog(userId: string, id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
     this.ensureDb();
-    const [updated] = await db.update(supplementLogs).set(data).where(eq(supplementLogs.id, id)).returning();
+    const [updated] = await db.update(supplementLogs).set(data).where(and(eq(supplementLogs.userId, userId), eq(supplementLogs.id, id))).returning();
     return updated;
   }
 
-  async deleteSupplementLog(id: string): Promise<void> {
+  async deleteSupplementLog(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(supplementLogs).where(eq(supplementLogs.id, id));
+    await db.delete(supplementLogs).where(and(eq(supplementLogs.userId, userId), eq(supplementLogs.id, id)));
   }
 
-  async getFastingLogs(): Promise<FastingLog[]> {
+  async getFastingLogs(userId: string): Promise<FastingLog[]> {
     this.ensureDb();
-    return await db.select().from(fastingLogs).orderBy(desc(fastingLogs.startTime));
+    return await db.select().from(fastingLogs).where(eq(fastingLogs.userId, userId)).orderBy(desc(fastingLogs.startTime));
   }
 
-  async getActiveFastingLog(): Promise<FastingLog | undefined> {
+  async getActiveFastingLog(userId: string): Promise<FastingLog | undefined> {
     this.ensureDb();
-    const [log] = await db.select().from(fastingLogs).where(eq(fastingLogs.status, "active"));
+    const [log] = await db.select().from(fastingLogs).where(and(eq(fastingLogs.userId, userId), eq(fastingLogs.status, "active")));
     return log;
   }
 
-  async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
+  async createFastingLog(data: InsertFastingLog & { userId: string }): Promise<FastingLog> {
     this.ensureDb();
     // Enforce only one active fast at a time
-    const active = await this.getActiveFastingLog();
+    const active = await this.getActiveFastingLog(data.userId);
     if (active) throw new Error("An active fast already exists. Stop or cancel it first.");
     const [log] = await db.insert(fastingLogs).values({ ...data, status: "active" }).returning();
     return log;
   }
 
-  async updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
+  async updateFastingLog(userId: string, id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
     this.ensureDb();
-    const [updated] = await db.update(fastingLogs).set(data).where(eq(fastingLogs.id, id)).returning();
+    const [updated] = await db.update(fastingLogs).set(data).where(and(eq(fastingLogs.userId, userId), eq(fastingLogs.id, id))).returning();
     return updated;
   }
 
-  async stopFastingLog(id: string): Promise<FastingLog> {
+  async stopFastingLog(userId: string, id: string): Promise<FastingLog> {
     this.ensureDb();
     const [updated] = await db
       .update(fastingLogs)
       .set({ status: "cancelled", endTime: new Date() })
-      .where(eq(fastingLogs.id, id))
+      .where(and(eq(fastingLogs.userId, userId), eq(fastingLogs.id, id)))
       .returning();
     return updated;
   }
 
-  async completeFastingLog(id: string): Promise<FastingLog> {
+  async completeFastingLog(userId: string, id: string): Promise<FastingLog> {
     this.ensureDb();
     const [updated] = await db
       .update(fastingLogs)
       .set({ status: "completed", endTime: new Date() })
-      .where(eq(fastingLogs.id, id))
+      .where(and(eq(fastingLogs.userId, userId), eq(fastingLogs.id, id)))
       .returning();
     return updated;
   }
 
-  async deleteFastingLog(id: string): Promise<void> {
+  async deleteFastingLog(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(fastingLogs).where(eq(fastingLogs.id, id));
+    await db.delete(fastingLogs).where(and(eq(fastingLogs.userId, userId), eq(fastingLogs.id, id)));
   }
 
-  async getIntakeRoutines(): Promise<IntakeRoutine[]> {
+  async getIntakeRoutines(userId: string): Promise<IntakeRoutine[]> {
     this.ensureDb();
-    return await db.select().from(intakeRoutines).orderBy(asc(intakeRoutines.name));
+    return await db.select().from(intakeRoutines).where(eq(intakeRoutines.userId, userId)).orderBy(asc(intakeRoutines.name));
   }
 
-  async createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine> {
+  async createIntakeRoutine(data: InsertIntakeRoutine & { userId: string }): Promise<IntakeRoutine> {
     this.ensureDb();
     const [routine] = await db.insert(intakeRoutines).values(data).returning();
     return routine;
   }
 
-  async updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
+  async updateIntakeRoutine(userId: string, id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
     this.ensureDb();
-    const [routine] = await db.update(intakeRoutines).set(data).where(eq(intakeRoutines.id, id)).returning();
+    const [routine] = await db.update(intakeRoutines).set(data).where(and(eq(intakeRoutines.id, id), eq(intakeRoutines.userId, userId))).returning();
     return routine;
   }
 
-  async deleteIntakeRoutine(id: string): Promise<void> {
+  async deleteIntakeRoutine(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(intakeRoutines).where(eq(intakeRoutines.id, id));
+    await db.delete(intakeRoutines).where(and(eq(intakeRoutines.id, id), eq(intakeRoutines.userId, userId)));
   }
 
-  async getIntakeRoutineCheckins(date: string): Promise<IntakeRoutineCheckin[]> {
+  async getIntakeRoutineCheckins(userId: string, date: string): Promise<IntakeRoutineCheckin[]> {
     this.ensureDb();
-    return await db.select().from(intakeRoutineCheckins).where(eq(intakeRoutineCheckins.date, date));
+    return await db.select().from(intakeRoutineCheckins).where(and(eq(intakeRoutineCheckins.userId, userId), eq(intakeRoutineCheckins.date, date)));
   }
 
-  async toggleIntakeRoutineCheckin(routineId: string, date: string): Promise<IntakeRoutineCheckin | null> {
+  async toggleIntakeRoutineCheckin(userId: string, routineId: string, date: string): Promise<IntakeRoutineCheckin | null> {
     this.ensureDb();
     const [existing] = await db.select().from(intakeRoutineCheckins)
-      .where(and(eq(intakeRoutineCheckins.routineId, routineId), eq(intakeRoutineCheckins.date, date)));
+      .where(and(eq(intakeRoutineCheckins.routineId, routineId), eq(intakeRoutineCheckins.date, date), eq(intakeRoutineCheckins.userId, userId)));
     if (existing) {
       await db.delete(intakeRoutineCheckins).where(eq(intakeRoutineCheckins.id, existing.id));
       return null;
     }
-    const [checkin] = await db.insert(intakeRoutineCheckins).values({ routineId, date }).returning();
+    const [checkin] = await db.insert(intakeRoutineCheckins).values({ userId, routineId, date }).returning();
     return checkin;
   }
 
@@ -1152,9 +1149,9 @@ export class DatabaseStorage implements IStorage {
 
   async getNutritionOverview(userId: string, date: string): Promise<any> {
     const [logs, profile, activeFast, state, blocks] = await Promise.all([
-      this.getIntakeLogs(date),
-      this.getBodyProfile(),
-      this.getActiveFastingLog(),
+      this.getIntakeLogs(userId, date),
+      this.getBodyProfile(userId),
+      this.getActiveFastingLog(userId),
       this.getDailyState(userId, date),
       this.getLinkedTimeBlocks(date, "nutrition")
     ]);
@@ -1203,36 +1200,36 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getMealPresets(): Promise<MealPreset[]> {
+  async getMealPresets(userId: string): Promise<MealPreset[]> {
     this.ensureDb();
-    return await db.select().from(mealPresets).orderBy(asc(mealPresets.name));
+    return await db.select().from(mealPresets).where(eq(mealPresets.userId, userId)).orderBy(asc(mealPresets.name));
   }
 
-  async createMealPreset(data: InsertMealPreset): Promise<MealPreset> {
+  async createMealPreset(data: InsertMealPreset & { userId: string }): Promise<MealPreset> {
     this.ensureDb();
     const [preset] = await db.insert(mealPresets).values(data).returning();
     return preset;
   }
 
-  async deleteMealPreset(id: string): Promise<void> {
+  async deleteMealPreset(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(mealPresets).where(eq(mealPresets.id, id));
+    await db.delete(mealPresets).where(and(eq(mealPresets.id, id), eq(mealPresets.userId, userId)));
   }
 
-  async getBodyProfile(): Promise<BodyProfile | undefined> {
+  async getBodyProfile(userId: string): Promise<BodyProfile | undefined> {
     this.ensureDb();
-    const [profile] = await db.select().from(bodyProfile);
+    const [profile] = await db.select().from(bodyProfile).where(eq(bodyProfile.userId, userId));
     return profile;
   }
 
-  async upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile> {
+  async upsertBodyProfile(userId: string, data: InsertBodyProfile): Promise<BodyProfile> {
     this.ensureDb();
-    const existing = await this.getBodyProfile();
+    const existing = await this.getBodyProfile(userId);
     if (existing) {
       const [updated] = await db.update(bodyProfile).set({ ...data, updatedAt: new Date() }).where(eq(bodyProfile.id, existing.id)).returning();
       return updated;
     } else {
-      const [created] = await db.insert(bodyProfile).values(data).returning();
+      const [created] = await db.insert(bodyProfile).values({ ...data, userId }).returning();
       return created;
     }
   }
@@ -1257,16 +1254,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Activity Logs
-  async getActivityLogs(date: string): Promise<ActivityLog[]> {
+  async getActivityLogs(userId: string, date: string): Promise<ActivityLog[]> {
     this.ensureDb();
     return await db.select().from(activityLogs).where(
-      sql`DATE(${activityLogs.loggedAt}) = ${date}`
+      and(eq(activityLogs.userId, userId), sql`DATE(${activityLogs.loggedAt}) = ${date}`)
     ).orderBy(desc(activityLogs.loggedAt));
   }
 
-  async getAllActivityLogs(): Promise<ActivityLog[]> {
+  async getAllActivityLogs(userId: string): Promise<ActivityLog[]> {
     this.ensureDb();
-    return await db.select().from(activityLogs).orderBy(desc(activityLogs.loggedAt));
+    return await db.select().from(activityLogs).where(eq(activityLogs.userId, userId)).orderBy(desc(activityLogs.loggedAt));
   }
 
   async createActivityLog(data: InsertActivityLog): Promise<ActivityLog> {
@@ -1669,15 +1666,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog> {
+  async updateIntakeLog(userId: string, id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog> {
     this.ensureDb();
-    const [log] = await db.update(intakeLogs).set(data).where(eq(intakeLogs.id, id)).returning();
+    const [log] = await db.update(intakeLogs).set(data).where(and(eq(intakeLogs.userId, userId), eq(intakeLogs.id, id))).returning();
     return log;
   }
 
-  async deleteIntakeLog(id: string): Promise<void> {
+  async deleteIntakeLog(userId: string, id: string): Promise<void> {
     this.ensureDb();
-    await db.delete(intakeLogs).where(eq(intakeLogs.id, id));
+    await db.delete(intakeLogs).where(and(eq(intakeLogs.userId, userId), eq(intakeLogs.id, id)));
   }
 
   // Disciplines
@@ -1725,7 +1722,7 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const since = new Date();
     since.setDate(since.getDate() - days);
-    
+
     const metricToField: Record<string, any> = {
       steps: dailyState.steps,
       activeMinutes: dailyState.activeMinutes,
@@ -1740,7 +1737,7 @@ export class DatabaseStorage implements IStorage {
       exerciseDuration: dailyState.workoutDurationMin,
       strengthVolume: dailyState.totalVolume,
     };
-    
+
     const field = metricToField[metric];
     if (!field) return [];
 
@@ -1754,9 +1751,9 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(asc(dailyState.date));
 
-    return rows.map((r: any) => ({ 
-      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0], 
-      value: Number(r.value) || 0 
+    return rows.map((r: any) => ({
+      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0],
+      value: Number(r.value) || 0
     }));
   }
 
@@ -1764,7 +1761,7 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const since = new Date();
     since.setDate(since.getDate() - days);
-    
+
     const metricToField: Record<string, any> = {
       sleepHours: dailyState.sleepHours,
       sleepQuality: dailyState.sleepQuality,
@@ -1775,7 +1772,7 @@ export class DatabaseStorage implements IStorage {
       recoveryReadiness: dailyState.readinessScore,
       heartRate: dailyState.avgHeartRate,
     };
-    
+
     const field = metricToField[metric];
     if (!field) return [];
 
@@ -1789,9 +1786,9 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(asc(dailyState.date));
 
-    return rows.map((r: any) => ({ 
-      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0], 
-      value: Number(r.value) || 0 
+    return rows.map((r: any) => ({
+      date: typeof r.date === 'string' ? r.date : r.date.toISOString().split('T')[0],
+      value: Number(r.value) || 0
     }));
   }
 
@@ -1799,14 +1796,14 @@ export class DatabaseStorage implements IStorage {
     this.ensureDb();
     const today = new Date().toISOString().split('T')[0];
     const state = await this.getDailyState(userId, today);
-    
+
     const readiness = Number(state?.readinessScore || 75);
     const recovery = Number(state?.recoveryScore || 80);
     const quality = Number(state?.sleepQuality || 3);
     const hr = Number(state?.avgHeartRate || 65);
     const steps = Number(state?.steps || 0);
     const activeMin = Number(state?.activeMinutes || 0);
-    
+
     return {
       balance: Math.round((readiness + recovery) / 2),
       stress: Math.max(0, Math.min(100, Math.round((100 - (quality * 20)) + (hr > 80 ? (hr - 80) * 2 : 0)))),
@@ -1863,6 +1860,8 @@ export class MemStorage implements IStorage {
   private knowledgeMetrics: Map<string, KnowledgeMetric>;
   private disciplines: Map<string, Discipline>;
   private disciplineLogs: Map<string, DisciplineLog>;
+  private intakeRoutines: Map<string, IntakeRoutine>;
+  private intakeRoutineCheckins: Map<string, IntakeRoutineCheckin>;
 
   constructor() {
     this.users = new Map();
@@ -1913,6 +1912,8 @@ export class MemStorage implements IStorage {
     this.workoutPresets = new Map();
     this.disciplines = new Map();
     this.disciplineLogs = new Map();
+    this.intakeRoutines = new Map();
+    this.intakeRoutineCheckins = new Map();
     this.follows = new Map();
     this.privacySettings = new Map();
 
@@ -2266,25 +2267,29 @@ export class MemStorage implements IStorage {
 
   // Body
   // Body
-  async getWorkouts(date: string): Promise<Workout[]> {
+  async getWorkouts(userId: string, date: string): Promise<Workout[]> {
     return Array.from(this.workouts.values()).filter(w => {
       const wDate = w.date instanceof Date ? w.date.toISOString().split('T')[0] : w.date;
-      return wDate === date;
+      return w.userId === userId && wDate === date;
     });
   }
-  async getWorkout(id: string): Promise<Workout | undefined> {
-    return this.workouts.get(id);
+  async getWorkout(userId: string, id: string): Promise<Workout | undefined> {
+    const workout = this.workouts.get(id);
+    if (workout && workout.userId === userId) {
+      return workout;
+    }
+    return undefined;
   }
 
-  async createWorkout(data: InsertWorkout): Promise<Workout> {
+  async createWorkout(data: InsertWorkout & { userId: string }): Promise<Workout> {
     const id = this.generateId();
     const workout: Workout = { ...data, id, createdAt: new Date() } as any;
     this.workouts.set(id, workout);
     return workout;
   }
-  async updateWorkout(id: string, data: Partial<InsertWorkout>): Promise<Workout> {
+  async updateWorkout(userId: string, id: string, data: Partial<InsertWorkout>): Promise<Workout> {
     const existing = this.workouts.get(id);
-    if (!existing) throw new Error("Not found");
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
     const updated = { ...existing, ...data };
     this.workouts.set(id, updated);
     return updated;
@@ -2351,138 +2356,170 @@ export class MemStorage implements IStorage {
       return created;
     }
   }
-  async getIntakeLogs(date: string): Promise<IntakeLog[]> {
+  async getIntakeLogs(userId: string, date: string): Promise<IntakeLog[]> {
     return Array.from(this.intakeLogs.values()).filter(l => {
       const d = l.date instanceof Date ? l.date : new Date(l.date);
-      return d.toISOString().split('T')[0] === date;
+      return l.userId === userId && d.toISOString().split('T')[0] === date;
     });
   }
-  async createIntakeLog(data: InsertIntakeLog): Promise<IntakeLog> {
+  async createIntakeLog(data: InsertIntakeLog & { userId: string }): Promise<IntakeLog> {
     const id = this.generateId();
     const log: IntakeLog = { ...data, id, createdAt: new Date() } as any;
     this.intakeLogs.set(id, log);
     return log;
   }
-  async getSleepLogs(date: string): Promise<SleepLog[]> {
-    return Array.from(this.sleepLogs.values()).filter(l => l.date === date);
+  async getSleepLogs(userId: string, date: string): Promise<SleepLog[]> {
+    return Array.from(this.sleepLogs.values()).filter(l => l.userId === userId && l.date === date);
   }
-  async createSleepLog(data: InsertSleepLog): Promise<SleepLog> {
+  async createSleepLog(data: InsertSleepLog & { userId: string }): Promise<SleepLog> {
     const id = this.generateId();
     const log: SleepLog = { ...data, id, createdAt: new Date() } as any;
     this.sleepLogs.set(id, log);
     return log;
   }
-  async getAllSleepLogs(): Promise<SleepLog[]> {
-    return Array.from(this.sleepLogs.values()).sort((a, b) => b.date.localeCompare(a.date));
+  async getAllSleepLogs(userId: string): Promise<SleepLog[]> {
+    return Array.from(this.sleepLogs.values()).filter(l => l.userId === userId).sort((a, b) => b.date.localeCompare(a.date));
   }
-  async getHygieneRoutines(): Promise<HygieneRoutine[]> {
-    return Array.from(this.hygieneRoutines.values()).sort((a, b) => a.name.localeCompare(b.name));
+  async getHygieneRoutines(userId: string): Promise<HygieneRoutine[]> {
+    return Array.from(this.hygieneRoutines.values()).filter(r => r.userId === userId).sort((a, b) => a.name.localeCompare(b.name));
   }
-  async createHygieneRoutine(data: InsertHygieneRoutine): Promise<HygieneRoutine> {
+  async createHygieneRoutine(data: InsertHygieneRoutine & { userId: string }): Promise<HygieneRoutine> {
     const id = this.generateId();
     const routine: HygieneRoutine = { ...data, id, createdAt: new Date() } as any;
     this.hygieneRoutines.set(id, routine);
     return routine;
   }
-  async updateHygieneRoutine(id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
+  async updateHygieneRoutine(userId: string, id: string, data: Partial<InsertHygieneRoutine>): Promise<HygieneRoutine> {
     const existing = this.hygieneRoutines.get(id);
-    if (!existing) throw new Error("Not found");
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
     const updated = { ...existing, ...data } as HygieneRoutine;
     this.hygieneRoutines.set(id, updated);
     return updated;
   }
-  async deleteHygieneRoutine(id: string): Promise<void> {
-    this.hygieneRoutines.delete(id);
+  async deleteHygieneRoutine(userId: string, id: string): Promise<void> {
+    const existing = this.hygieneRoutines.get(id);
+    if (existing?.userId === userId) this.hygieneRoutines.delete(id);
   }
-  async getSupplementLogs(date: string): Promise<SupplementLog[]> {
+  async getSupplementLogs(userId: string, date: string): Promise<SupplementLog[]> {
     return Array.from(this.supplementLogs.values()).filter(l => {
       const d = new Date(l.date as any);
-      return d.toISOString().split('T')[0] === date;
+      return l.userId === userId && d.toISOString().split('T')[0] === date;
     });
   }
-  async createSupplementLog(data: InsertSupplementLog): Promise<SupplementLog> {
+  async createSupplementLog(data: InsertSupplementLog & { userId: string }): Promise<SupplementLog> {
     const id = this.generateId();
     const log: SupplementLog = { ...data, id, createdAt: new Date() } as any;
     this.supplementLogs.set(id, log);
     return log;
   }
-  async updateSupplementLog(id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
+  async updateSupplementLog(userId: string, id: string, data: Partial<InsertSupplementLog>): Promise<SupplementLog> {
     const existing = this.supplementLogs.get(id);
-    if (!existing) throw new Error("Not found");
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
     const updated = { ...existing, ...data } as SupplementLog;
     this.supplementLogs.set(id, updated);
     return updated;
   }
-  async deleteSupplementLog(id: string): Promise<void> {
-    this.supplementLogs.delete(id);
+  async deleteSupplementLog(userId: string, id: string): Promise<void> {
+    const existing = this.supplementLogs.get(id);
+    if (existing?.userId === userId) this.supplementLogs.delete(id);
   }
-  async getFastingLogs(): Promise<FastingLog[]> {
-    return Array.from(this.fastingLogs.values()).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  async getFastingLogs(userId: string): Promise<FastingLog[]> {
+    return Array.from(this.fastingLogs.values()).filter(l => l.userId === userId).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }
-  async getActiveFastingLog(): Promise<FastingLog | undefined> {
-    return Array.from(this.fastingLogs.values()).find(l => l.status === "active");
+  async getActiveFastingLog(userId: string): Promise<FastingLog | undefined> {
+    return Array.from(this.fastingLogs.values()).find(l => l.userId === userId && l.status === "active");
   }
-  async createFastingLog(data: InsertFastingLog): Promise<FastingLog> {
-    const active = await this.getActiveFastingLog();
+  async createFastingLog(data: InsertFastingLog & { userId: string }): Promise<FastingLog> {
+    const active = await this.getActiveFastingLog(data.userId);
     if (active) throw new Error("An active fast already exists. Stop or cancel it first.");
     const id = this.generateId();
     const log: FastingLog = { ...data, status: "active", id, createdAt: new Date() } as any;
     this.fastingLogs.set(id, log);
     return log;
   }
-  async updateFastingLog(id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
+  async updateFastingLog(userId: string, id: string, data: Partial<InsertFastingLog>): Promise<FastingLog> {
     const existing = this.fastingLogs.get(id);
-    if (!existing) throw new Error("Not found");
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
     const updated = { ...existing, ...data } as FastingLog;
     this.fastingLogs.set(id, updated);
     return updated;
   }
-  async stopFastingLog(id: string): Promise<FastingLog> {
-    return this.updateFastingLog(id, { status: "cancelled", endTime: new Date() } as any);
+  async stopFastingLog(userId: string, id: string): Promise<FastingLog> {
+    return this.updateFastingLog(userId, id, { status: "cancelled", endTime: new Date() } as any);
   }
-  async completeFastingLog(id: string): Promise<FastingLog> {
-    return this.updateFastingLog(id, { status: "completed", endTime: new Date() } as any);
+  async completeFastingLog(userId: string, id: string): Promise<FastingLog> {
+    return this.updateFastingLog(userId, id, { status: "completed", endTime: new Date() } as any);
   }
-  async deleteFastingLog(id: string): Promise<void> {
-    this.fastingLogs.delete(id);
+  async deleteFastingLog(userId: string, id: string): Promise<void> {
+    const existing = this.fastingLogs.get(id);
+    if (existing?.userId === userId) this.fastingLogs.delete(id);
   }
-  async getIntakeRoutines(): Promise<IntakeRoutine[]> { return []; }
-  async createIntakeRoutine(data: InsertIntakeRoutine): Promise<IntakeRoutine> {
-    return { ...data, id: this.generateId(), createdAt: new Date() } as any;
+  async getIntakeRoutines(userId: string): Promise<IntakeRoutine[]> {
+    return Array.from(this.intakeRoutines.values()).filter(r => r.userId === userId).sort((a, b) => a.name.localeCompare(b.name));
   }
-  async updateIntakeRoutine(id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
-    return { id, ...data } as any;
+  async createIntakeRoutine(data: InsertIntakeRoutine & { userId: string }): Promise<IntakeRoutine> {
+    const id = this.generateId();
+    const routine: IntakeRoutine = { ...data, id, createdAt: new Date() } as any;
+    this.intakeRoutines.set(id, routine);
+    return routine;
   }
-  async deleteIntakeRoutine(_id: string): Promise<void> {}
-  async getIntakeRoutineCheckins(_date: string): Promise<IntakeRoutineCheckin[]> { return []; }
-  async toggleIntakeRoutineCheckin(_routineId: string, _date: string): Promise<IntakeRoutineCheckin | null> { return null; }
+  async updateIntakeRoutine(userId: string, id: string, data: Partial<InsertIntakeRoutine>): Promise<IntakeRoutine> {
+    const existing = this.intakeRoutines.get(id);
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
+    const updated = { ...existing, ...data } as IntakeRoutine;
+    this.intakeRoutines.set(id, updated);
+    return updated;
+  }
+  async deleteIntakeRoutine(userId: string, id: string): Promise<void> {
+    const existing = this.intakeRoutines.get(id);
+    if (existing?.userId === userId) {
+      this.intakeRoutines.delete(id);
+    }
+  }
+  async getIntakeRoutineCheckins(userId: string, date: string): Promise<IntakeRoutineCheckin[]> {
+    return Array.from(this.intakeRoutineCheckins.values()).filter(c => c.userId === userId && c.date === date);
+  }
+  async toggleIntakeRoutineCheckin(userId: string, routineId: string, date: string): Promise<IntakeRoutineCheckin | null> {
+    const existing = Array.from(this.intakeRoutineCheckins.values()).find(c => c.userId === userId && c.routineId === routineId && c.date === date);
+    if (existing) {
+      this.intakeRoutineCheckins.delete(existing.id);
+      return null;
+    }
+    const id = this.generateId();
+    const checkin: IntakeRoutineCheckin = { id, userId, routineId, date, checkedAt: new Date() };
+    this.intakeRoutineCheckins.set(id, checkin);
+    return checkin;
+  }
   async getFuelFingerprintWeek(): Promise<Record<string, number>> { return {}; }
   async getNutritionTrends(_metric: string, _days: number): Promise<{ date: string; value: number }[]> { return []; }
-  async getMealPresets(): Promise<MealPreset[]> {
-    return Array.from(this.mealPresets.values()).sort((a, b) => a.name.localeCompare(b.name));
+  async getMealPresets(userId: string): Promise<MealPreset[]> {
+    return Array.from(this.mealPresets.values()).filter(p => p.userId === userId).sort((a, b) => a.name.localeCompare(b.name));
   }
-  async createMealPreset(data: InsertMealPreset): Promise<MealPreset> {
+  async createMealPreset(data: InsertMealPreset & { userId: string }): Promise<MealPreset> {
     const id = this.generateId();
     const preset: MealPreset = { ...data, id, createdAt: new Date() } as any;
     this.mealPresets.set(id, preset);
     return preset;
   }
-  async deleteMealPreset(id: string): Promise<void> {
-    this.mealPresets.delete(id);
+  async deleteMealPreset(userId: string, id: string): Promise<void> {
+    const existing = this.mealPresets.get(id);
+    if (existing?.userId === userId) {
+      this.mealPresets.delete(id);
+    }
   }
-  async getBodyProfile(): Promise<BodyProfile | undefined> {
-    const profiles = Array.from(this.bodyProfiles.values());
+  async getBodyProfile(userId: string): Promise<BodyProfile | undefined> {
+    const profiles = Array.from(this.bodyProfiles.values()).filter(p => p.userId === userId);
     return profiles[0];
   }
-  async upsertBodyProfile(data: InsertBodyProfile): Promise<BodyProfile> {
-    const existing = await this.getBodyProfile();
+  async upsertBodyProfile(userId: string, data: InsertBodyProfile): Promise<BodyProfile> {
+    const existing = await this.getBodyProfile(userId);
     if (existing) {
       const updated = { ...existing, ...data, updatedAt: new Date() } as BodyProfile;
       this.bodyProfiles.set(existing.id, updated);
       return updated;
     } else {
       const id = this.generateId();
-      const created: BodyProfile = { ...data, id, updatedAt: new Date() } as any;
+      const created: BodyProfile = { ...data, userId, id, updatedAt: new Date() } as any;
       this.bodyProfiles.set(id, created);
       return created;
     }
@@ -2505,14 +2542,14 @@ export class MemStorage implements IStorage {
   }
 
   // Activity Logs
-  async getActivityLogs(date: string): Promise<ActivityLog[]> {
+  async getActivityLogs(userId: string, date: string): Promise<ActivityLog[]> {
     return Array.from(this.activityLogsMap.values()).filter(l => {
       const logDate = l.loggedAt instanceof Date ? l.loggedAt.toISOString().split('T')[0] : String(l.loggedAt).split('T')[0];
-      return logDate === date;
+      return l.userId === userId && logDate === date;
     });
   }
-  async getAllActivityLogs(): Promise<ActivityLog[]> {
-    return Array.from(this.activityLogsMap.values()).sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  async getAllActivityLogs(userId: string): Promise<ActivityLog[]> {
+    return Array.from(this.activityLogsMap.values()).filter(l => l.userId === userId).sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
   }
   async createActivityLog(data: InsertActivityLog): Promise<ActivityLog> {
     const id = this.generateId();
@@ -2763,16 +2800,17 @@ export class MemStorage implements IStorage {
     return metric;
   }
 
-  async updateIntakeLog(id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog> {
+  async updateIntakeLog(userId: string, id: string, data: Partial<InsertIntakeLog>): Promise<IntakeLog> {
     const existing = this.intakeLogs.get(id);
-    if (!existing) throw new Error("Not found");
+    if (!existing || existing.userId !== userId) throw new Error("Not found");
     const updated = { ...existing, ...data } as IntakeLog;
     this.intakeLogs.set(id, updated);
     return updated;
   }
 
-  async deleteIntakeLog(id: string): Promise<void> {
-    this.intakeLogs.delete(id);
+  async deleteIntakeLog(userId: string, id: string): Promise<void> {
+    const existing = this.intakeLogs.get(id);
+    if (existing?.userId === userId) this.intakeLogs.delete(id);
   }
 
   // Workout Presets
@@ -2780,9 +2818,9 @@ export class MemStorage implements IStorage {
   workoutPresetIdCounter = 1;
 
   async getNutritionOverview(userId: string, date: string): Promise<any> {
-    const logs = await this.getIntakeLogs(date);
-    const profile = await this.getBodyProfile();
-    const activeFast = await this.getActiveFastingLog();
+    const logs = await this.getIntakeLogs(userId, date);
+    const profile = await this.getBodyProfile(userId);
+    const activeFast = await this.getActiveFastingLog(userId);
     const state = await this.getDailyState(userId, date);
     const blocks = await this.getLinkedTimeBlocks(date, "nutrition");
     return {
@@ -2802,16 +2840,17 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async getWorkoutPresets(): Promise<WorkoutPreset[]> {
-    return Array.from(this.workoutPresets.values()).sort((a, b) =>
+  async getWorkoutPresets(userId: string): Promise<WorkoutPreset[]> {
+    return Array.from(this.workoutPresets.values()).filter(p => p.userId === userId).sort((a, b) =>
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
   }
 
-  async createWorkoutPreset(data: InsertWorkoutPreset): Promise<WorkoutPreset> {
+  async createWorkoutPreset(data: InsertWorkoutPreset & { userId: string }): Promise<WorkoutPreset> {
     const id = this.generateId();
     const preset: WorkoutPreset = {
       id,
+      userId: data.userId,
       name: data.name,
       exercises: data.exercises as any,
       lastPerformed: null,
@@ -2821,8 +2860,11 @@ export class MemStorage implements IStorage {
     return preset;
   }
 
-  async deleteWorkoutPreset(id: string): Promise<void> {
-    this.workoutPresets.delete(id);
+  async deleteWorkoutPreset(userId: string, id: string): Promise<void> {
+    const existing = this.workoutPresets.get(id);
+    if (existing?.userId === userId) {
+      this.workoutPresets.delete(id);
+    }
   }
 
   // Disciplines

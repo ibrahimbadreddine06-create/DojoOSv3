@@ -1,3 +1,4 @@
+import React, { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, ArrowLeft } from "lucide-react";
@@ -6,8 +7,9 @@ import { Link } from "wouter";
 interface ComingSoonProps {
   moduleName: string;
   description: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 }
+
 
 export default function ComingSoon({ moduleName, description, icon }: ComingSoonProps) {
   return (
@@ -23,7 +25,7 @@ export default function ComingSoon({ moduleName, description, icon }: ComingSoon
                 <Lock className="h-4 w-4 text-primary" />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h2 className="text-2xl font-bold" data-testid="text-coming-soon-title">
                 {moduleName}
@@ -55,7 +57,7 @@ export default function ComingSoon({ moduleName, description, icon }: ComingSoon
   );
 }
 
-export const lockedModules = {
+export const lockedModules: Record<string, { name: string; description: string; icon?: ReactNode }> = {
   body: {
     name: "Body",
     description: "Track your fitness, nutrition, sleep, and hygiene routines to optimize your physical well-being.",

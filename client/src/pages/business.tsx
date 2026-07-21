@@ -1,12 +1,12 @@
-import ComingSoon from "./coming-soon";
+import ComingSoon, { lockedModules } from "./coming-soon";
 import { Briefcase } from "lucide-react";
 
 export default function Business() {
   return (
     <ComingSoon
-      moduleName="Business"
-      description="Manage your entrepreneurial ventures, projects, and tasks."
-      icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
+      moduleName={lockedModules.business.name}
+      description={lockedModules.business.description}
+      icon={<Briefcase className="h-10 w-10 text-primary" />}
     />
   );
 }

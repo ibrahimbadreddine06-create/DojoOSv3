@@ -348,6 +348,7 @@ export const chapterNotesRelations = relations(chapterNotes, ({ one }) => ({
 // ===== BODY TRACKING =====
 export const workouts = pgTable("workouts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   date: timestamp("date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
@@ -406,6 +407,7 @@ export const muscleStats = pgTable("muscle_stats", {
 
 export const workoutPresets = pgTable("workout_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   // exercises: list of { exerciseId: string, sets: number, targetReps: string }
   exercises: jsonb("exercises").$type<{ exerciseId: string; sets: number; targetReps?: string }[]>().notNull(),
@@ -415,6 +417,7 @@ export const workoutPresets = pgTable("workout_presets", {
 
 export const intakeLogs = pgTable("intake_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   date: timestamp("date").notNull(),
   mealName: text("meal_name"),
   mealType: text("meal_type"), // breakfast, lunch, dinner, snack
@@ -447,6 +450,7 @@ export const intakeLogs = pgTable("intake_logs", {
 
 export const sleepLogs = pgTable("sleep_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   date: date("date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
@@ -459,6 +463,7 @@ export const sleepLogs = pgTable("sleep_logs", {
 
 export const hygieneRoutines = pgTable("hygiene_routines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   completed: boolean("completed").notNull().default(false),
   date: date("date").notNull(),
@@ -498,6 +503,7 @@ export const fastingLogs = pgTable("fasting_logs", {
 // ===== INTAKE ROUTINES (supplements & medications with schedules) =====
 export const intakeRoutines = pgTable("intake_routines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   dose: decimal("dose", { precision: 7, scale: 2 }),
   unit: text("unit"), // mg, mcg, g, IU, ml, capsule, tablet
@@ -512,6 +518,7 @@ export const intakeRoutines = pgTable("intake_routines", {
 
 export const intakeRoutineCheckins = pgTable("intake_routine_checkins", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   routineId: varchar("routine_id").notNull(),
   date: date("date").notNull(),
   checkedAt: timestamp("checked_at").defaultNow(),
@@ -520,6 +527,7 @@ export const intakeRoutineCheckins = pgTable("intake_routine_checkins", {
 // ===== MEAL PRESETS =====
 export const mealPresets = pgTable("meal_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   name: text("name").notNull(),
   mealType: text("meal_type"),
   calories: decimal("calories", { precision: 7, scale: 2 }),
@@ -544,6 +552,7 @@ export const mealPresets = pgTable("meal_presets", {
 // ===== BODY PROFILE (for BMR / TDEE calculations) =====
 export const bodyProfile = pgTable("body_profile", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
   heightCm: decimal("height_cm", { precision: 5, scale: 1 }),
   weightKg: decimal("weight_kg", { precision: 5, scale: 1 }),
   age: integer("age"),
@@ -918,7 +927,7 @@ export const insertWorkoutSchema = createInsertSchema(workouts, {
   date: z.coerce.date(),
   startTime: z.coerce.date().optional().nullable(),
   endTime: z.coerce.date().optional().nullable(),
-}).omit({ id: true, createdAt: true });
+}).omit({ id: true, userId: true, createdAt: true });
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary).omit({ id: true, createdAt: true });
 export const insertWorkoutExerciseSchema = createInsertSchema(workoutExercises).omit({ id: true });
 export const insertWorkoutSetSchema = createInsertSchema(workoutSets).omit({ id: true });
@@ -937,9 +946,9 @@ export const insertFastingLogSchema = createInsertSchema(fastingLogs, {
   startTime: z.coerce.date(),
   endTime: z.coerce.date().optional().nullable(),
 }).omit({ id: true, createdAt: true });
-export const insertIntakeRoutineSchema = createInsertSchema(intakeRoutines).omit({ id: true, createdAt: true });
-export const insertIntakeRoutineCheckinSchema = createInsertSchema(intakeRoutineCheckins).omit({ id: true });
-export const insertMealPresetSchema = createInsertSchema(mealPresets).omit({ id: true, createdAt: true });
+export const insertIntakeRoutineSchema = createInsertSchema(intakeRoutines).omit({ id: true, userId: true, createdAt: true });
+export const insertIntakeRoutineCheckinSchema = createInsertSchema(intakeRoutineCheckins).omit({ id: true, userId: true });
+export const insertMealPresetSchema = createInsertSchema(mealPresets).omit({ id: true, userId: true, createdAt: true });
 export const insertBodyProfileSchema = createInsertSchema(bodyProfile).omit({ id: true, updatedAt: true });
 export const insertDailyStateSchema = createInsertSchema(dailyState).omit({ id: true, updatedAt: true });
 export const insertSalahLogSchema = createInsertSchema(salahLogs).omit({ id: true, createdAt: true });
@@ -961,7 +970,7 @@ export const insertSocialActivitySchema = createInsertSchema(socialActivities).o
 export const insertPersonSchema = createInsertSchema(people).omit({ id: true, createdAt: true });
 export const insertPageSettingSchema = createInsertSchema(pageSettings).omit({ id: true });
 export const insertDailyMetricSchema = createInsertSchema(dailyMetrics).omit({ id: true, createdAt: true });
-export const insertWorkoutPresetSchema = createInsertSchema(workoutPresets).omit({ id: true, createdAt: true, lastPerformed: true });
+export const insertWorkoutPresetSchema = createInsertSchema(workoutPresets).omit({ id: true, userId: true, createdAt: true, lastPerformed: true });
 export const insertActivityLogSchema = createInsertSchema(activityLogs, {
   loggedAt: z.coerce.date().optional(),
 }).omit({ id: true, createdAt: true });

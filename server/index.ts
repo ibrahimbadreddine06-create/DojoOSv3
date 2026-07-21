@@ -23,7 +23,7 @@ process.on("uncaughtException", (err) => {
 if (process.env.VERCEL === "1") {
   const required = ["DATABASE_URL", "SESSION_SECRET"];
   const missing = required.filter(key => !process.env[key]);
-  
+
   if (missing.length > 0) {
     console.error("\n\n#################################################");
     console.error("CRITICAL ERROR: MISSING ENVIRONMENT VARIABLES");
@@ -34,7 +34,7 @@ if (process.env.VERCEL === "1") {
   }
 
   if (process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_SECRET) {
-      console.warn("WARNING: GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is missing or empty.");
+    console.warn("WARNING: GOOGLE_CLIENT_ID is set but GOOGLE_CLIENT_SECRET is missing or empty.");
   }
 }
 
@@ -43,8 +43,8 @@ export default app; // Export immediately for Vercel
 
 app.get("/api/health", (req, res) => {
   const cb = process.env.CALLBACK_URL || "NOT_SET";
-  res.json({ 
-    status: "ok", 
+  res.json({
+    status: "ok",
     env: process.env.NODE_ENV,
     vercel: process.env.VERCEL,
     db: !!process.env.DATABASE_URL,
@@ -108,7 +108,7 @@ if (process.env.DISABLE_AUTH !== "true") {
   try {
     setupAuth(app);
     setupHealthRoutes(app);
-  } catch(e) {
+  } catch (e) {
     console.error("Auth Setup Error (missing env vars?):", e);
   }
 }
@@ -163,7 +163,7 @@ async function seedDatabase() {
         console.log(`Patched ${patched} exercises with imageUrl.`);
       }
     }
-    
+
     const existingDisciplines = await storage.getDisciplines().catch(e => []);
     if (existingDisciplines && existingDisciplines.length === 0) {
       await storage.createDiscipline({

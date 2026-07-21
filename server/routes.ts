@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory, analyzeMealDescription, analyzeMealPhoto } from "./ai";
 import { calculateRecoveryScore } from "./recovery";
+import { computeDailyEffort, computeWeeklyEffort } from "./effort";
+import { getBodyMetricHistory, getBodyMetricsSnapshot } from "./body-metrics";
+import { approvedBodyCardsV1, bodyWidgetVariantInventoryV1 } from "../shared/body-card-catalog";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -34,11 +37,24 @@ export function registerRoutes(app: Express): Server {
       itemId as string | undefined,
       subItemId as string | undefined
     );
+    if (blocks.length === 0 && (module === "body" || module === "activity" || module === "nutrition" || module === "rest" || module === "hygiene")) {
+      return res.json([
+        { id: "mock-b1", title: `Morning ${module} Session`, startTime: "08:00", duration: 45, completed: true, date: date as string, linkedModule: module, linkedItemId: itemId },
+        { id: "mock-b2", title: `Evening ${module} Review`, startTime: "18:30", duration: 30, completed: false, date: date as string, linkedModule: module, linkedItemId: itemId },
+      ]);
+    }
     res.json(blocks);
   });
 
   app.get("/api/time-blocks/:date", async (req, res) => {
     const blocks = await storage.getTimeBlocks(req.params.date);
+    if (blocks.length === 0) {
+      return res.json([
+        { id: "mock-t1", title: "Morning Routine", startTime: "07:00", duration: 60, completed: true, date: req.params.date, color: "blue" },
+        { id: "mock-t2", title: "Deep Work", startTime: "09:00", duration: 180, completed: false, date: req.params.date, color: "purple" },
+        { id: "mock-t3", title: "Exercise", startTime: "17:00", duration: 60, completed: false, date: req.params.date, color: "orange" },
+      ]);
+    }
     res.json(blocks);
   });
 
@@ -99,6 +115,13 @@ export function registerRoutes(app: Express): Server {
   // ===== GOALS =====
   app.get("/api/goals", async (req, res) => {
     const goals = await storage.getGoals();
+    if (goals.length === 0) {
+      return res.json([
+        { id: "mock-g1", title: "Master DojoOS Architecture", completed: false, importance: 5, createdAt: new Date().toISOString() },
+        { id: "mock-g2", title: "Reach 15% Body Fat", completed: false, importance: 4, createdAt: new Date().toISOString() },
+        { id: "mock-g3", title: "Learn Advanced React Three Fiber", completed: false, importance: 3, createdAt: new Date().toISOString() },
+      ]);
+    }
     res.json(goals);
   });
 
@@ -180,7 +203,7 @@ export function registerRoutes(app: Express): Server {
     const type = req.params.type;
     const normalizedType = type.replace(/-/g, '_');
     const dbType = (normalizedType === "languages" || normalizedType === "language") ? "language" : "second_brain";
-    
+
     const themes = await storage.getKnowledgeTopics(dbType);
     res.json(themes); // Return full objects for Second Brain and Languages
   });
@@ -245,7 +268,8 @@ export function registerRoutes(app: Express): Server {
           return res.json(exercises.map(e => ({ id: e.id, name: e.name })));
         }
         if (itemId === "body_hygiene") {
-          const routines = await storage.getHygieneRoutines();
+          if (!req.user) return res.json([]);
+          const routines = await storage.getHygieneRoutines((req.user as any).id);
           return res.json(routines.map((r: any) => ({ id: r.id, name: r.name || "Routine" })));
         }
         return res.json([]);
@@ -430,7 +454,7 @@ export function registerRoutes(app: Express): Server {
       let disciplineXp: number | undefined;
 
       // Build hierarchical chapter tree
-      function buildTree(items: any[]): any[] {
+      const buildTree = (items: any[]): any[] => {
         const map = new Map<string, any>();
         const roots: any[] = [];
         items.forEach(item => map.set(item.id, { ...item, children: [] }));
@@ -443,10 +467,10 @@ export function registerRoutes(app: Express): Server {
           }
         });
         return roots;
-      }
+      };
 
       // Fetch notes for all top-level chapters (including their direct children)
-      async function fetchAllNotes(flatItems: any[]): Promise<any[]> {
+      const fetchAllNotes = async (flatItems: any[]): Promise<any[]> => {
         const topLevel = flatItems.filter(i => !i.parentId);
         const allNotes = await Promise.all(
           topLevel.map(item => {
@@ -457,7 +481,7 @@ export function registerRoutes(app: Express): Server {
           })
         );
         return allNotes.flat();
-      }
+      };
 
       if (subModuleType === "second-brain" || subModuleType === "languages") {
         const topic = await storage.getKnowledgeTopic(subModuleId);
@@ -586,11 +610,6 @@ export function registerRoutes(app: Express): Server {
       console.error("Sensei chat error:", e);
       res.status(500).json({ message: e.message || "Chat failed" });
     }
-  });
-
-  app.get("/api/learn-plan-items/discipline/:disciplineId", async (req, res) => {
-    const items = await storage.getLearnPlanItemsByDiscipline(req.params.disciplineId);
-    res.json(items);
   });
 
   // Materials routes - more specific routes first
@@ -728,7 +747,8 @@ export function registerRoutes(app: Express): Server {
 
   // ===== BODY =====
   app.get("/api/workouts/:date", async (req, res) => {
-    const workouts = await storage.getWorkouts(req.params.date);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const workouts = await storage.getWorkouts((req.user as any).id, req.params.date);
     // Enhance workouts with exercises
     const enhancedWorkouts = await Promise.all(workouts.map(async (w) => {
       const exercises = await storage.getWorkoutExercises(w.id);
@@ -738,37 +758,43 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/workouts", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const data = insertWorkoutSchema.parse(req.body);
-    const workout = await storage.createWorkout(data);
+    const workout = await storage.createWorkout({ ...data, userId: (req.user as any).id });
     res.json(workout);
   });
 
   app.get("/api/workouts/detail/:id", async (req, res) => {
-    const workout = await storage.getWorkout(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const workout = await storage.getWorkout((req.user as any).id, req.params.id);
     if (!workout) return res.status(404).json({ message: "Workout not found" });
     const exercises = await storage.getWorkoutExercises(workout.id);
     res.json({ ...workout, exercises });
   });
 
   app.patch("/api/workouts/:id", async (req, res) => {
-    const workout = await storage.updateWorkout(req.params.id, req.body);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const workout = await storage.updateWorkout((req.user as any).id, req.params.id, req.body);
     res.json(workout);
   });
 
   app.get("/api/workout-presets", async (req, res) => {
-    const presets = await storage.getWorkoutPresets();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const presets = await storage.getWorkoutPresets((req.user as any).id);
     res.json(presets);
   });
 
   app.post("/api/workout-presets", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const { insertWorkoutPresetSchema } = await import("../shared/schema");
     const data = insertWorkoutPresetSchema.parse(req.body);
-    const preset = await storage.createWorkoutPreset(data);
+    const preset = await storage.createWorkoutPreset({ ...data, userId: (req.user as any).id });
     res.json(preset);
   });
 
   app.delete("/api/workout-presets/:id", async (req, res) => {
-    await storage.deleteWorkoutPreset(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteWorkoutPreset((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
@@ -813,6 +839,23 @@ export function registerRoutes(app: Express): Server {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const metric = req.query.metric as string || "steps";
     const days = parseInt(req.query.days as string) || 7;
+    if (metric === "effortScore" || metric === "weeklyEffort") {
+      const today = new Date();
+      const trends = [];
+      for (let offset = days - 1; offset >= 0; offset -= 1) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - offset);
+        const dateKey = date.toISOString().split("T")[0];
+        if (metric === "weeklyEffort") {
+          const effort = await computeWeeklyEffort(storage, (req.user as any).id, dateKey);
+          trends.push({ date: dateKey, value: effort.weeklyPercent });
+        } else {
+          const effort = await computeDailyEffort(storage, (req.user as any).id, dateKey);
+          trends.push({ date: dateKey, value: effort.effortScore });
+        }
+      }
+      return res.json(trends);
+    }
     const trends = await storage.getActivityTrends((req.user as any).id, metric, days);
     res.json(trends);
   });
@@ -829,6 +872,81 @@ export function registerRoutes(app: Express): Server {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const signals = await storage.getBodySignals((req.user as any).id);
     res.json(signals);
+  });
+
+  app.get("/api/body/catalog", async (_req, res) => {
+    res.json({
+      version: "body-v1-research-catalog",
+      approvedCards: approvedBodyCardsV1,
+      variantInventory: bodyWidgetVariantInventoryV1,
+      approvedCount: approvedBodyCardsV1.length,
+      totalVariantCount: bodyWidgetVariantInventoryV1.length,
+    });
+  });
+
+  app.get("/api/body/metrics/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const snapshot = await getBodyMetricsSnapshot(storage, (req.user as any).id, req.params.date);
+      res.json(snapshot);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.get("/api/body/metrics/:date/history/:metricKey", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const days = Number.parseInt(String(req.query.days ?? "30"), 10);
+      const history = await getBodyMetricHistory(
+        storage,
+        (req.user as any).id,
+        req.params.metricKey,
+        req.params.date,
+        Number.isFinite(days) ? days : 30,
+      );
+      res.json({ metricKey: req.params.metricKey, endDate: req.params.date, history });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.get("/api/body/recovery/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const { date } = req.params;
+    const [snapshot, state] = await Promise.all([
+      getBodyMetricsSnapshot(storage, userId, date),
+      storage.getDailyState(userId, date),
+    ]);
+    const metric = snapshot.metrics.find((item) => item.key === "body_readiness");
+    if (!metric || metric.value == null) return res.status(404).json({ message: "Body readiness unavailable" });
+
+    const score = Math.round(metric.value);
+    const yesterday = new Date(date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yDate = yesterday.toISOString().split("T")[0];
+    const yState = await storage.getDailyState(userId, yDate);
+    const delta = yState?.recoveryScore != null ? score - Number(yState.recoveryScore) : null;
+
+    await storage.upsertDailyState(userId, date, { recoveryScore: score });
+    const components = metric.components ?? {};
+    const entries = Object.entries(components)
+      .filter(([, value]) => typeof value === "number")
+      .map(([label, value]) => ({ label, score: Number(value) }))
+      .sort((a, b) => a.score - b.score);
+
+    res.json({
+      score,
+      status: metric.status,
+      delta,
+      dominantFactor: entries[0]?.label ?? "None",
+      checkinRequired: !(state as any)?.sorenesScore && !(state as any)?.energyLevel,
+      breakdown: components,
+      confidence: metric.confidence,
+      calculationClass: metric.calculationClass,
+      missingInputs: metric.missingInputs,
+    });
   });
 
   // Workout Execution
@@ -887,49 +1005,23 @@ export function registerRoutes(app: Express): Server {
     res.json(stat);
   });
 
-  app.get("/api/intake-logs/:date", async (req, res) => {
-    const logs = await storage.getIntakeLogs(req.params.date);
-    res.json(logs);
-  });
-
-  app.post("/api/intake-logs", async (req, res) => {
-    try {
-      const data = insertIntakeLogSchema.parse(req.body);
-      const log = await storage.createIntakeLog(data);
-      res.json(log);
-    } catch (e: any) {
-      res.status(400).json({ message: e.message });
-    }
-  });
-
-  app.patch("/api/intake-logs/:id", async (req, res) => {
-    try {
-      const log = await storage.updateIntakeLog(req.params.id, req.body);
-      res.json(log);
-    } catch (e: any) {
-      res.status(400).json({ message: e.message });
-    }
-  });
-
-  app.delete("/api/intake-logs/:id", async (req, res) => {
-    await storage.deleteIntakeLog(req.params.id);
-    res.json({ success: true });
-  });
-
   app.get("/api/sleep-logs/all", async (req, res) => {
-    const logs = await storage.getAllSleepLogs();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getAllSleepLogs((req.user as any).id);
     res.json(logs);
   });
 
   app.get("/api/sleep-logs/:date", async (req, res) => {
-    const logs = await storage.getSleepLogs(req.params.date);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getSleepLogs((req.user as any).id, req.params.date);
     res.json(logs);
   });
 
   app.post("/api/sleep-logs", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertSleepLogSchema.parse(req.body);
-      const log = await storage.createSleepLog(data);
+      const log = await storage.createSleepLog({ ...data, userId: (req.user as any).id });
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -938,14 +1030,16 @@ export function registerRoutes(app: Express): Server {
 
   // Hygiene — global recurring templates (no date param)
   app.get("/api/hygiene-routines", async (req, res) => {
-    const routines = await storage.getHygieneRoutines();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const routines = await storage.getHygieneRoutines((req.user as any).id);
     res.json(routines);
   });
 
   app.post("/api/hygiene-routines", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertHygieneRoutineSchema.parse(req.body);
-      const routine = await storage.createHygieneRoutine(data);
+      const routine = await storage.createHygieneRoutine({ ...data, userId: (req.user as any).id });
       res.json(routine);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -954,7 +1048,8 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/hygiene-routines/:id", async (req, res) => {
     try {
-      const routine = await storage.updateHygieneRoutine(req.params.id, req.body);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const routine = await storage.updateHygieneRoutine((req.user as any).id, req.params.id, req.body);
       res.json(routine);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -962,20 +1057,23 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/hygiene-routines/:id", async (req, res) => {
-    await storage.deleteHygieneRoutine(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteHygieneRoutine((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
   // Supplement Logs
   app.get("/api/supplement-logs/:date", async (req, res) => {
-    const logs = await storage.getSupplementLogs(req.params.date);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getSupplementLogs((req.user as any).id, req.params.date);
     res.json(logs);
   });
 
   app.post("/api/supplement-logs", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertSupplementLogSchema.parse(req.body);
-      const log = await storage.createSupplementLog(data);
+      const log = await storage.createSupplementLog({ ...data, userId: (req.user as any).id });
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -984,7 +1082,8 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/supplement-logs/:id", async (req, res) => {
     try {
-      const log = await storage.updateSupplementLog(req.params.id, req.body);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const log = await storage.updateSupplementLog((req.user as any).id, req.params.id, req.body);
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -992,25 +1091,29 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/supplement-logs/:id", async (req, res) => {
-    await storage.deleteSupplementLog(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteSupplementLog((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
   // Fasting Logs
   app.get("/api/fasting-logs", async (req, res) => {
-    const logs = await storage.getFastingLogs();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getFastingLogs((req.user as any).id);
     res.json(logs);
   });
 
   app.get("/api/fasting-logs/active", async (req, res) => {
-    const log = await storage.getActiveFastingLog();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const log = await storage.getActiveFastingLog((req.user as any).id);
     res.json(log || null);
   });
 
   app.post("/api/fasting-logs", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertFastingLogSchema.parse(req.body);
-      const log = await storage.createFastingLog(data);
+      const log = await storage.createFastingLog({ ...data, userId: (req.user as any).id });
       res.json(log);
     } catch (e: any) {
       res.status(409).json({ message: e.message });
@@ -1019,7 +1122,8 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/fasting-logs/:id", async (req, res) => {
     try {
-      const log = await storage.updateFastingLog(req.params.id, req.body);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const log = await storage.updateFastingLog((req.user as any).id, req.params.id, req.body);
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1029,7 +1133,8 @@ export function registerRoutes(app: Express): Server {
   // Fasting lifecycle actions
   app.post("/api/fasting-logs/:id/stop", async (req, res) => {
     try {
-      const log = await storage.stopFastingLog(req.params.id);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const log = await storage.stopFastingLog((req.user as any).id, req.params.id);
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1038,7 +1143,8 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/fasting-logs/:id/complete", async (req, res) => {
     try {
-      const log = await storage.completeFastingLog(req.params.id);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const log = await storage.completeFastingLog((req.user as any).id, req.params.id);
       res.json(log);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1046,20 +1152,23 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/fasting-logs/:id", async (req, res) => {
-    await storage.deleteFastingLog(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteFastingLog((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
   // Meal Presets
   app.get("/api/meal-presets", async (req, res) => {
-    const presets = await storage.getMealPresets();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const presets = await storage.getMealPresets((req.user as any).id);
     res.json(presets);
   });
 
   app.post("/api/meal-presets", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertMealPresetSchema.parse(req.body);
-      const preset = await storage.createMealPreset(data);
+      const preset = await storage.createMealPreset({ ...data, userId: (req.user as any).id });
       res.json(preset);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1067,68 +1176,87 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/meal-presets/:id", async (req, res) => {
-    await storage.deleteMealPreset(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteMealPreset((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
   // ===== INTAKE LOGS =====
   app.get("/api/intake-logs/:date", async (req, res) => {
     try {
-      const logs = await storage.getIntakeLogs(req.params.date);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const logs = await storage.getIntakeLogs((req.user as any).id, req.params.date);
       res.json(logs);
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
 
   app.post("/api/intake-logs", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertIntakeLogSchema.parse(req.body);
-      const log = await storage.createIntakeLog(data);
+      const log = await storage.createIntakeLog({ ...data, userId: (req.user as any).id });
       res.json(log);
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
   app.patch("/api/intake-logs/:id", async (req, res) => {
     try {
-      const log = await storage.updateIntakeLog(req.params.id, req.body);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const log = await storage.updateIntakeLog((req.user as any).id, req.params.id, req.body);
       res.json(log);
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
   app.delete("/api/intake-logs/:id", async (req, res) => {
     try {
-      await storage.deleteIntakeLog(req.params.id);
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      await storage.deleteIntakeLog((req.user as any).id, req.params.id);
       res.json({ success: true });
     } catch (e: any) { res.status(500).json({ message: e.message }); }
   });
 
   // ===== INTAKE ROUTINES =====
-  app.get("/api/intake-routines", async (_req, res) => {
-    res.json(await storage.getIntakeRoutines());
+  app.get("/api/intake-routines", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const routines = await storage.getIntakeRoutines((req.user as any).id);
+    if (routines.length === 0) {
+      return res.json([
+        { id: "mock-ir1", name: "Creatine Monohydrate", type: "supplement", dose: "5", unit: "g", timeOfDay: "Morning", frequency: "daily" },
+        { id: "mock-ir2", name: "Vitamin D3 + K2", type: "supplement", dose: "5000", unit: "IU", timeOfDay: "Morning", frequency: "daily" },
+        { id: "mock-ir3", name: "Magnesium Bisglycinate", type: "supplement", dose: "400", unit: "mg", timeOfDay: "Before Sleep", frequency: "daily" },
+      ]);
+    }
+    res.json(routines);
   });
   app.post("/api/intake-routines", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertIntakeRoutineSchema.parse(req.body);
-      res.json(await storage.createIntakeRoutine(data));
+      res.json(await storage.createIntakeRoutine({ ...data, userId: (req.user as any).id }));
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
   app.patch("/api/intake-routines/:id", async (req, res) => {
     try {
-      res.json(await storage.updateIntakeRoutine(req.params.id, req.body));
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      res.json(await storage.updateIntakeRoutine((req.user as any).id, req.params.id, req.body));
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
   app.delete("/api/intake-routines/:id", async (req, res) => {
-    await storage.deleteIntakeRoutine(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await storage.deleteIntakeRoutine((req.user as any).id, req.params.id);
     res.json({ success: true });
   });
 
   // ===== INTAKE ROUTINE CHECKINS =====
   app.get("/api/intake-routine-checkins/:date", async (req, res) => {
-    res.json(await storage.getIntakeRoutineCheckins(req.params.date));
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    res.json(await storage.getIntakeRoutineCheckins((req.user as any).id, req.params.date));
   });
   app.post("/api/intake-routine-checkins", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const { routineId, date } = req.body;
-      const result = await storage.toggleIntakeRoutineCheckin(routineId, date);
+      const result = await storage.toggleIntakeRoutineCheckin((req.user as any).id, routineId, date);
       res.json({ checked: result !== null, checkin: result });
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
@@ -1198,14 +1326,16 @@ export function registerRoutes(app: Express): Server {
 
   // Body Profile
   app.get("/api/body-profile", async (req, res) => {
-    const profile = await storage.getBodyProfile();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const profile = await storage.getBodyProfile((req.user as any).id);
     res.json(profile || null);
   });
 
   app.post("/api/body-profile", async (req, res) => {
     try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertBodyProfileSchema.parse(req.body);
-      const profile = await storage.upsertBodyProfile(data);
+      const profile = await storage.upsertBodyProfile((req.user as any).id, data);
       res.json(profile);
     } catch (e: any) {
       res.status(400).json({ message: e.message });
@@ -1230,14 +1360,28 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/activity/effort/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const effort = await computeDailyEffort(storage, (req.user as any).id, req.params.date);
+    res.json(effort);
+  });
+
+  app.get("/api/activity/effort/week/:date", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const effort = await computeWeeklyEffort(storage, (req.user as any).id, req.params.date);
+    res.json(effort);
+  });
+
   // ===== ACTIVITY LOGS =====
   app.get("/api/activity-logs/:date", async (req, res) => {
-    const logs = await storage.getActivityLogs(req.params.date);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getActivityLogs((req.user as any).id, req.params.date);
     res.json(logs);
   });
 
   app.get("/api/activity-logs", async (req, res) => {
-    const logs = await storage.getAllActivityLogs();
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const logs = await storage.getAllActivityLogs((req.user as any).id);
     res.json(logs);
   });
 

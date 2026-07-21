@@ -3,10 +3,82 @@ import { storage } from "./storage";
 import { insertDailyStateSchema } from "../shared/schema";
 import { randomBytes } from "crypto";
 
+type HealthConnectorStatus = {
+  id: string;
+  label: string;
+  status: "connected" | "available" | "not_configured" | "native_required" | "external_required";
+  connected: boolean;
+  configured: boolean;
+  dataPath: "server_oauth" | "shortcut_webhook" | "native_bridge" | "manual_or_partner_api";
+  notes: string;
+};
+
+export function buildHealthConnectorStatus(user: any): HealthConnectorStatus[] {
+  const googleConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  const googleConnected = Boolean(user?.googleFitTokens?.accessToken);
+  const appleBridgeConnected = Boolean(user?.appleHealthSyncToken);
+
+  return [
+    {
+      id: "google_fit",
+      label: "Google Fit legacy",
+      status: googleConnected ? "connected" : googleConfigured ? "available" : "not_configured",
+      connected: googleConnected,
+      configured: googleConfigured,
+      dataPath: "server_oauth",
+      notes: "Server OAuth scaffold exists, but new Android work should prefer Health Connect where possible.",
+    },
+    {
+      id: "apple_health_shortcuts",
+      label: "Apple Health Shortcuts bridge",
+      status: appleBridgeConnected ? "connected" : "available",
+      connected: appleBridgeConnected,
+      configured: true,
+      dataPath: "shortcut_webhook",
+      notes: "Web apps cannot read HealthKit directly; this bridge needs an iOS Shortcut or native companion to push data.",
+    },
+    {
+      id: "health_connect",
+      label: "Android Health Connect",
+      status: "native_required",
+      connected: false,
+      configured: false,
+      dataPath: "native_bridge",
+      notes: "Requires native Android integration; expose as integration-ready, not active web sync.",
+    },
+    {
+      id: "fitbit",
+      label: "Fitbit",
+      status: process.env.FITBIT_CLIENT_ID && process.env.FITBIT_CLIENT_SECRET ? "available" : "external_required",
+      connected: false,
+      configured: Boolean(process.env.FITBIT_CLIENT_ID && process.env.FITBIT_CLIENT_SECRET),
+      dataPath: "manual_or_partner_api",
+      notes: "Needs Fitbit OAuth credentials and sync job before it can feed metrics.",
+    },
+    {
+      id: "garmin",
+      label: "Garmin",
+      status: "external_required",
+      connected: false,
+      configured: false,
+      dataPath: "manual_or_partner_api",
+      notes: "Requires an approved partner path or user export/import fallback.",
+    },
+  ];
+}
+
 export function setupHealthRoutes(app: Express) {
   // ============================================
   // GOOGLE FIT OAUTH & SYNC
   // ============================================
+
+  app.get("/api/health-sync/status", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    res.json({
+      connectors: buildHealthConnectorStatus(req.user),
+      updatedAt: new Date().toISOString(),
+    });
+  });
 
   app.get("/api/health-sync/google-fit/auth", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

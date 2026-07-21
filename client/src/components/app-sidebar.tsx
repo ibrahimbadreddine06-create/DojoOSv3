@@ -370,7 +370,7 @@ function ProfileMenuItemSimple() {
         <Settings className="h-4 w-4 text-muted-foreground" />
         <span>Settings</span>
       </Link>
-      
+
       <Link
         href={`/social/${user.username}`}
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent ${location.startsWith("/social/") ? "bg-accent" : ""}`}

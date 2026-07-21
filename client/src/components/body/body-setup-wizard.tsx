@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const TOTAL_STEPS = 6;
+const SETUP_SKIP_KEY = "dojo-body-setup-skipped";
 
 const GOALS = [
     { id: "lose_weight", label: "Lose Weight", emoji: "🔥", desc: "Calorie deficit + cardio focus" },
@@ -104,6 +105,11 @@ export function BodySetupWizard() {
     const updateData = (field: keyof SetupData, value: any) =>
         setData(prev => ({ ...prev, [field]: value }));
 
+    const skipSetup = () => {
+        window.localStorage.setItem(SETUP_SKIP_KEY, "true");
+        setLocation("/body");
+    };
+
     // Derived logic for display
     const currentWeight = parseFloat(data.weightKg) || 70;
     const currentHeight = parseFloat(data.heightCm) || 175;
@@ -140,6 +146,7 @@ export function BodySetupWizard() {
             });
         },
         onSuccess: () => {
+            window.localStorage.removeItem(SETUP_SKIP_KEY);
             queryClient.invalidateQueries({ queryKey: ["/api/body-profile"] });
             toast({ title: "Body configuration saved!" });
             setStep(TOTAL_STEPS); // show finish screen
@@ -172,7 +179,7 @@ export function BodySetupWizard() {
                         <div key={i} className={cn("h-1.5 rounded-full transition-all duration-300", i <= step ? "w-8 bg-foreground" : "w-2 bg-muted")} />
                     ))}
                 </div>
-                <button onClick={() => setLocation("/body")} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full hover:bg-muted/50">
+                <button onClick={skipSetup} className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full hover:bg-muted/50">
                     Skip
                 </button>
             </div>

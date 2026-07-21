@@ -1,12 +1,12 @@
-import ComingSoon from "./coming-soon";
-import { Briefcase } from "lucide-react";
+import ComingSoon, { lockedModules } from "./coming-soon";
+import { Keyboard } from "lucide-react";
 
 export default function Work() {
   return (
     <ComingSoon
-      moduleName="Work"
-      description="Organize your professional projects and career development tasks."
-      icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
+      moduleName={lockedModules.work.name}
+      description={lockedModules.work.description}
+      icon={<Keyboard className="h-10 w-10 text-primary" />}
     />
   );
 }
