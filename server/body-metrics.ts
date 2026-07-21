@@ -304,7 +304,7 @@ export async function getBodyMetricsSnapshot(
   userId: string,
   date: string,
 ): Promise<BodyMetricsResponse> {
-  const [
+  let [
     user,
     state,
     profile,
