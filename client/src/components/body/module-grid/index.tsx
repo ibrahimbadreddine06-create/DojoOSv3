@@ -97,6 +97,7 @@ type DragOverlay = {
   y: number;
   width: number;
   height: number;
+  scale: number;
 };
 
 type ResizeGuide = {
@@ -141,7 +142,7 @@ const MAX_GRID_COLUMNS = 12;
 const MAX_WIDGET_ROWS = 8;
 const DRAG_SETTLE_MS = 0;
 const DRAG_START_THRESHOLD = 8;
-const TOUCH_DRAG_HOLD_MS = 420;
+const TOUCH_DRAG_HOLD_MS = 220;
 const ACCENT_PRESETS = [
   "#2563eb",
   "#7c3aed",
@@ -898,6 +899,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
     size: WidgetSize;
     width: number;
     height: number;
+    scale: number;
   } | null>(null);
 
   useEffect(() => {
@@ -1202,7 +1204,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
   const beginDrag = useCallback((
     event: React.PointerEvent<HTMLElement>,
     entry: ActiveWidget,
-    touchStart?: { widgetElement: HTMLElement; clientX: number; clientY: number },
+    touchStart?: { widgetElement: HTMLElement; clientX: number; clientY: number; pointerId: number },
   ) => {
     if (!editing) return;
     if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
@@ -1217,6 +1219,14 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
     const startX = touchStart?.clientX ?? event.clientX;
     const startY = touchStart?.clientY ?? event.clientY;
     const rect = widgetElement.getBoundingClientRect();
+    const widgetScale = Number.parseFloat(getComputedStyle(widgetElement).getPropertyValue("--dojo-widget-scale")) || 1;
+    if (touchStart) {
+      try {
+        widgetElement.setPointerCapture(touchStart.pointerId);
+      } catch {
+        // The document-level touch lock below is the authoritative fallback.
+      }
+    }
     const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
     dragRef.current = {
       id: entry.key,
@@ -1230,6 +1240,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
       size,
       width: rect.width,
       height: rect.height,
+      scale: widgetScale,
     };
     const initialPlacement = gridRef.current ? hardPlacementFromRect(gridRef.current, { left: rect.left, top: rect.top }, size) : null;
     setHardPlacement(initialPlacement ? { id: entry.key, ...initialPlacement } : null);
@@ -1240,6 +1251,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
       y: rect.top,
       width: rect.width,
       height: rect.height,
+      scale: widgetScale,
     });
     document.body.classList.add("dojo-grid-dragging");
 
@@ -1249,6 +1261,12 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
         settleTimerRef.current = null;
       }
     };
+    const preventTouchScroll = (touchEvent: TouchEvent) => {
+      if (touchEvent.cancelable) touchEvent.preventDefault();
+    };
+    if (event.pointerType === "touch") {
+      document.addEventListener("touchmove", preventTouchScroll, { passive: false });
+    }
 
     const onMove = (moveEvent: PointerEvent) => {
       const drag = dragRef.current;
@@ -1269,6 +1287,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
         y: moveEvent.clientY - drag.offsetY,
         width: drag.width,
         height: drag.height,
+        scale: drag.scale,
       };
       setDragOverlay(nextOverlay);
 
@@ -1329,6 +1348,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
       setDragId(null);
       setDragOverlay(null);
       document.body.classList.remove("dojo-grid-dragging");
+      document.removeEventListener("touchmove", preventTouchScroll);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -1350,10 +1370,11 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
     const widgetElement = event.currentTarget;
     const startX = event.clientX;
     const startY = event.clientY;
+    const pointerId = event.pointerId;
     let timer = window.setTimeout(() => {
       cleanup();
       if (navigator.vibrate) navigator.vibrate(8);
-      beginDrag(event, entry, { widgetElement, clientX: startX, clientY: startY });
+      beginDrag(event, entry, { widgetElement, clientX: startX, clientY: startY, pointerId });
     }, TOUCH_DRAG_HOLD_MS);
 
     const cleanup = () => {
@@ -1680,6 +1701,8 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
             top: dragOverlay.y,
             width: dragOverlay.width,
             height: dragOverlay.height,
+            "--dojo-widget-scale": dragOverlay.scale,
+            "--body-widget-radius": `calc(22px * ${dragOverlay.scale})`,
           } as React.CSSProperties,
         };
 

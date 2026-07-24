@@ -635,6 +635,8 @@ html {
   .dojo-grid-dragging * {
       cursor: grabbing !important;
       user-select: none !important;
+      touch-action: none !important;
+      overscroll-behavior: none !important;
     }
 
   .dojo-drag-overlay {
@@ -642,6 +644,8 @@ html {
       z-index: 1000 !important;
       pointer-events: none !important;
       opacity: 0.96;
+      overflow: visible;
+      border-radius: var(--body-widget-radius, 22px);
       transform: scale(1.025);
       box-shadow:
         0 12px 28px hsl(var(--foreground) / 0.10),
