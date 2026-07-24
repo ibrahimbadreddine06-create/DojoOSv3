@@ -547,8 +547,14 @@ html {
 
   .dojo-widget-root.is-editing {
       cursor: grab;
+      touch-action: pan-y;
+    }
+
+  @media (hover: hover) and (pointer: fine) {
+    .dojo-widget-root.is-editing {
       touch-action: none;
     }
+  }
 
   .dojo-widget-root[data-dragging="true"] {
       transition: none !important;
@@ -652,6 +658,30 @@ html {
     gap: 0.25rem;
   }
 
+  .dojo-header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 639px) {
+    .dojo-header-controls.is-editing {
+      position: fixed;
+      right: 50%;
+      bottom: calc(5.6rem + env(safe-area-inset-bottom));
+      z-index: 180;
+      width: max-content;
+      max-width: calc(100vw - 2rem);
+      translate: 50% 0;
+      border: 1px solid hsl(var(--border) / 0.7);
+      border-radius: 1rem;
+      background: hsl(var(--background) / 0.96);
+      padding: 0.4rem;
+      box-shadow: 0 12px 32px hsl(var(--foreground) / 0.16);
+    }
+  }
+
   .dojo-remove-widget {
     position: absolute;
     top: calc(-0.5rem * var(--dojo-widget-scale, 1));
@@ -710,6 +740,37 @@ html {
     transform: scale(calc(var(--dojo-widget-scale, 1) * 1.06));
     box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--foreground) / 0.24), 0 6px 14px hsl(var(--foreground) / 0.14);
     outline: none;
+  }
+
+  .dojo-move-handle {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .dojo-move-handle {
+      position: absolute;
+      left: 50%;
+      top: calc(-0.42rem * var(--dojo-widget-scale, 1));
+      z-index: 70;
+      display: inline-flex;
+      height: calc(1.65rem * var(--dojo-widget-scale, 1));
+      width: calc(2.5rem * var(--dojo-widget-scale, 1));
+      translate: -50% 0;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid hsl(var(--border) / 0.72);
+      border-radius: 999px;
+      background: hsl(var(--background) / 0.96);
+      color: hsl(var(--foreground) / 0.52);
+      box-shadow: 0 3px 10px hsl(var(--foreground) / 0.1);
+      touch-action: none;
+    }
+
+    .dojo-move-handle svg {
+      height: 0.95rem;
+      width: 0.95rem;
+      stroke-width: 2.2;
+    }
   }
 
   .dojo-color-picker {
@@ -904,7 +965,9 @@ html {
   .dojo-available-widget {
     display: flex;
     min-height: 3.65rem;
-    width: 100%;
+    width: clamp(10rem, 42vw, 12rem);
+    flex: 0 0 auto;
+    scroll-snap-align: start;
     align-items: center;
     gap: 0.75rem;
     border-radius: 0.9rem;
@@ -914,6 +977,17 @@ html {
     text-align: left;
     box-shadow: var(--shadow-xs);
     transition: background-color 140ms ease, color 140ms ease, transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .dojo-available-carousel {
+    display: flex;
+    gap: 0.65rem;
+    width: 100%;
+    overflow-x: auto;
+    padding: 0.15rem 0.1rem 0.65rem;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
   }
 
   .dojo-available-widget:hover {
@@ -963,6 +1037,7 @@ html {
   }
 
   .dojo-available-preview {
+    --body-widget-radius: 22px;
     position: relative;
     display: block;
     width: min(100%, 18rem);

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
+import { Clock, GripHorizontal, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Visualization {
@@ -850,13 +851,14 @@ export interface ModuleGridProps {
   widgets: WidgetDefinition[];
   storageKey: string;
   initialActiveWidgetIds?: string[];
+  toolbarTargetId?: string;
 }
 
-export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds }: ModuleGridProps) {
-  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} />;
+export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds, toolbarTargetId }: ModuleGridProps) {
+  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} toolbarTargetId={toolbarTargetId} />;
 }
 
-function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: ModuleGridProps) {
+function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolbarTargetId }: ModuleGridProps) {
   const [editing, setEditing] = useState(false);
   const [state, setState] = useState<ModuleGridState>(() => loadState(storageKey, widgets, initialActiveWidgetIds));
   const [addPopoverOpen, setAddPopoverOpen] = useState(false);
@@ -871,12 +873,18 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
   const [hardPlacement, setHardPlacement] = useState<{ id: string; row: number; column: number } | null>(null);
   const [dragOverlay, setDragOverlay] = useState<DragOverlay | null>(null);
   const [gridWidth, setGridWidth] = useState<number | null>(null);
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const previousRectsRef = useRef<Map<string, DOMRect>>(new Map());
   const placementAnimationsRef = useRef<Map<string, Animation>>(new Map());
   const pendingPlacementRef = useRef<{ id: string; row: number; column: number } | null>(null);
   const settleTimerRef = useRef<number | null>(null);
   const resizingRef = useRef(false);
+
+  useEffect(() => {
+    if (!toolbarTargetId) return;
+    setToolbarTarget(document.getElementById(toolbarTargetId));
+  }, [toolbarTargetId]);
   const dragRef = useRef<{
     id: string;
     startX: number;
@@ -1193,11 +1201,14 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
   const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>, entry: ActiveWidget) => {
     if (!editing) return;
     if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
+    if (event.pointerType === "touch" && !(event.target as HTMLElement).closest(".dojo-move-handle")) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    const rect = event.currentTarget.getBoundingClientRect();
+    const widgetElement = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-widget-id]")
+      ?? event.currentTarget;
+    const rect = widgetElement.getBoundingClientRect();
     const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
     dragRef.current = {
       id: entry.key,
@@ -1408,10 +1419,52 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
     window.addEventListener("pointercancel", onUp);
   }, [effectiveColumns, placementsById, setWidgetSize, state.sizes]);
 
+  const headerControls = (
+    <div className={cn("dojo-header-controls", editing && "is-editing")}>
+      {editing && (
+        <Popover open={addPopoverOpen} onOpenChange={setAddPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl px-3 text-xs">
+              <Plus className="h-3.5 w-3.5" />
+              Add widget
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={10} className="w-56 rounded-2xl p-2">
+            <div className="mb-2 border-b border-border/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+              Custom widgets
+            </div>
+            <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("image")}>
+              <ImageIcon className="h-4 w-4" />
+              <span>Image</span>
+            </button>
+            <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("text")}>
+              <Type className="h-4 w-4" />
+              <span>Text</span>
+            </button>
+            <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("clock")}>
+              <Clock className="h-4 w-4" />
+              <span>Clock</span>
+            </button>
+          </PopoverContent>
+        </Popover>
+      )}
+      <Button
+        variant={editing ? "secondary" : "ghost"}
+        size="sm"
+        className="h-9 rounded-xl px-3 text-xs"
+        onClick={() => setEditing((value) => !value)}
+      >
+        <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+        {editing ? "Done" : "Customize"}
+      </Button>
+    </div>
+  );
+
   return (
     <section className="dojo-module-grid" aria-label="Module widgets">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        {editing ? (
+      {toolbarTarget ? createPortal(headerControls, toolbarTarget) : headerControls}
+      {editing && (
+        <div className="mb-3">
           <div className="dojo-column-picker" aria-label="Grid columns">
             <span className="px-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">Grid</span>
             {Array.from({ length: maxColumns }, (_, index) => index + 1).map((columns) => (
@@ -1426,68 +1479,8 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
               </button>
             ))}
           </div>
-        ) : <span />}
-        <div className="flex items-center gap-2">
-          {editing && (
-            <Popover open={addPopoverOpen} onOpenChange={setAddPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg px-3 text-xs">
-                  <Plus className="h-3.5 w-3.5" />
-                  Add widget
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 rounded-2xl p-2 max-h-[80vh] overflow-y-auto">
-                <div className="mb-2 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 border-b border-border/40">
-                  Custom Widgets
-                </div>
-                <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("image")}>
-                  <ImageIcon className="h-4 w-4" />
-                  <span>Image</span>
-                </button>
-                <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("text")}>
-                  <Type className="h-4 w-4" />
-                  <span>Text</span>
-                </button>
-                <button type="button" className="dojo-add-widget-option" onClick={() => addCustomWidget("clock")}>
-                  <Clock className="h-4 w-4" />
-                  <span>Clock</span>
-                </button>
-
-                {hiddenWidgets.length > 0 && (
-                  <>
-                    <div className="mt-4 mb-2 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 border-b border-border/40">
-                      Available Biometrics
-                    </div>
-                    {hiddenWidgets.map((widget) => (
-                      <button
-                        key={widget.id}
-                        type="button"
-                        className="dojo-add-widget-option"
-                        onClick={() => {
-                          addWidget(widget.id);
-                          setAddPopoverOpen(false);
-                        }}
-                      >
-                        {widget.icon ? <widget.icon className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                        <span>{widget.label}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </PopoverContent>
-            </Popover>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("h-8 rounded-lg px-3 text-xs", editing ? "bg-muted text-foreground" : "text-muted-foreground")}
-            onClick={() => setEditing((value) => !value)}
-          >
-            <Settings2 className="mr-1.5 h-3.5 w-3.5" />
-            {editing ? "Done" : "Customize"}
-          </Button>
         </div>
-      </div>
+      )}
 
       {activeWidgets.length > 0 ? (
         <div
@@ -1581,6 +1574,14 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
                 />
                 <button
                   type="button"
+                  className="dojo-move-handle"
+                  onPointerDown={(event) => beginDrag(event, entry)}
+                  aria-label={`Move ${entry.label}`}
+                >
+                  <GripHorizontal aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
                   className="dojo-widget-action dojo-resize-handle dojo-resize-se"
                   onPointerDown={(event) => beginResize(event, entry, "se")}
                   onKeyDown={(event) => {
@@ -1652,7 +1653,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/45">
             Available widgets
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="dojo-available-carousel" aria-label="Available widget categories">
             {hiddenWidgets.map((widget) => {
               const Icon = widget.icon;
               const activeVisualizationIds = visualizationOptions(widget)
