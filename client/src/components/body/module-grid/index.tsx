@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, GripHorizontal, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
+import { Clock, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Visualization {
@@ -141,6 +141,7 @@ const MAX_GRID_COLUMNS = 12;
 const MAX_WIDGET_ROWS = 8;
 const DRAG_SETTLE_MS = 0;
 const DRAG_START_THRESHOLD = 8;
+const TOUCH_DRAG_HOLD_MS = 420;
 const ACCENT_PRESETS = [
   "#2563eb",
   "#7c3aed",
@@ -717,9 +718,9 @@ function CustomClockWidget(rootProps: React.HTMLAttributes<HTMLDivElement>) {
   }, []);
 
   return (
-    <div {...rootProps} className={cn("flex h-full w-full flex-col items-center justify-center rounded-2xl border border-border/60 bg-card p-4 text-center shadow-sm", rootProps.className)}>
+    <div {...rootProps} className={cn("dojo-custom-widget flex h-full w-full flex-col items-center justify-center p-4 text-center", rootProps.className)}>
       {rootProps.children}
-      <div className="font-mono text-3xl font-black tracking-tight sm:text-4xl">
+      <div className="text-3xl font-semibold leading-none tracking-[-.04em] tabular-nums sm:text-4xl">
         {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </div>
       <div className="mt-1 text-xs font-medium text-muted-foreground">
@@ -738,8 +739,8 @@ function CustomTextWidget({
     <div
       {...rootProps}
       className={cn(
-        "flex h-full w-full items-center rounded-2xl p-5",
-        borderless ? "bg-transparent shadow-none" : "border border-border/60 bg-card shadow-sm",
+        "flex h-full w-full items-center rounded-[var(--body-widget-radius)] p-5",
+        borderless ? "bg-transparent shadow-none" : "dojo-custom-widget",
         rootProps.className,
       )}
     >
@@ -768,7 +769,7 @@ function CustomImageWidget({
   };
 
   return (
-    <div {...rootProps} className={cn("h-full w-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm", rootProps.className)}>
+    <div {...rootProps} className={cn("dojo-custom-widget h-full w-full overflow-hidden", rootProps.className)}>
       {rootProps.children}
       {imageData ? (
         <img src={imageData} alt="Custom widget" className="h-full w-full object-cover" />
@@ -1198,25 +1199,32 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
     }));
   }, []);
 
-  const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>, entry: ActiveWidget) => {
+  const beginDrag = useCallback((
+    event: React.PointerEvent<HTMLElement>,
+    entry: ActiveWidget,
+    touchStart?: { widgetElement: HTMLElement; clientX: number; clientY: number },
+  ) => {
     if (!editing) return;
     if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
-    if (event.pointerType === "touch" && !(event.target as HTMLElement).closest(".dojo-move-handle")) return;
+    if (event.pointerType === "touch" && !touchStart) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    const widgetElement = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-widget-id]")
+    const widgetElement = touchStart?.widgetElement
+      ?? (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-widget-id]")
       ?? event.currentTarget;
+    const startX = touchStart?.clientX ?? event.clientX;
+    const startY = touchStart?.clientY ?? event.clientY;
     const rect = widgetElement.getBoundingClientRect();
     const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
     dragRef.current = {
       id: entry.key,
-      startX: event.clientX,
-      startY: event.clientY,
+      startX,
+      startY,
       hasMoved: false,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
+      offsetX: startX - rect.left,
+      offsetY: startY - rect.top,
       placement: null,
       latestPlacement: null,
       size,
@@ -1246,6 +1254,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
       const drag = dragRef.current;
       const grid = gridRef.current;
       if (!drag || !grid) return;
+      if (moveEvent.cancelable) moveEvent.preventDefault();
 
       const totalDx = moveEvent.clientX - drag.startX;
       const totalDy = moveEvent.clientY - drag.startY;
@@ -1329,6 +1338,43 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   }, [editing, effectiveColumns, state.activeIds, state.sizes]);
+
+  const beginWidgetPointerInteraction = useCallback((event: React.PointerEvent<HTMLDivElement>, entry: ActiveWidget) => {
+    if (!editing) return;
+    if (event.pointerType !== "touch") {
+      beginDrag(event, entry);
+      return;
+    }
+    if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
+
+    const widgetElement = event.currentTarget;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let timer = window.setTimeout(() => {
+      cleanup();
+      if (navigator.vibrate) navigator.vibrate(8);
+      beginDrag(event, entry, { widgetElement, clientX: startX, clientY: startY });
+    }, TOUCH_DRAG_HOLD_MS);
+
+    const cleanup = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = 0;
+      }
+      window.removeEventListener("pointermove", cancelOnMove);
+      window.removeEventListener("pointerup", cleanup);
+      window.removeEventListener("pointercancel", cleanup);
+    };
+    const cancelOnMove = (moveEvent: PointerEvent) => {
+      if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > DRAG_START_THRESHOLD) {
+        cleanup();
+      }
+    };
+
+    window.addEventListener("pointermove", cancelOnMove);
+    window.addEventListener("pointerup", cleanup);
+    window.addEventListener("pointercancel", cleanup);
+  }, [beginDrag, editing]);
 
   const beginResize = useCallback((
     event: React.PointerEvent,
@@ -1532,7 +1578,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
             });
             const gridProps = {
               key: entry.key,
-              onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => beginDrag(event, entry),
+              onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => beginWidgetPointerInteraction(event, entry),
               onClickCapture: (event: React.MouseEvent<HTMLDivElement>) => {
                 if (!editing) return;
                 if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
@@ -1572,14 +1618,6 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
                   value={state.accentColors?.[entry.key] ?? entry.widget.defaultAccentColor ?? "#2563eb"}
                   onChange={(color) => setWidgetAccent(entry, color)}
                 />
-                <button
-                  type="button"
-                  className="dojo-move-handle"
-                  onPointerDown={(event) => beginDrag(event, entry)}
-                  aria-label={`Move ${entry.label}`}
-                >
-                  <GripHorizontal aria-hidden="true" />
-                </button>
                 <button
                   type="button"
                   className="dojo-widget-action dojo-resize-handle dojo-resize-se"
@@ -1653,7 +1691,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/45">
             Available widgets
           </div>
-          <div className="dojo-available-carousel" aria-label="Available widget categories">
+          <div className="dojo-available-grid" aria-label="Available widget categories">
             {hiddenWidgets.map((widget) => {
               const Icon = widget.icon;
               const activeVisualizationIds = visualizationOptions(widget)
