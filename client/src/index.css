@@ -34,7 +34,7 @@ html {
 /* Safe area: push all headers below status bar in standalone PWA mode.
    This covers both the main header and all fullscreen page headers. */
 @media all and (display-mode: standalone) {
-  header {
+  header:not(.dojo-widget-header) {
     padding-top: env(safe-area-inset-top) !important;
   }
 }

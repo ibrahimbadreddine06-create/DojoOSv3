@@ -139,7 +139,7 @@ function Frame({
       className="grid h-full min-h-0 gap-[15px]"
       style={{ gridTemplateRows: `33px minmax(0,1fr) ${bottomHeight}px` }}
     >
-      <header className="flex min-h-0 items-start justify-between overflow-visible">
+      <header className="dojo-widget-header flex min-h-0 items-start justify-between overflow-visible">
         <div>
           <h3 className="text-[15px] font-semibold leading-none tracking-[-.015em]">{title}</h3>
           <p className="mt-1 text-[11px] leading-[1.2] text-[#747d89]">{meta}</p>

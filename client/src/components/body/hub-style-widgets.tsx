@@ -44,12 +44,12 @@ function Candidate({placement,theme=blue,barRadius=999,barHeight=16,barInset=0,b
   const loweredBottom=placement==="h";
   return <article className="relative flex h-full w-full flex-col overflow-hidden rounded-[22px] border border-[#e4e7eb] bg-white p-5 text-[#18202a] shadow-[0_8px_22px_rgba(24,32,42,.055)]" style={{fontFamily}}>
     {centeredTop?
-      <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+      <header className="dojo-widget-header grid grid-cols-[1fr_auto_1fr] items-start gap-4">
         <div className="justify-self-start"><Title style={titleStyle} secondarySize={secondarySize}/></div>
         <Icon theme={theme}/>
         <div className="justify-self-end"><Score unitSize={secondarySize}/></div>
       </header>:
-      <header className={`relative flex items-start justify-between ${showZones?"rounded-lg outline outline-1 outline-dashed outline-amber-400":""}`}>
+      <header className={`dojo-widget-header relative flex items-start justify-between ${showZones?"rounded-lg outline outline-1 outline-dashed outline-amber-400":""}`}>
         <div className="flex items-center gap-2.5">{placement==="a"?<Icon theme={theme}/>:null}<Title style={titleStyle} secondarySize={secondarySize}/></div>
         {topRight?<Icon theme={theme}/>:scoreIcon?<div className="flex items-center gap-2"><Icon theme={theme}/><Score unitSize={secondarySize}/></div>:<Score unitSize={secondarySize}/>}
         {showZones?<span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">top zone</span>:null}
@@ -280,7 +280,7 @@ function StepsStats({includeRemaining=false}:{includeRemaining?:boolean}){
 }
 
 function StepsHeader(){
-  return <header className={`flex min-h-0 items-start justify-between ${slotClass}`}>
+  return <header className={`dojo-widget-header flex min-h-0 items-start justify-between ${slotClass}`}>
     <Title title="Steps" meta="Today" secondarySize={11}/>
     <TbWalk className="h-6 w-6 shrink-0 text-[var(--widget-accent)]"/>
   </header>;
@@ -410,7 +410,7 @@ function ProposedZonedE({empty=false,compositionVariant,accentColor}:{empty?:boo
 
   return <article ref={cardRef} className="relative h-full w-full overflow-hidden rounded-[var(--body-widget-radius)] border border-[#e4e7eb] bg-white shadow-[0_8px_22px_rgba(24,32,42,.055)] transition-[border-color,box-shadow] duration-150 [transition-timing-function:cubic-bezier(0.25,1,0.5,1)] hover:border-[#d7dce2] hover:shadow-[0_10px_26px_rgba(24,32,42,.09)] motion-reduce:transition-none">
     <div className="absolute left-0 top-0 box-border grid gap-[15px] overflow-visible p-5 text-[#18202a]" style={{fontFamily:inter,width:designWidth,height:designHeight,gridTemplateRows:"33fr 152fr 33fr",transform:`scale(${scale})`,transformOrigin:"top left","--widget-accent":exampleTheme.accent,"--widget-soft":exampleTheme.accentSoft,"--widget-border":`color-mix(in srgb, ${exampleTheme.accent} 70%, transparent)`,"--widget-ink":`color-mix(in oklch, ${exampleTheme.accent} 58%, black)`} as CSSProperties}>
-      <header className={`relative flex min-h-0 items-start justify-between overflow-visible rounded-lg border ${showZoneGuides?"border-dashed border-amber-400":"border-transparent"}`}>
+      <header className={`dojo-widget-header relative flex min-h-0 items-start justify-between overflow-visible rounded-lg border ${showZoneGuides?"border-dashed border-amber-400":"border-transparent"}`}>
         {structural&&example&&ExampleIcon?<><Title secondarySize={11} title={example.title} meta={example.meta}/><ExampleIcon className="h-6 w-6 shrink-0" style={{color:exampleTheme.accent}}/></>:empty?null:<><Title secondarySize={11}/><Icon theme={finalBlue}/></>}
         {!showZoneGuides||structural?null:<span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">top · {shown(33)}px</span>}
       </header>
