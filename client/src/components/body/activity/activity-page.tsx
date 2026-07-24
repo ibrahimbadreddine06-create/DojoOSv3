@@ -18,11 +18,7 @@ export function ActivityPage() {
           <Plus className="w-4 h-4" /> Log activity
         </Button>
       </div>
-      <ModuleGrid
-        widgets={[]}
-        storageKey="moduleGrid_activity_v100_fresh_start"
-        initialActiveWidgetIds={[]}
-      />
+      <ModuleGrid widgets={[]} storageKey="moduleGrid_activity_v100_fresh_start" />
       <LogActivityModal open={logModalOpen} onOpenChange={setLogModalOpen} />
     </div>
   );

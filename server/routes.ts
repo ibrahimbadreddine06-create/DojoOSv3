@@ -4,8 +4,6 @@ import { storage } from "./storage";
 import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory, analyzeMealDescription, analyzeMealPhoto } from "./ai";
 import { calculateRecoveryScore } from "./recovery";
 import { computeDailyEffort, computeWeeklyEffort } from "./effort";
-import { getBodyMetricHistory, getBodyMetricsSnapshot } from "./body-metrics";
-import { approvedBodyCardsV1, bodyWidgetVariantInventoryV1 } from "../shared/body-card-catalog";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -872,81 +870,6 @@ export function registerRoutes(app: Express): Server {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const signals = await storage.getBodySignals((req.user as any).id);
     res.json(signals);
-  });
-
-  app.get("/api/body/catalog", async (_req, res) => {
-    res.json({
-      version: "body-v1-research-catalog",
-      approvedCards: approvedBodyCardsV1,
-      variantInventory: bodyWidgetVariantInventoryV1,
-      approvedCount: approvedBodyCardsV1.length,
-      totalVariantCount: bodyWidgetVariantInventoryV1.length,
-    });
-  });
-
-  app.get("/api/body/metrics/:date", async (req, res) => {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    try {
-      const snapshot = await getBodyMetricsSnapshot(storage, (req.user as any).id, req.params.date);
-      res.json(snapshot);
-    } catch (e: any) {
-      res.status(500).json({ message: e.message });
-    }
-  });
-
-  app.get("/api/body/metrics/:date/history/:metricKey", async (req, res) => {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    try {
-      const days = Number.parseInt(String(req.query.days ?? "30"), 10);
-      const history = await getBodyMetricHistory(
-        storage,
-        (req.user as any).id,
-        req.params.metricKey,
-        req.params.date,
-        Number.isFinite(days) ? days : 30,
-      );
-      res.json({ metricKey: req.params.metricKey, endDate: req.params.date, history });
-    } catch (e: any) {
-      res.status(500).json({ message: e.message });
-    }
-  });
-
-  app.get("/api/body/recovery/:date", async (req, res) => {
-    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const userId = (req.user as any).id;
-    const { date } = req.params;
-    const [snapshot, state] = await Promise.all([
-      getBodyMetricsSnapshot(storage, userId, date),
-      storage.getDailyState(userId, date),
-    ]);
-    const metric = snapshot.metrics.find((item) => item.key === "body_readiness");
-    if (!metric || metric.value == null) return res.status(404).json({ message: "Body readiness unavailable" });
-
-    const score = Math.round(metric.value);
-    const yesterday = new Date(date);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yDate = yesterday.toISOString().split("T")[0];
-    const yState = await storage.getDailyState(userId, yDate);
-    const delta = yState?.recoveryScore != null ? score - Number(yState.recoveryScore) : null;
-
-    await storage.upsertDailyState(userId, date, { recoveryScore: score });
-    const components = metric.components ?? {};
-    const entries = Object.entries(components)
-      .filter(([, value]) => typeof value === "number")
-      .map(([label, value]) => ({ label, score: Number(value) }))
-      .sort((a, b) => a.score - b.score);
-
-    res.json({
-      score,
-      status: metric.status,
-      delta,
-      dominantFactor: entries[0]?.label ?? "None",
-      checkinRequired: !(state as any)?.sorenesScore && !(state as any)?.energyLevel,
-      breakdown: components,
-      confidence: metric.confidence,
-      calculationClass: metric.calculationClass,
-      missingInputs: metric.missingInputs,
-    });
   });
 
   // Workout Execution

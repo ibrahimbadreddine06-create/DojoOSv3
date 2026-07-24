@@ -34,11 +34,12 @@ export function BodyMap({ showControls = true, className = "", onMuscleSelect }:
 
         const stat = stats?.find(s => s.muscleId === id);
         if (stat && stat.recoveryScore !== null) {
-            const score = stat.recoveryScore || 100;
-            if (score < 40) return "rgba(239,68,68,0.4)"; // Red
-            if (score < 80) return "rgba(234,179,8,0.3)"; // Yellow
+            const score = stat.recoveryScore;
+            if (score < 40) return "rgba(239,68,68,0.7)"; // Red (High Strain)
+            if (score < 75) return "rgba(245,158,11,0.6)"; // Orange (Moderate)
+            return "rgba(34,197,94,0.4)"; // Green (Recovered)
         }
-        return "transparent";
+        return "rgba(100,116,139,0.15)"; // Neutral fallback when no recent sets logged
     };
 
     const getRecovery = (id: string) => {

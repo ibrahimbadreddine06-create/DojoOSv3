@@ -823,20 +823,11 @@ export class DatabaseStorage implements IStorage {
 
   // Body
   async getWorkouts(userId: string, date: string): Promise<Workout[]> {
-    // Cast date string to timestamp for comparison, or use BETWEEN for day range
-    // Since date is now timestamp in schema but passed as YYYY-MM-DD string here,
-    // we need to handle it. Assuming input is YYYY-MM-DD.
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // Using any for the between clause as Drizzle type inference can be strict
+    this.ensureDb();
     return await db.select().from(workouts)
       .where(and(
         eq(workouts.userId, userId),
-        sql`${workouts.date} >= ${startOfDay}`,
-        sql`${workouts.date} <= ${endOfDay}`
+        sql`DATE(${workouts.date}) = ${date}`
       ));
   }
 

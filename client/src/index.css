@@ -575,6 +575,49 @@ html {
       box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.12);
     }
 
+  .dojo-resize-destination {
+      position: absolute;
+      z-index: 90;
+      left: calc(var(--dojo-resize-column) * (var(--dojo-cell-size) + var(--dojo-grid-gap)));
+      top: calc(var(--dojo-resize-row) * (var(--dojo-cell-size) + var(--dojo-grid-gap)));
+      width: calc(var(--dojo-resize-w) * var(--dojo-cell-size) + (var(--dojo-resize-w) - 1) * var(--dojo-grid-gap));
+      height: calc(var(--dojo-resize-h) * var(--dojo-cell-size) + (var(--dojo-resize-h) - 1) * var(--dojo-grid-gap));
+      border: 1px solid hsl(var(--foreground) / 0.18);
+      border-radius: var(--body-widget-radius, 22px);
+      pointer-events: none;
+      transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        box-shadow 120ms ease;
+    }
+
+  .dojo-resize-destination > span {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: hsl(var(--background) / 0.92);
+      color: hsl(var(--foreground) / 0.58);
+      box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.08);
+      font-size: 10px;
+      font-weight: 650;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+  .dojo-resize-destination.is-target {
+      z-index: 91;
+      border-color: hsl(var(--foreground) / 0.48);
+      background: hsl(var(--foreground) / 0.035);
+      box-shadow: inset 0 0 0 1px hsl(var(--background) / 0.7);
+    }
+
+  .dojo-resize-destination.is-target > span {
+      background: hsl(var(--foreground) / 0.86);
+      color: hsl(var(--background));
+    }
+
   .dojo-widget-root[data-drop-target="true"] {
       outline: 2px solid hsl(var(--foreground) / 0.22);
       outline-offset: 3px;
@@ -605,6 +648,197 @@ html {
     z-index: 40;
     display: flex;
     gap: 0.25rem;
+  }
+
+  .dojo-remove-widget {
+    position: absolute;
+    top: -0.5rem;
+    left: -0.5rem;
+    z-index: 70;
+    display: inline-flex;
+    height: 1.75rem;
+    width: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid hsl(var(--border) / 0.72);
+    border-radius: 999px;
+    background: hsl(var(--background) / 0.96);
+    color: hsl(var(--foreground) / 0.72);
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.12);
+    transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .dojo-remove-widget:hover,
+  .dojo-remove-widget:focus-visible {
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    transform: scale(1.05);
+    outline: none;
+  }
+
+  .dojo-remove-widget svg {
+    height: 0.9rem;
+    width: 0.9rem;
+    stroke-width: 2.4;
+  }
+
+  .dojo-accent-control {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 70;
+    display: block;
+    height: 1.75rem;
+    width: 1.75rem;
+    cursor: pointer;
+    overflow: hidden;
+    border: 3px solid hsl(var(--background) / 0.96);
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.14), 0 4px 12px hsl(var(--foreground) / 0.12);
+    transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 140ms ease;
+  }
+
+  .dojo-accent-control:hover,
+  .dojo-accent-control:focus-visible,
+  .dojo-accent-control[data-state="open"] {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--foreground) / 0.24), 0 6px 14px hsl(var(--foreground) / 0.14);
+    outline: none;
+  }
+
+  .dojo-color-picker {
+    width: 15.75rem;
+    border-radius: 0.9rem;
+    border-color: hsl(var(--border) / 0.62);
+    background: hsl(var(--background));
+    padding: 0.7rem;
+    box-shadow: 0 18px 50px hsl(var(--foreground) / 0.16);
+  }
+
+  .dojo-color-picker-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.05rem 0.05rem 0.65rem;
+    color: hsl(var(--foreground));
+    font-size: 0.75rem;
+    font-weight: 720;
+  }
+
+  .dojo-color-picker-heading i {
+    height: 0.9rem;
+    width: 0.9rem;
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.14);
+  }
+
+  .dojo-color-field {
+    position: relative;
+    height: 8rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    cursor: crosshair;
+    touch-action: none;
+    background-image:
+      linear-gradient(to top, #000, transparent),
+      linear-gradient(to right, #fff, transparent);
+  }
+
+  .dojo-color-field-thumb {
+    position: absolute;
+    height: 0.9rem;
+    width: 0.9rem;
+    border: 2px solid white;
+    border-radius: 999px;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .dojo-hue-slider {
+    display: block;
+    width: 100%;
+    height: 0.85rem;
+    margin: 0.7rem 0 0;
+    appearance: none;
+    border-radius: 999px;
+    background: linear-gradient(to right, #f33, #ff3, #3f3, #3ff, #33f, #f3f, #f33);
+    cursor: pointer;
+  }
+
+  .dojo-hue-slider::-webkit-slider-thumb {
+    height: 1.05rem;
+    width: 1.05rem;
+    appearance: none;
+    border: 2px solid white;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.28), 0 2px 5px rgb(0 0 0 / 0.18);
+  }
+
+  .dojo-hue-slider::-moz-range-thumb {
+    height: 0.8rem;
+    width: 0.8rem;
+    border: 2px solid white;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.28), 0 2px 5px rgb(0 0 0 / 0.18);
+  }
+
+  .dojo-color-presets {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+  }
+
+  .dojo-color-swatch {
+    aspect-ratio: 1;
+    border: 2px solid hsl(var(--background));
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.1);
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+
+  .dojo-color-swatch:hover,
+  .dojo-color-swatch:focus-visible {
+    transform: scale(1.08);
+    outline: none;
+  }
+
+  .dojo-color-swatch.is-active {
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--foreground) / 0.72);
+  }
+
+  .dojo-color-hex {
+    display: flex;
+    height: 2.15rem;
+    align-items: center;
+    gap: 0.15rem;
+    margin-top: 0.7rem;
+    border: 1px solid hsl(var(--border) / 0.72);
+    border-radius: 0.65rem;
+    background: hsl(var(--muted) / 0.22);
+    padding: 0 0.65rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    font-weight: 650;
+  }
+
+  .dojo-color-hex:focus-within {
+    border-color: hsl(var(--foreground) / 0.32);
+    box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.06);
+  }
+
+  .dojo-color-hex input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: hsl(var(--foreground));
+    font: inherit;
+    text-transform: uppercase;
   }
 
   .dojo-column-picker {
@@ -725,19 +959,15 @@ html {
   .dojo-available-preview {
     position: relative;
     display: block;
-    height: 11rem;
-    width: 100%;
-    overflow: hidden;
-    border-radius: 0.9rem;
-    border: 1px solid hsl(var(--border) / 0.58);
-    background: hsl(var(--card));
+    width: min(100%, 18rem);
+    aspect-ratio: 1;
+    margin-inline: auto;
+    overflow: visible;
   }
 
   .dojo-available-preview-content {
     height: 100%;
     width: 100%;
-    transform: scale(0.92);
-    transform-origin: center;
     pointer-events: none;
   }
 
@@ -747,8 +977,11 @@ html {
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 0;
+    border-radius: var(--body-widget-radius, 22px);
     background: hsl(var(--foreground) / 0);
     color: transparent;
+    cursor: pointer;
     transition: background-color 140ms ease, color 140ms ease;
   }
 
@@ -759,72 +992,49 @@ html {
 
   .dojo-resize-handle {
     position: absolute;
-    z-index: 55;
+    right: -0.35rem;
+    bottom: -0.35rem;
+    z-index: 70;
+    height: 2.75rem;
+    width: 2.75rem;
+    border: 0;
     background: transparent;
     touch-action: none;
-  }
-
-  .dojo-resize-e {
-    top: 0;
-    right: -14px;
-    height: 100%;
-    width: 28px;
-    cursor: ew-resize;
-  }
-
-  .dojo-resize-w {
-    top: 0;
-    left: -14px;
-    height: 100%;
-    width: 28px;
-    cursor: ew-resize;
-  }
-
-  .dojo-resize-n {
-    top: -14px;
-    left: 0;
-    height: 28px;
-    width: 100%;
-    cursor: ns-resize;
-  }
-
-  .dojo-resize-s {
-    bottom: -14px;
-    left: 0;
-    height: 28px;
-    width: 100%;
-    cursor: ns-resize;
-  }
-
-  .dojo-resize-ne,
-  .dojo-resize-nw,
-  .dojo-resize-sw,
-  .dojo-resize-se {
-    height: 44px;
-    width: 44px;
-  }
-
-  .dojo-resize-ne {
-    top: -16px;
-    right: -16px;
-    cursor: nesw-resize;
-  }
-
-  .dojo-resize-nw {
-    top: -16px;
-    left: -16px;
     cursor: nwse-resize;
+    color: #929ba6;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .dojo-resize-se {
-    right: -16px;
-    bottom: -16px;
-    cursor: nwse-resize;
+  .dojo-native-grid .dojo-widget-root {
+    --body-widget-radius: 22px;
   }
 
-  .dojo-resize-sw {
-    bottom: -16px;
-    left: -16px;
-    cursor: nesw-resize;
+  .dojo-resize-handle > svg {
+    position: absolute;
+    right: 1.6px;
+    bottom: 1.6px;
+    height: 36px;
+    width: 36px;
+    overflow: visible;
+    filter: drop-shadow(0 1px 1.5px hsl(var(--foreground) / 0.2));
+    transform-origin: bottom right;
+    transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), filter 140ms ease;
+  }
+
+  .dojo-resize-handle:hover,
+  .dojo-resize-handle:focus-visible,
+  .dojo-widget-root[data-resizing="true"] .dojo-resize-handle {
+    color: #59636f;
+  }
+
+  .dojo-resize-handle:hover > svg,
+  .dojo-resize-handle:focus-visible > svg,
+  .dojo-widget-root[data-resizing="true"] .dojo-resize-handle > svg {
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,.9)) drop-shadow(0 2px 2px hsl(var(--foreground) / 0.28));
+    transform: scale(1.05);
+  }
+
+  .dojo-resize-handle:focus-visible {
+    outline: none;
   }
 }

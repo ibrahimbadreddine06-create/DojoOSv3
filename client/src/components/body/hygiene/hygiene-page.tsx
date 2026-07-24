@@ -1,5 +1,4 @@
 import { ModuleGrid } from "@/components/body/module-grid";
-import { AddHygieneRoutineDialog } from "@/components/dialogs/add-hygiene-routine-dialog";
 
 export function HygienePage() {
   return (
@@ -9,13 +8,8 @@ export function HygienePage() {
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50">Body</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">Hygiene & Looks</h1>
         </div>
-        <AddHygieneRoutineDialog />
       </div>
-      <ModuleGrid
-        widgets={[]}
-        storageKey="moduleGrid_hygiene_v100_fresh_start"
-        initialActiveWidgetIds={[]}
-      />
+      <ModuleGrid widgets={[]} storageKey="moduleGrid_hygiene_v100_fresh_start" />
     </div>
   );
 }

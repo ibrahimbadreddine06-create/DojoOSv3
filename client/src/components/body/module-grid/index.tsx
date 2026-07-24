@@ -4,12 +4,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, ImageIcon, Plus, Settings2, Type, Upload } from "lucide-react";
+import { Clock, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface Visualization {
   id: string;
   label: string;
+  defaultSize?: WidgetSize;
+  allowedSizes?: WidgetSize[];
 }
 
 /**
@@ -39,6 +41,7 @@ export interface WidgetRenderContext {
   shape: WidgetShape;
   isEditing: boolean;
   visualizationId: string;
+  accentColor?: string;
 }
 
 export interface WidgetDefinition {
@@ -54,6 +57,7 @@ export interface WidgetDefinition {
   render: (context: WidgetRenderContext) => React.ReactNode;
   visualizations: Visualization[];
   allowedSizes?: WidgetSize[];
+  defaultAccentColor?: string;
 }
 
 export function defineWidget(definition: WidgetDefinition): WidgetDefinition {
@@ -69,6 +73,8 @@ interface ModuleGridState {
   activeIds: string[];
   sizes: Record<string, WidgetSize>;
   visualizations: Record<string, string>;
+  placements?: Record<string, { row: number; column: number }>;
+  accentColors?: Record<string, string>;
   gridColumns?: number;
   customWidgets?: CustomWidget[];
 }
@@ -90,6 +96,15 @@ type DragOverlay = {
   y: number;
   width: number;
   height: number;
+};
+
+type ResizeGuide = {
+  id: string;
+  row: number;
+  column: number;
+  current: WidgetSize;
+  target: WidgetSize;
+  sizes: WidgetSize[];
 };
 
 type GridMetrics = {
@@ -117,6 +132,7 @@ type ActiveWidget = {
 };
 
 type ResizeHandle = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
+type HsvColor = { h: number; s: number; v: number };
 
 const STORAGE_VERSION = 18;
 const MIN_CELL_SIZE = 112;
@@ -124,6 +140,16 @@ const MAX_GRID_COLUMNS = 12;
 const MAX_WIDGET_ROWS = 8;
 const DRAG_SETTLE_MS = 0;
 const DRAG_START_THRESHOLD = 8;
+const ACCENT_PRESETS = [
+  "#2563eb",
+  "#7c3aed",
+  "#db2777",
+  "#e5484d",
+  "#ea7c16",
+  "#20a65a",
+  "#0891b2",
+  "#18202a",
+];
 
 const ALL_WIDGET_SIZES: WidgetSize[] = Array.from({ length: MAX_GRID_COLUMNS }, (_, wIndex) =>
   Array.from({ length: MAX_WIDGET_ROWS }, (_, hIndex) => ({
@@ -137,10 +163,170 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-function defaultSize(widget: WidgetDefinition): WidgetSize {
+function normalizeHex(value: string) {
+  const cleaned = value.trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(cleaned)) {
+    return `#${cleaned.split("").map((character) => character + character).join("")}`.toLowerCase();
+  }
+  return /^[0-9a-f]{6}$/i.test(cleaned) ? `#${cleaned.toLowerCase()}` : null;
+}
+
+function hexToHsv(hex: string): HsvColor {
+  const normalized = normalizeHex(hex) ?? "#2563eb";
+  const red = parseInt(normalized.slice(1, 3), 16) / 255;
+  const green = parseInt(normalized.slice(3, 5), 16) / 255;
+  const blue = parseInt(normalized.slice(5, 7), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+  if (delta) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
   return {
-    w: Math.max(1, Math.round(widget.defaultW)),
-    h: Math.max(1, Math.round(widget.defaultH)),
+    h: hue < 0 ? hue + 360 : hue,
+    s: max === 0 ? 0 : delta / max,
+    v: max,
+  };
+}
+
+function hsvToHex({ h, s, v }: HsvColor) {
+  const chroma = v * s;
+  const section = h / 60;
+  const x = chroma * (1 - Math.abs((section % 2) - 1));
+  const [red, green, blue] = section < 1 ? [chroma, x, 0]
+    : section < 2 ? [x, chroma, 0]
+      : section < 3 ? [0, chroma, x]
+        : section < 4 ? [0, x, chroma]
+          : section < 5 ? [x, 0, chroma]
+            : [chroma, 0, x];
+  const match = v - chroma;
+  return `#${[red, green, blue].map((channel) => (
+    Math.round((channel + match) * 255).toString(16).padStart(2, "0")
+  )).join("")}`;
+}
+
+function WidgetColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  const [hsv, setHsv] = useState(() => hexToHsv(value));
+  const [hexDraft, setHexDraft] = useState(value.toUpperCase());
+
+  useEffect(() => {
+    setHsv(hexToHsv(value));
+    setHexDraft(value.toUpperCase());
+  }, [value]);
+
+  const commitHsv = (next: HsvColor) => {
+    setHsv(next);
+    onChange(hsvToHex(next));
+  };
+
+  const updateSaturationValue = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = event.currentTarget.getBoundingClientRect();
+    commitHsv({
+      ...hsv,
+      s: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+      v: clamp(1 - ((event.clientY - rect.top) / rect.height), 0, 1),
+    });
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="dojo-widget-action dojo-accent-control"
+          style={{ backgroundColor: value }}
+          onPointerDown={(event) => event.stopPropagation()}
+          aria-label={`Change accent color for ${label}`}
+          title="Accent color"
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={12}
+        className="dojo-widget-action dojo-color-picker"
+        onPointerDown={(event) => event.stopPropagation()}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
+        <div className="dojo-color-picker-heading">
+          <span>Accent color</span>
+          <i style={{ backgroundColor: value }} />
+        </div>
+        <div
+          className="dojo-color-field"
+          style={{ backgroundColor: hsvToHex({ h: hsv.h, s: 1, v: 1 }) }}
+          onPointerDown={updateSaturationValue}
+          onPointerMove={(event) => {
+            if (event.buttons === 1) updateSaturationValue(event);
+          }}
+          aria-label="Color saturation and brightness"
+        >
+          <span
+            className="dojo-color-field-thumb"
+            style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, backgroundColor: value }}
+          />
+        </div>
+        <input
+          className="dojo-hue-slider"
+          type="range"
+          min="0"
+          max="359"
+          value={Math.round(hsv.h)}
+          onChange={(event) => commitHsv({ ...hsv, h: Number(event.currentTarget.value) })}
+          aria-label="Hue"
+        />
+        <div className="dojo-color-presets" aria-label="Suggested accent colors">
+          {ACCENT_PRESETS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={cn("dojo-color-swatch", value.toLowerCase() === color && "is-active")}
+              style={{ backgroundColor: color }}
+              onClick={() => onChange(color)}
+              aria-label={`Use ${color}`}
+            />
+          ))}
+        </div>
+        <label className="dojo-color-hex">
+          <span>#</span>
+          <input
+            value={hexDraft.replace(/^#/, "")}
+            maxLength={6}
+            spellCheck={false}
+            aria-label="Hex color"
+            onChange={(event) => {
+              const nextDraft = event.currentTarget.value.replace(/[^0-9a-f]/gi, "");
+              setHexDraft(`#${nextDraft}`);
+              const normalized = normalizeHex(nextDraft);
+              if (normalized) onChange(normalized);
+            }}
+          />
+        </label>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function defaultSize(widget: WidgetDefinition, visualizationId?: string): WidgetSize {
+  const variant = visualizationId
+    ? visualizationOptions(widget).find((visualization) => visualization.id === visualizationId)
+    : undefined;
+  return {
+    w: Math.max(1, Math.round(variant?.defaultSize?.w ?? widget.defaultW)),
+    h: Math.max(1, Math.round(variant?.defaultSize?.h ?? widget.defaultH)),
   };
 }
 
@@ -150,13 +336,35 @@ function shapeFor(size: WidgetSize): WidgetShape {
   return "square";
 }
 
-function allowedSizes(widget: WidgetDefinition): WidgetSize[] {
-  const sizes = widget.allowedSizes?.length ? widget.allowedSizes : ALL_WIDGET_SIZES;
-  const fallback = defaultSize(widget);
-  const all = sizes.some((size) => size.w === fallback.w && size.h === fallback.h)
+function allowedSizes(widget: WidgetDefinition, visualizationId?: string): WidgetSize[] {
+  const variant = visualizationId
+    ? visualizationOptions(widget).find((visualization) => visualization.id === visualizationId)
+    : undefined;
+  const sizes = variant?.allowedSizes?.length
+    ? variant.allowedSizes
+    : widget.allowedSizes?.length
+      ? widget.allowedSizes
+      : ALL_WIDGET_SIZES;
+  const fallback = defaultSize(widget, visualizationId);
+  const configured = sizes.some((size) => size.w === fallback.w && size.h === fallback.h)
     ? sizes
     : [fallback, ...sizes];
-  return Array.from(new Map(all.map((size) => [`${size.w}x${size.h}`, size])).values());
+  const required = [
+    { w: 1, h: 1 },
+    { w: 2, h: 1 },
+    { w: 1, h: 2 },
+  ];
+  const continuous = [...configured, ...required].flatMap((size) => (
+    Array.from({ length: Math.max(1, size.w) }, (_, wIndex) => (
+      Array.from({ length: Math.max(1, size.h) }, (_, hIndex) => ({
+        w: wIndex + 1,
+        h: hIndex + 1,
+      }))
+    )).flat()
+  ));
+  return Array.from(
+    new Map(continuous.map((size) => [`${size.w}x${size.h}`, size])).values(),
+  ).sort((a, b) => (a.w * a.h) - (b.w * b.h) || a.h - b.h || a.w - b.w);
 }
 
 function visualizationOptions(widget: WidgetDefinition): Visualization[] {
@@ -190,13 +398,43 @@ function realVisualizationId(widget: WidgetDefinition, visualizationId: string) 
     : widget.visualizations[0]?.id ?? "default";
 }
 
-function nearestAllowed(widget: WidgetDefinition, wanted: WidgetSize): WidgetSize {
-  const sizes = allowedSizes(widget);
+function nearestAllowed(widget: WidgetDefinition, wanted: WidgetSize, visualizationId?: string): WidgetSize {
+  const sizes = allowedSizes(widget, visualizationId);
   return sizes.reduce((winner, size) => {
     const winnerScore = Math.abs(winner.w - wanted.w) * 2 + Math.abs(winner.h - wanted.h);
     const sizeScore = Math.abs(size.w - wanted.w) * 2 + Math.abs(size.h - wanted.h);
     return sizeScore < winnerScore ? size : winner;
   }, sizes[0]);
+}
+
+function nextAllowedSize(
+  widget: WidgetDefinition,
+  visualizationId: string,
+  current: WidgetSize,
+  direction: "left" | "right" | "up" | "down",
+): WidgetSize {
+  const candidates = allowedSizes(widget, visualizationId).filter((size) => {
+    if (direction === "right") return size.w > current.w;
+    if (direction === "left") return size.w < current.w;
+    if (direction === "down") return size.h > current.h;
+    return size.h < current.h;
+  });
+  if (!candidates.length) return current;
+  return candidates.reduce((best, size) => {
+    const primary = direction === "left" || direction === "right"
+      ? Math.abs(size.w - current.w)
+      : Math.abs(size.h - current.h);
+    const secondary = direction === "left" || direction === "right"
+      ? Math.abs(size.h - current.h)
+      : Math.abs(size.w - current.w);
+    const bestPrimary = direction === "left" || direction === "right"
+      ? Math.abs(best.w - current.w)
+      : Math.abs(best.h - current.h);
+    const bestSecondary = direction === "left" || direction === "right"
+      ? Math.abs(best.h - current.h)
+      : Math.abs(best.w - current.w);
+    return primary * 10 + secondary < bestPrimary * 10 + bestSecondary ? size : best;
+  }, candidates[0]);
 }
 
 function fitSizeToColumns(size: WidgetSize, columns: number): WidgetSize {
@@ -211,13 +449,18 @@ function freshState(widgets: WidgetDefinition[], initialActiveWidgetIds?: string
     : widgets.map(defaultWidgetKey);
   return {
     activeIds,
-    sizes: Object.fromEntries(widgets.map((widget) => [defaultWidgetKey(widget), defaultSize(widget)])),
+    sizes: Object.fromEntries(widgets.map((widget) => {
+      const visualizationId = defaultVisualizationId(widget);
+      return [defaultWidgetKey(widget), defaultSize(widget, visualizationId)];
+    })),
     visualizations: Object.fromEntries(widgets.map((widget) => {
       const visualizationId = defaultVisualizationId(widget);
       return [widgetVariantKey(widget.id, visualizationId), visualizationId];
     })),
+    placements: {},
     gridColumns: undefined,
     customWidgets: [],
+    accentColors: {},
   };
 }
 
@@ -260,7 +503,9 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
       visualizationOptions(widget).forEach((visualization) => {
         const variantKey = widgetVariantKey(widget.id, visualization.id);
         const saved = parsed.sizes?.[variantKey] ?? parsed.sizes?.[widget.id];
-        sizes[variantKey] = saved ? nearestAllowed(widget, saved) : defaultSize(widget);
+        sizes[variantKey] = saved
+          ? nearestAllowed(widget, saved, visualization.id)
+          : defaultSize(widget, visualization.id);
       });
     });
     customWidgets.forEach((widget) => {
@@ -281,7 +526,16 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
         ...Object.fromEntries(customWidgets.map((widget) => [widgetVariantKey(widget.id, widget.type), widget.type])),
       },
       gridColumns: parsed.gridColumns,
+      placements: Object.fromEntries(
+        Object.entries(parsed.placements ?? {})
+          .filter(([id]) => activeIds.includes(id))
+          .map(([id, placement]) => [id, {
+            row: Math.max(0, Math.round(placement.row)),
+            column: Math.max(0, Math.round(placement.column)),
+          }]),
+      ),
       customWidgets,
+      accentColors: parsed.accentColors ?? {},
     };
   } catch {
     return freshState(widgets, initialActiveWidgetIds);
@@ -340,31 +594,46 @@ function buildPlacements(
   sizes: Record<string, WidgetSize>,
   columns: number,
   pinned?: { id: string; row: number; column: number },
+  preferred: Record<string, { row: number; column: number }> = {},
 ): GridPlacement[] {
   const occupied: boolean[][] = [];
   const placements: GridPlacement[] = [];
   let cursorCell = 0;
 
+  const place = (id: string, row: number, column: number, size: WidgetSize) => {
+    markPlaced(occupied, row, column, size);
+    placements.push({ id, row, column, cell: row * columns + column });
+  };
+
   if (pinned) {
     const pinnedSize = fitSizeToColumns(sizes[pinned.id] ?? { w: 1, h: 1 }, columns);
     const column = clamp(pinned.column, 0, Math.max(0, columns - pinnedSize.w));
     const row = Math.max(0, pinned.row);
-    markPlaced(occupied, row, column, pinnedSize);
-    placements.push({ id: pinned.id, row, column, cell: row * columns + column });
+    place(pinned.id, row, column, pinnedSize);
   }
 
-  ids.forEach((id) => {
-    if (id === pinned?.id) return;
+  ids.filter((id) => id !== pinned?.id && preferred[id]).forEach((id) => {
     const size = fitSizeToColumns(sizes[id] ?? { w: 1, h: 1 }, columns);
-    let cell = cursorCell;
+    const wanted = preferred[id];
+    const column = clamp(wanted.column, 0, Math.max(0, columns - size.w));
+    const row = Math.max(0, wanted.row);
+    if (canPlace(occupied, row, column, size, columns)) {
+      place(id, row, column, size);
+    }
+  });
+
+  ids.forEach((id) => {
+    if (placements.some((placement) => placement.id === id)) return;
+    const size = fitSizeToColumns(sizes[id] ?? { w: 1, h: 1 }, columns);
+    const wanted = preferred[id];
+    let cell = wanted ? wanted.row * columns + wanted.column : cursorCell;
     let placed = false;
 
     while (!placed) {
       const row = Math.floor(cell / columns);
       const column = cell % columns;
       if (canPlace(occupied, row, column, size, columns)) {
-        markPlaced(occupied, row, column, size);
-        placements.push({ id, row, column, cell });
+        place(id, row, column, size);
         cursorCell = cell + size.w;
         placed = true;
       } else {
@@ -531,12 +800,13 @@ function AvailableWidgetPanel({
     ? selectedVisualizationId
     : options[0]?.id ?? defaultVisualizationId(widget);
   const renderVisualization = realVisualizationId(widget, selected);
-  const previewSize = defaultSize(widget);
+  const previewSize = { w: 1, h: 1 };
   const preview = widget.render({
     size: previewSize,
     shape: shapeFor(previewSize),
     isEditing: false,
     visualizationId: renderVisualization,
+    accentColor: widget.defaultAccentColor,
   });
 
   return (
@@ -559,19 +829,19 @@ function AvailableWidgetPanel({
         ))}
       </div>
 
-      <button
-        type="button"
-        className="dojo-available-preview"
-        onClick={() => onAdd(renderVisualization)}
-        aria-label={`Add ${widgetVariantLabel(widget, renderVisualization)}`}
-      >
-        <div className="dojo-available-preview-content">
+      <div className="dojo-available-preview dojo-widget-root">
+        <div className="dojo-available-preview-content relative h-full w-full min-h-0 min-w-0">
           {preview}
         </div>
-        <span className="dojo-available-preview-overlay">
+        <button
+          type="button"
+          className="dojo-available-preview-overlay"
+          onClick={() => onAdd(renderVisualization)}
+          aria-label={`Add ${widgetVariantLabel(widget, renderVisualization)}`}
+        >
           <Plus className="h-5 w-5" />
-        </span>
-      </button>
+        </button>
+      </div>
     </div>
   );
 }
@@ -597,6 +867,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
   const [draftBorderless, setDraftBorderless] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [resizeId, setResizeId] = useState<string | null>(null);
+  const [resizeGuide, setResizeGuide] = useState<ResizeGuide | null>(null);
   const [hardPlacement, setHardPlacement] = useState<{ id: string; row: number; column: number } | null>(null);
   const [dragOverlay, setDragOverlay] = useState<DragOverlay | null>(null);
   const [gridWidth, setGridWidth] = useState<number | null>(null);
@@ -625,16 +896,15 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
   }, [state, storageKey]);
 
   useEffect(() => {
-    if (!addPopoverOpen && !availablePopoverId) return;
+    if (!addPopoverOpen) return;
 
     const closeFloatingPanels = () => {
       setAddPopoverOpen(false);
-      setAvailablePopoverId(null);
     };
 
     window.addEventListener("scroll", closeFloatingPanels, true);
     return () => window.removeEventListener("scroll", closeFloatingPanels, true);
-  }, [addPopoverOpen, availablePopoverId]);
+  }, [addPopoverOpen]);
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -785,33 +1055,18 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
 
   const renderWidgetShell = useCallback((
     content: React.ReactNode,
-    shellProps: React.HTMLAttributes<HTMLDivElement>,
+    shellProps: React.HTMLAttributes<HTMLDivElement> & { key?: React.Key },
     controls?: React.ReactNode,
   ) => {
-    if (React.isValidElement<{ className?: string; children?: React.ReactNode; style?: React.CSSProperties }>(content) && content.type !== React.Fragment) {
-      return React.cloneElement(content, {
-        ...shellProps,
-        className: cn("dojo-widget-root cursor-pointer", content.props.className, shellProps.className),
-        style: { ...content.props.style, ...shellProps.style },
-        children: (
-          <>
-            {controls}
-            {content.props.children}
-          </>
-        ),
-      });
-    }
-
+    const { key, ...elementProps } = shellProps;
     return (
       <div
-        {...shellProps}
-        className={cn(
-          "dojo-widget-root bg-card border border-border/60 shadow-sm rounded-2xl flex flex-col p-4 transition-shadow hover:shadow-md cursor-pointer overflow-visible",
-          shellProps.className,
-        )}
+        key={key}
+        {...elementProps}
+        className={cn("dojo-widget-root relative h-full w-full min-h-0 min-w-0 cursor-pointer overflow-visible", elementProps.className)}
       >
         {controls}
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative h-full w-full min-h-0 min-w-0">
           {content}
         </div>
       </div>
@@ -820,10 +1075,16 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
 
   const placementsById = useMemo(() => {
     return new Map(
-      buildPlacements(state.activeIds, state.sizes, effectiveColumns, hardPlacement ?? undefined)
+      buildPlacements(
+        state.activeIds,
+        state.sizes,
+        effectiveColumns,
+        hardPlacement ?? undefined,
+        state.placements,
+      )
         .map((placement) => [placement.id, placement]),
     );
-  }, [effectiveColumns, hardPlacement, state.activeIds, state.sizes]);
+  }, [effectiveColumns, hardPlacement, state.activeIds, state.placements, state.sizes]);
 
   useLayoutEffect(() => {
     const grid = gridRef.current;
@@ -882,7 +1143,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
       ...prev,
       sizes: {
         ...prev.sizes,
-        [entry.key]: fitSizeToColumns(nearestAllowed(entry.widget, size), effectiveColumns),
+        [entry.key]: fitSizeToColumns(nearestAllowed(entry.widget, size, entry.visualizationId), effectiveColumns),
       },
     }));
   }, [effectiveColumns]);
@@ -898,7 +1159,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
       activeIds: prev.activeIds.includes(variantKey) ? prev.activeIds : [...prev.activeIds, variantKey],
       sizes: {
         ...prev.sizes,
-        [variantKey]: fitSizeToColumns(prev.sizes[variantKey] ?? defaultSize(widget), effectiveColumns),
+        [variantKey]: fitSizeToColumns(prev.sizes[variantKey] ?? defaultSize(widget, realVisualization), effectiveColumns),
       },
       visualizations: {
         ...prev.visualizations,
@@ -906,6 +1167,26 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
       },
     }));
   }, [effectiveColumns, widgets]);
+
+  const removeWidget = useCallback((entry: ActiveWidget) => {
+    setState((prev) => ({
+      ...prev,
+      activeIds: prev.activeIds.filter((id) => id !== entry.key),
+      placements: Object.fromEntries(
+        Object.entries(prev.placements ?? {}).filter(([id]) => id !== entry.key),
+      ),
+    }));
+  }, []);
+
+  const setWidgetAccent = useCallback((entry: ActiveWidget, accentColor: string) => {
+    setState((prev) => ({
+      ...prev,
+      accentColors: {
+        ...(prev.accentColors ?? {}),
+        [entry.key]: accentColor,
+      },
+    }));
+  }, []);
 
   const beginDrag = useCallback((event: React.PointerEvent<HTMLElement>, entry: ActiveWidget) => {
     if (!editing) return;
@@ -915,7 +1196,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
     event.stopPropagation();
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const size = state.sizes[entry.key] ?? defaultSize(entry.widget);
+    const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
     dragRef.current = {
       id: entry.key,
       startX: event.clientX,
@@ -999,16 +1280,27 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
       const drag = dragRef.current;
       if (drag?.hasMoved) {
         const targetPlacement = drag.placement ?? drag.latestPlacement;
-        const activeIds = targetPlacement
-          ? orderIdsWithPinnedDrop(
-            state.activeIds,
-            state.sizes,
-            effectiveColumns,
-            { id: drag.id, ...targetPlacement },
-          )
-          : state.activeIds;
-        setState((prev) => ({ ...prev, activeIds }));
-        setHardPlacement(targetPlacement ? { id: drag.id, ...targetPlacement } : null);
+        if (targetPlacement) {
+          setState((prev) => {
+            const settled = buildPlacements(
+              prev.activeIds,
+              prev.sizes,
+              effectiveColumns,
+              { id: drag.id, ...targetPlacement },
+              prev.placements,
+            );
+            return {
+              ...prev,
+              placements: Object.fromEntries(
+                settled.map((placement) => [
+                  placement.id,
+                  { row: placement.row, column: placement.column },
+                ]),
+              ),
+            };
+          });
+        }
+        setHardPlacement(null);
       }
       dragRef.current = null;
       pendingPlacementRef.current = null;
@@ -1039,10 +1331,23 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
     const metrics = getGridMetrics(grid);
     const startX = event.clientX;
     const startY = event.clientY;
-    const start = state.sizes[entry.key] ?? defaultSize(entry.widget);
+    const start = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
+    const placement = placementsById.get(entry.key);
+    const guideSizes = allowedSizes(entry.widget, entry.visualizationId)
+      .filter((size) => size.w <= effectiveColumns);
     let lastSize = start;
     resizingRef.current = true;
     setResizeId(entry.key);
+    if (placement) {
+      setResizeGuide({
+        id: entry.key,
+        row: placement.row,
+        column: placement.column,
+        current: start,
+        target: start,
+        sizes: guideSizes,
+      });
+    }
 
     const affectsLeft = handle.includes("w");
     const affectsRight = handle.includes("e");
@@ -1059,20 +1364,47 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
         h: clamp(start.h + dy, 1, MAX_WIDGET_ROWS),
       };
       if (nextSize.w === lastSize.w && nextSize.h === lastSize.h) return;
-      lastSize = nextSize;
-      setWidgetSize(entry, nextSize);
+      const target = fitSizeToColumns(
+        nearestAllowed(entry.widget, nextSize, entry.visualizationId),
+        effectiveColumns,
+      );
+      if (target.w === lastSize.w && target.h === lastSize.h) return;
+      lastSize = target;
+      setResizeGuide((guide) => guide?.id === entry.key ? { ...guide, target } : guide);
+      setWidgetSize(entry, target);
     };
 
     const onUp = () => {
       resizingRef.current = false;
       setResizeId(null);
+      setResizeGuide(null);
+      setState((prev) => {
+        const settled = buildPlacements(
+          prev.activeIds,
+          prev.sizes,
+          effectiveColumns,
+          undefined,
+          prev.placements,
+        );
+        return {
+          ...prev,
+          placements: Object.fromEntries(
+            settled.map((placement) => [
+              placement.id,
+              { row: placement.row, column: placement.column },
+            ]),
+          ),
+        };
+      });
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-  }, [effectiveColumns, setWidgetSize, state.sizes]);
+    window.addEventListener("pointercancel", onUp);
+  }, [effectiveColumns, placementsById, setWidgetSize, state.sizes]);
 
   return (
     <section className="dojo-module-grid" aria-label="Module widgets">
@@ -1164,14 +1496,34 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
             ...(cellSize ? { "--dojo-cell-size": `${cellSize}px` } : null),
           } as React.CSSProperties}
         >
+          {resizeGuide?.sizes
+            .map((size) => {
+              const isTarget = size.w === resizeGuide.target.w && size.h === resizeGuide.target.h;
+              return (
+                <div
+                  key={`${size.w}x${size.h}`}
+                  className={cn("dojo-resize-destination", isTarget && "is-target")}
+                  style={{
+                    "--dojo-resize-column": resizeGuide.column,
+                    "--dojo-resize-row": resizeGuide.row,
+                    "--dojo-resize-w": size.w,
+                    "--dojo-resize-h": size.h,
+                  } as React.CSSProperties}
+                  aria-hidden="true"
+                >
+                  <span>{size.w}×{size.h}</span>
+                </div>
+              );
+            })}
           {activeWidgets.map((entry) => {
-            const size = state.sizes[entry.key] ?? defaultSize(entry.widget);
+            const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
             const visualizationId = entry.visualizationId;
             const content = entry.widget.render({
               size,
               shape: shapeFor(size),
               isEditing: editing,
               visualizationId,
+              accentColor: state.accentColors?.[entry.key],
             });
             const gridProps = {
               key: entry.key,
@@ -1196,10 +1548,45 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
             };
             const controls = editing ? (
               <>
-                <span className="dojo-resize-handle dojo-resize-n" onPointerDown={(event) => beginResize(event, entry, "n")} />
-                <span className="dojo-resize-handle dojo-resize-e" onPointerDown={(event) => beginResize(event, entry, "e")} />
-                <span className="dojo-resize-handle dojo-resize-s" onPointerDown={(event) => beginResize(event, entry, "s")} />
-                <span className="dojo-resize-handle dojo-resize-w" onPointerDown={(event) => beginResize(event, entry, "w")} />
+                <button
+                  type="button"
+                  className="dojo-widget-action dojo-remove-widget"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    removeWidget(entry);
+                  }}
+                  aria-label={`Remove ${entry.label}`}
+                >
+                  <Minus aria-hidden="true" />
+                </button>
+                <WidgetColorPicker
+                  label={entry.label}
+                  value={state.accentColors?.[entry.key] ?? entry.widget.defaultAccentColor ?? "#2563eb"}
+                  onChange={(color) => setWidgetAccent(entry, color)}
+                />
+                <button
+                  type="button"
+                  className="dojo-widget-action dojo-resize-handle dojo-resize-se"
+                  onPointerDown={(event) => beginResize(event, entry, "se")}
+                  onKeyDown={(event) => {
+                    const direction = event.key === "ArrowRight" ? "right"
+                      : event.key === "ArrowLeft" ? "left"
+                        : event.key === "ArrowDown" ? "down"
+                          : event.key === "ArrowUp" ? "up"
+                            : null;
+                    if (!direction) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setWidgetSize(entry, nextAllowedSize(entry.widget, entry.visualizationId, size, direction));
+                  }}
+                  aria-label={`Resize ${entry.label}. Use arrow keys or drag.`}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 36 36">
+                    <path d="M4 32H10A22 22 0 0 0 32 10V4" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+                  </svg>
+                </button>
               </>
             ) : null;
 
@@ -1210,7 +1597,14 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
         <button
           type="button"
           className="flex h-28 w-full items-center justify-center rounded-2xl border border-dashed border-border/50 bg-muted/15 text-sm font-medium text-muted-foreground/60"
-          onClick={() => hiddenWidgets[0] && setAvailablePopoverId(hiddenWidgets[0].id)}
+          onClick={() => {
+            if (hiddenWidgets[0]) {
+              setAvailablePopoverId(hiddenWidgets[0].id);
+              return;
+            }
+            setEditing(true);
+            setAddPopoverOpen(true);
+          }}
         >
           <Plus className="mr-2 h-4" />
           Add your first widget
@@ -1218,13 +1612,14 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
       )}
 
       {dragOverlay && draggedWidget && (() => {
-        const size = state.sizes[draggedWidget.key] ?? defaultSize(draggedWidget.widget);
+        const size = state.sizes[draggedWidget.key] ?? defaultSize(draggedWidget.widget, draggedWidget.visualizationId);
         const visualizationId = draggedWidget.visualizationId;
         const content = draggedWidget.widget.render({
           size,
           shape: shapeFor(size),
           isEditing: true,
           visualizationId,
+          accentColor: state.accentColors?.[draggedWidget.key],
         });
         const overlayProps = {
           className: "dojo-drag-overlay",
