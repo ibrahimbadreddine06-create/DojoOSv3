@@ -930,11 +930,13 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
 
   const effectiveColumns = clamp(state.gridColumns ?? 3, 1, maxColumns);
 
+  const measuredGridWidth = gridWidth ?? 0;
+  const gridGap = measuredGridWidth >= 1180 ? 18 : measuredGridWidth >= 760 ? 16 : 14;
+
   const cellSize = useMemo(() => {
     if (!gridWidth) return null;
-    const gap = gridWidth >= 1180 ? 18 : gridWidth >= 760 ? 16 : 14;
-    return (gridWidth - gap * (effectiveColumns - 1)) / effectiveColumns;
-  }, [effectiveColumns, gridWidth]);
+    return (gridWidth - gridGap * (effectiveColumns - 1)) / effectiveColumns;
+  }, [effectiveColumns, gridGap, gridWidth]);
 
   const setGridColumns = useCallback((columns: number) => {
     setState((prev) => ({
@@ -1518,6 +1520,16 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
           {activeWidgets.map((entry) => {
             const size = state.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
             const visualizationId = entry.visualizationId;
+            const renderedWidth = cellSize
+              ? cellSize * size.w + gridGap * (size.w - 1)
+              : 288 * size.w;
+            const renderedHeight = cellSize
+              ? cellSize * size.h + gridGap * (size.h - 1)
+              : 288 * size.h;
+            const widgetScale = Math.max(
+              0.35,
+              Math.min(renderedWidth / (288 * size.w), renderedHeight / (288 * size.h)),
+            );
             const content = entry.widget.render({
               size,
               shape: shapeFor(size),
@@ -1537,6 +1549,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds }: Mod
               style: {
                 gridColumn: `${(placementsById.get(entry.key)?.column ?? 0) + 1} / span ${size.w}`,
                 gridRow: `${(placementsById.get(entry.key)?.row ?? 0) + 1} / span ${size.h}`,
+                "--dojo-widget-scale": widgetScale,
               } as React.CSSProperties,
               "data-widget-id": entry.key,
               "data-widget-shape": shapeFor(size),

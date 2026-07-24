@@ -475,7 +475,7 @@ html {
       width: 100%;
       min-width: 0;
       min-height: 0;
-      border-radius: 1rem;
+      border-radius: var(--body-widget-radius, 1rem);
       transition:
         opacity 180ms ease,
         box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -513,12 +513,14 @@ html {
       box-shadow: var(--shadow-md);
     }
 
-  .dojo-native-grid.is-editing .dojo-widget-root:hover::before {
-      opacity: 1;
-      box-shadow:
-        inset 0 0 0 1px hsl(var(--foreground) / 0.12),
-        inset 0 1px 0 hsl(var(--background) / 0.8);
+  @media (hover: hover) and (pointer: fine) {
+    .dojo-native-grid.is-editing .dojo-widget-root:hover::before {
+        opacity: 1;
+        box-shadow:
+          inset 0 0 0 1px hsl(var(--foreground) / 0.12),
+          inset 0 1px 0 hsl(var(--background) / 0.8);
     }
+  }
 
   .dojo-widget-root * {
       min-width: 0;
@@ -652,8 +654,8 @@ html {
 
   .dojo-remove-widget {
     position: absolute;
-    top: -0.5rem;
-    left: -0.5rem;
+    top: calc(-0.5rem * var(--dojo-widget-scale, 1));
+    left: calc(-0.5rem * var(--dojo-widget-scale, 1));
     z-index: 70;
     display: inline-flex;
     height: 1.75rem;
@@ -665,6 +667,8 @@ html {
     background: hsl(var(--background) / 0.96);
     color: hsl(var(--foreground) / 0.72);
     box-shadow: 0 4px 12px hsl(var(--foreground) / 0.12);
+    transform: scale(var(--dojo-widget-scale, 1));
+    transform-origin: top left;
     transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(0.25, 1, 0.5, 1);
   }
 
@@ -672,7 +676,7 @@ html {
   .dojo-remove-widget:focus-visible {
     background: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
-    transform: scale(1.05);
+    transform: scale(calc(var(--dojo-widget-scale, 1) * 1.05));
     outline: none;
   }
 
@@ -684,8 +688,8 @@ html {
 
   .dojo-accent-control {
     position: absolute;
-    top: -0.5rem;
-    right: -0.5rem;
+    top: calc(-0.5rem * var(--dojo-widget-scale, 1));
+    right: calc(-0.5rem * var(--dojo-widget-scale, 1));
     z-index: 70;
     display: block;
     height: 1.75rem;
@@ -695,13 +699,15 @@ html {
     border: 3px solid hsl(var(--background) / 0.96);
     border-radius: 999px;
     box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.14), 0 4px 12px hsl(var(--foreground) / 0.12);
+    transform: scale(var(--dojo-widget-scale, 1));
+    transform-origin: top right;
     transition: transform 140ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 140ms ease;
   }
 
   .dojo-accent-control:hover,
   .dojo-accent-control:focus-visible,
   .dojo-accent-control[data-state="open"] {
-    transform: scale(1.06);
+    transform: scale(calc(var(--dojo-widget-scale, 1) * 1.06));
     box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--foreground) / 0.24), 0 6px 14px hsl(var(--foreground) / 0.14);
     outline: none;
   }
@@ -992,8 +998,8 @@ html {
 
   .dojo-resize-handle {
     position: absolute;
-    right: -0.35rem;
-    bottom: -0.35rem;
+    right: calc(-0.35rem * var(--dojo-widget-scale, 1));
+    bottom: calc(-0.35rem * var(--dojo-widget-scale, 1));
     z-index: 70;
     height: 2.75rem;
     width: 2.75rem;
@@ -1002,11 +1008,30 @@ html {
     touch-action: none;
     cursor: nwse-resize;
     color: #929ba6;
+    transform: scale(var(--dojo-widget-scale, 1));
+    transform-origin: bottom right;
     -webkit-tap-highlight-color: transparent;
   }
 
   .dojo-native-grid .dojo-widget-root {
-    --body-widget-radius: 22px;
+    --body-widget-radius: calc(22px * var(--dojo-widget-scale, 1));
+  }
+
+  .dojo-native-grid .dojo-widget-root article {
+    border-width: 0 !important;
+    box-shadow:
+      inset 0 0 0 calc(1px * var(--dojo-widget-scale, 1)) #e4e7eb,
+      0 calc(8px * var(--dojo-widget-scale, 1))
+      calc(22px * var(--dojo-widget-scale, 1))
+      rgba(24, 32, 42, 0.055) !important;
+  }
+
+  .dojo-native-grid .dojo-widget-root article:hover {
+    box-shadow:
+      inset 0 0 0 calc(1px * var(--dojo-widget-scale, 1)) #d7dce2,
+      0 calc(10px * var(--dojo-widget-scale, 1))
+      calc(26px * var(--dojo-widget-scale, 1))
+      rgba(24, 32, 42, 0.09) !important;
   }
 
   .dojo-resize-handle > svg {
