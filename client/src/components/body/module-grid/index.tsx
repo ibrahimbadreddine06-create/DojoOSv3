@@ -142,7 +142,7 @@ const MAX_GRID_COLUMNS = 12;
 const MAX_WIDGET_ROWS = 8;
 const DRAG_SETTLE_MS = 0;
 const DRAG_START_THRESHOLD = 8;
-const TOUCH_DRAG_HOLD_MS = 220;
+const TOUCH_DRAG_HOLD_MS = 180;
 const ACCENT_PRESETS = [
   "#2563eb",
   "#7c3aed",

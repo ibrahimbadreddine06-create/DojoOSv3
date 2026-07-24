@@ -23,9 +23,6 @@ export function BodyLayout({ children }: BodyLayoutProps) {
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
-            {/* Safe area top spacer */}
-            <div className="shrink-0" style={{ height: 'env(safe-area-inset-top)' }} />
-
             {/* Main content */}
             <main className="flex-1" style={{ paddingBottom: 'calc(3.5rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
                 {children}
