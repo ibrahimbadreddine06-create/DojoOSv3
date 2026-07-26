@@ -1,0 +1,329 @@
+{
+  "schema_version": "1.0.0",
+  "updated_at": "2026-07-25",
+  "evidence_register": "docs/body-scientific-validation-matrix.md",
+  "dispositions": {
+    "body_calculated": "Body may calculate under the named versioned method.",
+    "observation": "Body may normalize, aggregate and display without adding a stronger interpretation.",
+    "provider_result": "Display the provider-owned value with namespace, source and limitations.",
+    "research_only": "Do not expose as a production result before validation.",
+    "rejected": "The proposed result or claim must not ship."
+  },
+  "metrics": [
+    {
+      "id": "activity.steps",
+      "disposition": "observation",
+      "confidence": "device_dependent",
+      "required_labels": ["recorded", "source"],
+      "forbidden_claims": ["true_step_count", "universal_10000_step_requirement"]
+    },
+    {
+      "id": "activity.active_minutes",
+      "disposition": "observation",
+      "confidence": "moderate",
+      "required_labels": ["classification_method", "coverage"],
+      "forbidden_claims": ["all_provider_minutes_are_equivalent"]
+    },
+    {
+      "id": "activity.session_duration",
+      "disposition": "body_calculated",
+      "confidence": "high_when_interval_valid",
+      "formula": "end_timestamp - start_timestamp",
+      "unit": "s",
+      "required_labels": ["elapsed_or_active_or_moving"],
+      "forbidden_claims": ["duration_is_intensity", "moving_time_is_elapsed_time"]
+    },
+    {
+      "id": "activity.sedentary_time",
+      "disposition": "observation",
+      "confidence": "low_to_moderate",
+      "required_labels": ["device_classified", "valid_wear"],
+      "forbidden_claims": ["nonwear_is_sedentary"]
+    },
+    {
+      "id": "energy.active_expenditure",
+      "disposition": "provider_result",
+      "confidence": "low_individual_absolute",
+      "required_labels": ["estimated", "provider", "active_or_total"],
+      "forbidden_claims": ["exact_energy_expenditure", "exact_energy_balance"]
+    },
+    {
+      "id": "cardio.heart_rate",
+      "disposition": "observation",
+      "confidence": "context_dependent",
+      "required_labels": ["sensor_source", "coverage"],
+      "forbidden_claims": ["medical_rhythm_interpretation_from_generic_ppg"]
+    },
+    {
+      "id": "cardio.heart_rate_zones",
+      "disposition": "body_calculated",
+      "confidence": "model_dependent",
+      "required_labels": ["zone_model", "threshold_version"],
+      "forbidden_claims": ["universal_five_zone_truth"]
+    },
+    {
+      "id": "cardio.vo2_max",
+      "disposition": "provider_result",
+      "confidence": "moderate_to_low_individual_estimate",
+      "required_labels": ["estimated_or_measured", "method", "provider"],
+      "forbidden_claims": ["wearable_estimate_is_lab_measurement"]
+    },
+    {
+      "id": "load.session_rpe",
+      "disposition": "body_calculated",
+      "confidence": "moderate",
+      "formula": "duration_minutes * rpe_cr10",
+      "unit": "AU",
+      "required_labels": ["perceived", "scale"],
+      "forbidden_claims": ["mechanical_load", "injury_risk", "calories"]
+    },
+    {
+      "id": "load.trimp",
+      "disposition": "research_only",
+      "confidence": "variant_dependent",
+      "required_labels": ["formula_variant"],
+      "forbidden_claims": ["generic_trimp_without_formula"]
+    },
+    {
+      "id": "load.acute_chronic_trends",
+      "disposition": "body_calculated",
+      "confidence": "moderate_descriptive",
+      "required_labels": ["short_window", "long_window", "load_method"],
+      "forbidden_claims": ["injury_probability", "safe_zone"]
+    },
+    {
+      "id": "load.acwr_injury_prediction",
+      "disposition": "rejected",
+      "confidence": "unsupported_causal_use",
+      "forbidden_claims": ["injury_prediction", "injury_prevention_recommendation"]
+    },
+    {
+      "id": "load.muscular_universal_score",
+      "disposition": "research_only",
+      "confidence": "insufficient",
+      "forbidden_claims": ["heart_rate_equals_muscular_load"]
+    },
+    {
+      "id": "recovery.resting_heart_rate",
+      "disposition": "observation",
+      "confidence": "moderate_to_high_consistent_protocol",
+      "required_labels": ["method", "personal_baseline"],
+      "forbidden_claims": ["cause_attribution"]
+    },
+    {
+      "id": "recovery.hrv_rmssd",
+      "disposition": "observation",
+      "confidence": "moderate_consistent_protocol",
+      "required_labels": ["hrv_metric", "aggregation", "sensor", "baseline"],
+      "forbidden_claims": ["low_hrv_equals_stress_or_illness", "cross_metric_equivalence"]
+    },
+    {
+      "id": "recovery.readiness_score",
+      "disposition": "provider_result",
+      "confidence": "provider_model_dependent",
+      "required_labels": ["provider", "contributors_if_available"],
+      "forbidden_claims": ["cross_provider_score_equivalence", "reverse_engineered_formula"]
+    },
+    {
+      "id": "sleep.total_sleep_time",
+      "disposition": "observation",
+      "confidence": "moderate_longitudinal",
+      "required_labels": ["wearable_estimated", "source"],
+      "forbidden_claims": ["psg_equivalence"]
+    },
+    {
+      "id": "sleep.efficiency",
+      "disposition": "body_calculated",
+      "confidence": "source_dependent",
+      "formula": "total_sleep_minutes / time_in_bed_minutes * 100",
+      "unit": "percent",
+      "required_labels": ["estimated_if_wearable"],
+      "forbidden_claims": ["clinical_interpretation_without_validation"]
+    },
+    {
+      "id": "sleep.midpoint",
+      "disposition": "body_calculated",
+      "confidence": "high_when_episode_bounds_valid",
+      "formula": "start_timestamp + (end_timestamp - start_timestamp) / 2",
+      "required_labels": ["local_timezone", "episode_source"],
+      "forbidden_claims": ["chronotype_diagnosis"]
+    },
+    {
+      "id": "sleep.regularity",
+      "disposition": "body_calculated",
+      "confidence": "moderate_descriptive",
+      "required_labels": ["window", "valid_days"],
+      "forbidden_claims": ["universal_optimal_variability_threshold"]
+    },
+    {
+      "id": "sleep.stages",
+      "disposition": "provider_result",
+      "confidence": "low_to_moderate",
+      "required_labels": ["estimated", "provider"],
+      "forbidden_claims": ["psg_equivalence", "cross_provider_correction"]
+    },
+    {
+      "id": "sleep.debt_or_need",
+      "disposition": "provider_result",
+      "confidence": "provider_model_dependent",
+      "required_labels": ["provider"],
+      "forbidden_claims": ["universal_cumulative_subtraction"]
+    },
+    {
+      "id": "sleep.body_score",
+      "disposition": "research_only",
+      "confidence": "unvalidated",
+      "forbidden_claims": ["production_sleep_score_without_prospective_validation"]
+    },
+    {
+      "id": "blood_pressure.cuff_reading",
+      "disposition": "observation",
+      "confidence": "high_validated_device_and_protocol",
+      "required_labels": ["device", "measurement_context", "protocol"],
+      "forbidden_claims": ["diagnosis_from_single_reading", "office_home_threshold_equivalence"]
+    },
+    {
+      "id": "blood_pressure.cuffless_estimate",
+      "disposition": "provider_result",
+      "confidence": "device_dependent",
+      "required_labels": ["estimated", "provider", "calibration"],
+      "forbidden_claims": ["cuff_replacement", "hypertension_diagnosis"]
+    },
+    {
+      "id": "oxygen.spo2",
+      "disposition": "provider_result",
+      "confidence": "device_and_context_dependent",
+      "required_labels": ["estimated", "device", "coverage"],
+      "forbidden_claims": ["rule_out_respiratory_disease", "generic_apnea_diagnosis"]
+    },
+    {
+      "id": "cardio.ecg_classification",
+      "disposition": "provider_result",
+      "confidence": "regulated_intended_use",
+      "required_labels": ["device", "region", "regulatory_version"],
+      "forbidden_claims": ["body_reinterpretation", "unsupported_rhythm_or_population"]
+    },
+    {
+      "id": "cardio.vascular_age",
+      "disposition": "provider_result",
+      "confidence": "device_and_cohort_dependent",
+      "required_labels": ["provider", "cohort_or_method"],
+      "forbidden_claims": ["absolute_cardiovascular_risk", "cross_provider_age_comparison"]
+    },
+    {
+      "id": "body.weight",
+      "disposition": "observation",
+      "confidence": "high_valid_scale_and_attribution",
+      "required_labels": ["source", "user_attribution"],
+      "forbidden_claims": ["short_change_equals_fat_or_muscle_change"]
+    },
+    {
+      "id": "body.bmi",
+      "disposition": "body_calculated",
+      "confidence": "high_formula_limited_screening",
+      "formula": "weight_kg / height_m^2",
+      "unit": "kg/m2",
+      "required_labels": ["screening", "population_reference"],
+      "forbidden_claims": ["diagnosis", "body_fat_equivalence", "adult_thresholds_for_children"]
+    },
+    {
+      "id": "body.bia_composition",
+      "disposition": "provider_result",
+      "confidence": "component_and_device_dependent",
+      "required_labels": ["estimated", "device", "protocol"],
+      "forbidden_claims": ["dxa_equivalence", "small_change_below_repeatability"]
+    },
+    {
+      "id": "nutrition.logged_intake",
+      "disposition": "observation",
+      "confidence": "logging_and_database_dependent",
+      "required_labels": ["logged", "database_version", "coverage"],
+      "forbidden_claims": ["actual_complete_intake_when_incomplete"]
+    },
+    {
+      "id": "nutrition.exact_energy_balance",
+      "disposition": "rejected",
+      "confidence": "insufficient_individual_precision",
+      "forbidden_claims": ["exact_daily_surplus_or_deficit", "single_day_tissue_change"]
+    },
+    {
+      "id": "nutrition.reference_comparison",
+      "disposition": "body_calculated",
+      "confidence": "guideline_and_input_dependent",
+      "required_labels": ["reference_type", "population", "source_version"],
+      "forbidden_claims": ["drv_types_are_interchangeable"]
+    },
+    {
+      "id": "nutrition.opaque_quality_score",
+      "disposition": "rejected",
+      "confidence": "unsupported",
+      "forbidden_claims": ["single_unexplained_nutrition_score"]
+    },
+    {
+      "id": "hydration.logged_fluid",
+      "disposition": "observation",
+      "confidence": "logging_dependent",
+      "required_labels": ["plain_water_or_total_fluid", "coverage"],
+      "forbidden_claims": ["intake_equals_hydration_status"]
+    },
+    {
+      "id": "hydration.universal_status_score",
+      "disposition": "rejected",
+      "confidence": "unsupported_universal_method",
+      "forbidden_claims": ["single_input_hydration_diagnosis"]
+    },
+    {
+      "id": "stress.perceived_checkin",
+      "disposition": "observation",
+      "confidence": "direct_self_report",
+      "required_labels": ["instrument", "recall_window"],
+      "forbidden_claims": ["mental_disorder_diagnosis"]
+    },
+    {
+      "id": "stress.physiological_score",
+      "disposition": "provider_result",
+      "confidence": "context_and_model_dependent",
+      "required_labels": ["physiological", "provider"],
+      "forbidden_claims": ["equals_perceived_stress", "cause_attribution"]
+    },
+    {
+      "id": "insights.behavior_outcome_causality",
+      "disposition": "rejected",
+      "confidence": "unsupported_observational_causality",
+      "forbidden_claims": ["caused", "improves", "harms"]
+    },
+    {
+      "id": "cycle.logged_period_and_symptoms",
+      "disposition": "observation",
+      "confidence": "direct_self_report",
+      "required_labels": ["logged", "missingness"],
+      "forbidden_claims": ["diagnosis", "missing_means_absent"]
+    },
+    {
+      "id": "cycle.fertile_window",
+      "disposition": "provider_result",
+      "confidence": "device_algorithm_population_dependent",
+      "required_labels": ["estimated", "provider", "uncertainty"],
+      "forbidden_claims": ["contraception", "guaranteed_ovulation"]
+    },
+    {
+      "id": "hygiene.routine_adherence",
+      "disposition": "body_calculated",
+      "confidence": "direct_recorded_adherence",
+      "required_labels": ["planned", "recorded"],
+      "forbidden_claims": ["completion_proves_health_outcome"]
+    },
+    {
+      "id": "habits.formation_countdown",
+      "disposition": "rejected",
+      "confidence": "high_interindividual_variability",
+      "forbidden_claims": ["habit_formed_after_fixed_days"]
+    },
+    {
+      "id": "looks.image_diagnosis_or_score",
+      "disposition": "rejected",
+      "confidence": "unsupported_and_high_risk",
+      "forbidden_claims": ["medical_image_diagnosis", "attractiveness_score", "guaranteed_treatment_result"]
+    }
+  ]
+}

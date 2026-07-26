@@ -37,13 +37,13 @@ export function OnboardingTour() {
             disableBeacon: true,
         },
         {
-            target: ".layout",
+            target: ".dojo-native-grid",
             title: "Your Dashboard",
             content: "This is your command center. These modules give you a high-level overview of your progress across all areas of your life.",
             placement: "bottom",
         },
         {
-            target: "#tour-customize-btn",
+            target: ".dojo-header-controls button:last-child",
             title: "Make It Yours",
             content: "Click 'Customize' to unlock your dashboard. You can drag cards to reorder them, change the grid layouts, and paint your modules with custom themes!",
             placement: "bottom-end",

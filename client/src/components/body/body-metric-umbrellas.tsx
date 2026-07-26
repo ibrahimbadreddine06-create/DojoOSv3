@@ -278,7 +278,7 @@ function Trend({
             />
             <Line
               dataKey="value"
-              type="monotone"
+              type="natural"
               stroke="var(--widget-accent)"
               strokeWidth={strokeWidth}
               strokeLinecap="round"

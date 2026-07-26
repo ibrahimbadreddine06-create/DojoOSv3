@@ -13,7 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, ChevronUp, ChevronDown } from "lucide-react";
 
 const addMinutes = (timeStr: string, minutes: number): string => {
-  const [hours, mins] = timeStr.split(":").map(Number);
+  if (!timeStr || typeof timeStr !== "string") return "09:00";
+  const parts = timeStr.split(":");
+  if (parts.length < 2) return "09:00";
+  const hours = Number(parts[0]) || 0;
+  const mins = Number(parts[1]) || 0;
   let totalMinutes = hours * 60 + mins + minutes;
   totalMinutes = ((totalMinutes % 1440) + 1440) % 1440; // Wrap around 24 hours
   const newHours = Math.floor(totalMinutes / 60);
@@ -213,8 +217,10 @@ export function AddTimeBlockDialog({
                 if (b.parentId || b.id === parentId) return false;
                 // Use the internal timeToMinutes/checkOverlap logic or equivalent
                 const timeToMinutes = (time: string) => {
-                  const [h, m] = time.split(":").map(Number);
-                  return h * 60 + m;
+                  if (!time || typeof time !== "string") return 0;
+                  const parts = time.split(":");
+                  if (parts.length < 2) return 0;
+                  return (Number(parts[0]) || 0) * 60 + (Number(parts[1]) || 0);
                 };
                 const s1 = timeToMinutes(data.startTime);
                 const e1 = timeToMinutes(data.endTime);

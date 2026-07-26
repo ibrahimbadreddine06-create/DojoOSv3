@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dojo.example/schemas/body-canonical-record.schema.json",
+  "title": "Body Canonical Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id",
+    "record_family",
+    "canonical_type",
+    "schema_version",
+    "subject_id",
+    "source",
+    "provenance_class",
+    "received_at",
+    "availability",
+    "privacy_class"
+  ],
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "record_family": {
+      "enum": [
+        "measurement",
+        "sample_series",
+        "interval",
+        "session",
+        "event",
+        "daily_summary",
+        "goal",
+        "profile_fact",
+        "clinical_record",
+        "provider_insight",
+        "body_derivation",
+        "extension"
+      ]
+    },
+    "canonical_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+(?:@[1-9][0-9]*)?$"
+    },
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "subject_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "provenance_class": {
+      "enum": [
+        "measured",
+        "manual",
+        "active",
+        "passive",
+        "provider_derived",
+        "body_derived",
+        "clinical",
+        "metadata"
+      ]
+    },
+    "observed_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "start_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "end_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "timezone_offset_minutes": {
+      "type": "integer",
+      "minimum": -1080,
+      "maximum": 1080
+    },
+    "civil_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "received_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "modified_at_source": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "value": {},
+    "unit": {
+      "type": ["string", "null"]
+    },
+    "source_value": {},
+    "source_unit": {
+      "type": ["string", "null"]
+    },
+    "quality": {
+      "type": ["object", "null"],
+      "additionalProperties": true
+    },
+    "availability": {
+      "enum": [
+        "available",
+        "partial",
+        "not_recorded",
+        "not_worn",
+        "not_synced",
+        "permission_denied",
+        "unsupported_device",
+        "unsupported_region",
+        "unsupported_plan",
+        "invalid",
+        "deleted_at_source",
+        "temporarily_unavailable",
+        "unknown_reason"
+      ]
+    },
+    "missing_reason": {
+      "type": ["string", "null"]
+    },
+    "privacy_class": {
+      "enum": [
+        "general_wellness",
+        "sensitive_wellness",
+        "reproductive_sexual",
+        "location",
+        "biometric_signal",
+        "clinical",
+        "free_text_attachment"
+      ]
+    },
+    "device_id": {
+      "type": ["string", "null"]
+    },
+    "raw_payload_ref": {
+      "type": ["string", "null"]
+    },
+    "supersedes": {
+      "type": ["string", "null"]
+    },
+    "deleted_at": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/timestamp"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "derivation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/derivation"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "record_family": {
+            "enum": ["measurement", "event", "profile_fact"]
+          }
+        }
+      },
+      "then": {
+        "required": ["observed_at"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_family": {
+            "enum": ["interval", "session", "sample_series"]
+          }
+        }
+      },
+      "then": {
+        "required": ["start_at", "end_at"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_family": {
+            "const": "daily_summary"
+          }
+        }
+      },
+      "then": {
+        "required": ["civil_date", "timezone_offset_minutes"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record_family": {
+            "const": "body_derivation"
+          }
+        }
+      },
+      "then": {
+        "required": ["derivation"],
+        "properties": {
+          "provenance_class": {
+            "const": "body_derived"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "availability": {
+            "const": "available"
+          }
+        }
+      },
+      "then": {
+        "required": ["value"]
+      },
+      "else": {
+        "required": ["missing_reason"]
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "provider",
+        "connection_route",
+        "provider_object",
+        "provider_field"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "connection_route": {
+          "enum": [
+            "native_health_store",
+            "direct_cloud_api",
+            "aggregator",
+            "file_import",
+            "manual"
+          ]
+        },
+        "provider_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider_field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider_record_id": {
+          "type": ["string", "null"]
+        },
+        "application_id": {
+          "type": ["string", "null"]
+        },
+        "upstream_source_id": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "derivation_id",
+        "algorithm_version",
+        "executed_at",
+        "input_record_ids",
+        "missing_data_policy"
+      ],
+      "properties": {
+        "derivation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "algorithm_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "executed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "input_record_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "baseline_window": {
+          "type": ["object", "null"],
+          "additionalProperties": true
+        },
+        "exclusions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_data_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

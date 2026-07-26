@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dojo.local/schemas/body-metric-disposition-registry.schema.json",
+  "title": "Body metric disposition registry",
+  "type": "object",
+  "required": ["schema_version", "updated_at", "dispositions", "metrics"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "updated_at": { "type": "string", "format": "date" },
+    "evidence_register": { "type": "string" },
+    "dispositions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "disposition", "confidence", "forbidden_claims"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+          "disposition": {
+            "enum": ["body_calculated", "observation", "provider_result", "research_only", "rejected"]
+          },
+          "confidence": { "type": "string" },
+          "formula": { "type": "string" },
+          "unit": { "type": "string" },
+          "required_labels": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "forbidden_claims": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,9 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { storage } from "./storage";
 import { generateLearningTrajectory, findMaterialsForChapter, type TrajectoryParams, type FindMaterialsParams, generateNutritionBrief, classifyFuelCategory, analyzeMealDescription, analyzeMealPhoto } from "./ai";
 import { calculateRecoveryScore } from "./recovery";
 import { computeDailyEffort, computeWeeklyEffort } from "./effort";
+import {
+  bodyOperationalStore,
+  coerceOperationalDates,
+} from "./body-operational-store";
 import {
   insertTimeBlockSchema, insertDayPresetSchema, insertActivityPresetSchema,
   insertGoalSchema, insertKnowledgeTopicSchema, insertLearnPlanItemSchema,
@@ -35,24 +41,11 @@ export function registerRoutes(app: Express): Server {
       itemId as string | undefined,
       subItemId as string | undefined
     );
-    if (blocks.length === 0 && (module === "body" || module === "activity" || module === "nutrition" || module === "rest" || module === "hygiene")) {
-      return res.json([
-        { id: "mock-b1", title: `Morning ${module} Session`, startTime: "08:00", duration: 45, completed: true, date: date as string, linkedModule: module, linkedItemId: itemId },
-        { id: "mock-b2", title: `Evening ${module} Review`, startTime: "18:30", duration: 30, completed: false, date: date as string, linkedModule: module, linkedItemId: itemId },
-      ]);
-    }
     res.json(blocks);
   });
 
   app.get("/api/time-blocks/:date", async (req, res) => {
     const blocks = await storage.getTimeBlocks(req.params.date);
-    if (blocks.length === 0) {
-      return res.json([
-        { id: "mock-t1", title: "Morning Routine", startTime: "07:00", duration: 60, completed: true, date: req.params.date, color: "blue" },
-        { id: "mock-t2", title: "Deep Work", startTime: "09:00", duration: 180, completed: false, date: req.params.date, color: "purple" },
-        { id: "mock-t3", title: "Exercise", startTime: "17:00", duration: 60, completed: false, date: req.params.date, color: "orange" },
-      ]);
-    }
     res.json(blocks);
   });
 
@@ -113,13 +106,6 @@ export function registerRoutes(app: Express): Server {
   // ===== GOALS =====
   app.get("/api/goals", async (req, res) => {
     const goals = await storage.getGoals();
-    if (goals.length === 0) {
-      return res.json([
-        { id: "mock-g1", title: "Master DojoOS Architecture", completed: false, importance: 5, createdAt: new Date().toISOString() },
-        { id: "mock-g2", title: "Reach 15% Body Fat", completed: false, importance: 4, createdAt: new Date().toISOString() },
-        { id: "mock-g3", title: "Learn Advanced React Three Fiber", completed: false, importance: 3, createdAt: new Date().toISOString() },
-      ]);
-    }
     res.json(goals);
   });
 
@@ -758,8 +744,31 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/workouts", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const data = insertWorkoutSchema.parse(req.body);
-    const workout = await storage.createWorkout({ ...data, userId: (req.user as any).id });
-    res.json(workout);
+    const userId = (req.user as any).id;
+    const workout = await storage.createWorkout({ ...data, userId });
+    const subject = await bodyOperationalStore.createSubject({
+      userId,
+      subjectType: "workout",
+      entityId: workout.id,
+      titleSnapshot: workout.title,
+      source: "legacy_workout",
+    });
+    const actualStartAt = workout.startTime ?? workout.date;
+    const execution = await bodyOperationalStore.createExecution({
+      userId,
+      subjectId: subject.id,
+      status: workout.completed ? "completed" : "ready",
+      actualStartAt: workout.completed ? actualStartAt : undefined,
+      actualEndAt: workout.completed ? workout.endTime ?? undefined : undefined,
+      source: "manual",
+      domainRecordType: "workout",
+      domainRecordId: workout.id,
+    });
+    res.json({
+      ...workout,
+      operationalSubjectId: subject.id,
+      executionId: execution.id,
+    });
   });
 
   app.get("/api/workouts/detail/:id", async (req, res) => {
@@ -772,8 +781,32 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/workouts/:id", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const workout = await storage.updateWorkout((req.user as any).id, req.params.id, req.body);
-    res.json(workout);
+    const userId = (req.user as any).id;
+    const workout = await storage.updateWorkout(userId, req.params.id, req.body);
+    const execution = await bodyOperationalStore.getExecutionByDomainRecord(
+      userId,
+      "workout",
+      workout.id,
+    );
+    let updatedExecution = execution;
+    if (execution) {
+      const status = workout.completed
+        ? "completed"
+        : workout.startTime
+          ? "in_progress"
+          : "ready";
+      updatedExecution = await bodyOperationalStore.updateExecution(
+        userId,
+        execution.id,
+        {
+          status,
+          actualStartAt:
+            workout.startTime ?? execution.actualStartAt ?? undefined,
+          actualEndAt: workout.endTime ?? undefined,
+        },
+      );
+    }
+    res.json({ ...workout, executionId: updatedExecution?.id ?? null });
   });
 
   app.get("/api/workout-presets", async (req, res) => {
@@ -809,6 +842,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/exercise-library", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const data = insertExerciseLibrarySchema.parse(req.body);
     const item = await storage.createExerciseLibraryItem(data);
     res.json(item);
@@ -816,7 +850,8 @@ export function registerRoutes(app: Express): Server {
 
   // Nutrition Optimizations
   app.get("/api/nutrition/overview/:date", async (req, res) => {
-    const userId = req.user ? (req.user as any).id : "local";
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
     try {
       const overview = await storage.getNutritionOverview(userId, req.params.date);
       res.json(overview);
@@ -827,6 +862,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.get("/api/nutrition/trends/batch", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const metrics = (req.query.metrics as string || "").split(',').filter(Boolean);
     const days = parseInt(req.query.days as string) || 7;
     const trends = await storage.getNutritionTrendsBatch(metrics, days);
@@ -874,33 +910,54 @@ export function registerRoutes(app: Express): Server {
 
   // Workout Execution
   app.get("/api/workouts/:id/exercises", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const workout = await storage.getWorkout((req.user as any).id, req.params.id);
+    if (!workout) return res.status(404).json({ message: "Workout not found" });
     const exercises = await storage.getWorkoutExercises(req.params.id);
     res.json(exercises);
   });
 
   app.post("/api/workout-exercises", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const data = insertWorkoutExerciseSchema.parse(req.body);
+    const workout = await storage.getWorkout((req.user as any).id, data.workoutId);
+    if (!workout) return res.status(404).json({ message: "Workout not found" });
     const we = await storage.createWorkoutExercise(data);
     res.json(we);
   });
 
   app.patch("/api/workout-exercises/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     res.status(405).json({ message: "Use /api/workout-sets to update individual set data" });
   });
 
   app.post("/api/workout-sets", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const data = insertWorkoutSetSchema.parse(req.body);
+    const ownerId = await storage.getWorkoutExerciseOwner(data.workoutExerciseId);
+    if (ownerId !== (req.user as any).id) {
+      return res.status(404).json({ message: "Workout exercise not found" });
+    }
     const set = await storage.createWorkoutSet(data);
     res.json(set);
   });
 
   app.patch("/api/workout-sets/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const ownerId = await storage.getWorkoutSetOwner(req.params.id);
+    if (ownerId !== (req.user as any).id) {
+      return res.status(404).json({ message: "Workout set not found" });
+    }
     const set = await storage.updateWorkoutSet(req.params.id, req.body);
     res.json(set);
   });
 
   app.get("/api/exercises/:id/progress", async (req, res) => {
-    const progress = await storage.getExerciseProgress(req.params.id);
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const progress = await storage.getExerciseProgress(
+      (req.user as any).id,
+      req.params.id,
+    );
     res.json(progress);
   });
 
@@ -944,8 +1001,34 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertSleepLogSchema.parse(req.body);
-      const log = await storage.createSleepLog({ ...data, userId: (req.user as any).id });
-      res.json(log);
+      const userId = (req.user as any).id;
+      const log = await storage.createSleepLog({ ...data, userId });
+      const subject = await bodyOperationalStore.createSubject({
+        userId, subjectType: "rest", entityId: log.id,
+        titleSnapshot: log.actualHours ? "Sleep" : "Planned sleep", source: "manual",
+      });
+      if (log.startTime) {
+        const execution = await bodyOperationalStore.createExecution({
+          userId, subjectId: subject.id, status: "completed",
+          actualStartAt: log.startTime ?? undefined,
+          actualEndAt: log.endTime ?? undefined,
+          source: "manual", domainRecordType: "sleep_log", domainRecordId: log.id,
+        });
+        return res.json({ ...log, operationalSubjectId: subject.id, executionId: execution.id });
+      }
+      if (log.actualHours) {
+        return res.json({
+          ...log,
+          operationalSubjectId: subject.id,
+          executionId: null,
+          operationalState: "awaiting_exact_interval",
+        });
+      }
+      const commitment = await bodyOperationalStore.createCommitment({
+        userId, subjectId: subject.id, scheduleKind: "day_bound",
+        localDate: log.date, source: "rest",
+      });
+      res.json({ ...log, operationalSubjectId: subject.id, commitmentId: commitment.id });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -962,8 +1045,26 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertHygieneRoutineSchema.parse(req.body);
-      const routine = await storage.createHygieneRoutine({ ...data, userId: (req.user as any).id });
-      res.json(routine);
+      const userId = (req.user as any).id;
+      const routine = await storage.createHygieneRoutine({ ...data, userId });
+      const subject = await bodyOperationalStore.createSubject({
+        userId, subjectType: "hygiene_routine", entityId: routine.id,
+        titleSnapshot: routine.name, source: "manual",
+      });
+      const commitment = await bodyOperationalStore.createCommitment({
+        userId, subjectId: subject.id, scheduleKind: "day_bound",
+        localDate: routine.date, status: routine.completed ? "completed" : "planned",
+        source: "hygiene",
+      });
+      let execution = null;
+      if (routine.completed) {
+        execution = await bodyOperationalStore.createExecution({
+          userId, subjectId: subject.id, commitmentId: commitment.id,
+          status: "completed", actualStartAt: new Date(), source: "manual",
+          domainRecordType: "hygiene_routine", domainRecordId: routine.id,
+        });
+      }
+      res.json({ ...routine, operationalSubjectId: subject.id, commitmentId: commitment.id, executionId: execution?.id ?? null });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -974,6 +1075,58 @@ export function registerRoutes(app: Express): Server {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const routine = await storage.updateHygieneRoutine((req.user as any).id, req.params.id, req.body);
       res.json(routine);
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
+  });
+
+  app.post("/api/hygiene-routines/:id/complete", async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const userId = (req.user as any).id;
+      const routines = await storage.getHygieneRoutines(userId);
+      const current = routines.find((routine) => routine.id === req.params.id);
+      if (!current) return res.status(404).json({ message: "Routine not found" });
+      const existingExecution =
+        await bodyOperationalStore.getExecutionByDomainRecord(
+          userId,
+          "hygiene_routine",
+          current.id,
+        );
+      if (current.completed && existingExecution) {
+        return res.json({
+          ...current,
+          executionId: existingExecution.id,
+          alreadyCompleted: true,
+        });
+      }
+      const routine = await storage.updateHygieneRoutine(userId, current.id, {
+        completed: true,
+        lastCompletedDate: current.date,
+        streak: (current.streak ?? 0) + 1,
+        bestStreak: Math.max(current.bestStreak ?? 0, (current.streak ?? 0) + 1),
+      });
+      const subject = await bodyOperationalStore.createSubject({
+        userId, subjectType: "hygiene_routine", entityId: routine.id,
+        titleSnapshot: routine.name, source: "manual",
+      });
+      const snapshot = await bodyOperationalStore.getSnapshot(userId, routine.date, "hygiene_routine");
+      const commitment = snapshot.commitments.find((item) => item.subjectId === subject.id);
+      const execution = await bodyOperationalStore.createExecution({
+        userId, subjectId: subject.id, commitmentId: commitment?.id,
+        status: "completed", actualStartAt: new Date(), source: "manual",
+        domainRecordType: "hygiene_routine", domainRecordId: routine.id,
+      });
+      if (commitment) {
+        await bodyOperationalStore.updateCommitment(userId, commitment.id, { status: "completed" });
+        await bodyOperationalStore.createReconciliation({
+          userId, commitmentId: commitment.id,
+          executionId: execution.id, resolution: "fulfilled",
+          confirmedByUser: true,
+          reason: "Routine completed from Hygiene",
+        });
+      }
+      res.json({ ...routine, operationalSubjectId: subject.id, executionId: execution.id });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -1036,8 +1189,18 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertFastingLogSchema.parse(req.body);
-      const log = await storage.createFastingLog({ ...data, userId: (req.user as any).id });
-      res.json(log);
+      const userId = (req.user as any).id;
+      const log = await storage.createFastingLog({ ...data, userId });
+      const subject = await bodyOperationalStore.createSubject({
+        userId, subjectType: "fasting", entityId: log.id,
+        titleSnapshot: "Fast", source: "manual",
+      });
+      const execution = await bodyOperationalStore.createExecution({
+        userId, subjectId: subject.id, status: "in_progress",
+        actualStartAt: log.startTime, source: "manual",
+        domainRecordType: "fasting_log", domainRecordId: log.id,
+      });
+      res.json({ ...log, operationalSubjectId: subject.id, executionId: execution.id });
     } catch (e: any) {
       res.status(409).json({ message: e.message });
     }
@@ -1058,7 +1221,12 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const log = await storage.stopFastingLog((req.user as any).id, req.params.id);
-      res.json(log);
+      const userId = (req.user as any).id;
+      const execution = await bodyOperationalStore.getExecutionByDomainRecord(userId, "fasting_log", log.id);
+      const updated = execution ? await bodyOperationalStore.updateExecution(userId, execution.id, {
+        status: "cancelled", actualEndAt: log.endTime ?? new Date(),
+      }) : null;
+      res.json({ ...log, executionId: updated?.id ?? null });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -1068,7 +1236,12 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const log = await storage.completeFastingLog((req.user as any).id, req.params.id);
-      res.json(log);
+      const userId = (req.user as any).id;
+      const execution = await bodyOperationalStore.getExecutionByDomainRecord(userId, "fasting_log", log.id);
+      const updated = execution ? await bodyOperationalStore.updateExecution(userId, execution.id, {
+        status: "completed", actualEndAt: log.endTime ?? new Date(),
+      }) : null;
+      res.json({ ...log, executionId: updated?.id ?? null });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -1117,8 +1290,44 @@ export function registerRoutes(app: Express): Server {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const data = insertIntakeLogSchema.parse(req.body);
-      const log = await storage.createIntakeLog({ ...data, userId: (req.user as any).id });
-      res.json(log);
+      const userId = (req.user as any).id;
+      const log = await storage.createIntakeLog({ ...data, userId });
+      const subject = await bodyOperationalStore.createSubject({
+        userId,
+        subjectType: "intake",
+        entityId: log.id,
+        titleSnapshot: log.mealName ?? log.mealType ?? "Intake",
+        source: "manual",
+      });
+      if (log.status === "planned") {
+        const commitment = await bodyOperationalStore.createCommitment({
+          userId,
+          subjectId: subject.id,
+          scheduleKind: "day_bound",
+          localDate: log.date.toISOString().slice(0, 10),
+          plannerBlockId: log.linkedBlockId ?? undefined,
+          source: "nutrition",
+        });
+        return res.json({
+          ...log,
+          operationalSubjectId: subject.id,
+          commitmentId: commitment.id,
+        });
+      }
+      const execution = await bodyOperationalStore.createExecution({
+        userId,
+        subjectId: subject.id,
+        status: "completed",
+        actualStartAt: log.date,
+        source: "manual",
+        domainRecordType: "intake_log",
+        domainRecordId: log.id,
+      });
+      res.json({
+        ...log,
+        operationalSubjectId: subject.id,
+        executionId: execution.id,
+      });
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
@@ -1128,6 +1337,72 @@ export function registerRoutes(app: Express): Server {
       const log = await storage.updateIntakeLog((req.user as any).id, req.params.id, req.body);
       res.json(log);
     } catch (e: any) { res.status(400).json({ message: e.message }); }
+  });
+
+  app.post("/api/intake-logs/:id/consume", async (req, res) => {
+    try {
+      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      const userId = (req.user as any).id;
+      const date = typeof req.body.date === "string" ? req.body.date : "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ message: "date must use YYYY-MM-DD" });
+      }
+      const planned = (await storage.getIntakeLogs(userId, date)).find(
+        (item) => item.id === req.params.id && item.status === "planned",
+      );
+      if (!planned) return res.status(404).json({ message: "Planned intake not found" });
+      const existingConsumption =
+        await bodyOperationalStore.getExecutionByDomainRecord(
+          userId,
+          "intake_plan_consumption",
+          planned.id,
+        );
+      if (existingConsumption) {
+        return res.status(409).json({
+          message: "This planned intake has already been consumed",
+          executionId: existingConsumption.id,
+        });
+      }
+      const consumed = await storage.createIntakeLog({
+        userId,
+        date: new Date(`${date}T12:00:00.000Z`),
+        mealName: planned.mealName,
+        mealType: planned.mealType,
+        calories: planned.calories,
+        protein: planned.protein,
+        carbs: planned.carbs,
+        fats: planned.fats,
+        fiber: planned.fiber,
+        sugar: planned.sugar,
+        sodium: planned.sodium,
+        water: planned.water,
+        notes: planned.notes,
+        status: "consumed",
+      });
+      const subject = await bodyOperationalStore.createSubject({
+        userId, subjectType: "intake", entityId: planned.id,
+        titleSnapshot: planned.mealName ?? planned.mealType ?? "Intake",
+        source: "manual",
+      });
+      const snapshot = await bodyOperationalStore.getSnapshot(userId, date, "intake");
+      const commitment = snapshot.commitments.find((item) => item.subjectId === subject.id);
+      const execution = await bodyOperationalStore.createExecution({
+        userId, subjectId: subject.id, commitmentId: commitment?.id,
+        status: "completed", actualStartAt: consumed.date, source: "manual",
+        domainRecordType: "intake_plan_consumption", domainRecordId: planned.id,
+      });
+      if (commitment) {
+        await bodyOperationalStore.updateCommitment(userId, commitment.id, { status: "completed" });
+        await bodyOperationalStore.createReconciliation({
+          userId, commitmentId: commitment.id, executionId: execution.id,
+          resolution: "fulfilled", confirmedByUser: true,
+          reason: "Consumed from Nutrition meal plan",
+        });
+      }
+      res.status(201).json({ planned, consumed, executionId: execution.id });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message });
+    }
   });
 
   app.delete("/api/intake-logs/:id", async (req, res) => {
@@ -1142,13 +1417,6 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/intake-routines", async (req, res) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     const routines = await storage.getIntakeRoutines((req.user as any).id);
-    if (routines.length === 0) {
-      return res.json([
-        { id: "mock-ir1", name: "Creatine Monohydrate", type: "supplement", dose: "5", unit: "g", timeOfDay: "Morning", frequency: "daily" },
-        { id: "mock-ir2", name: "Vitamin D3 + K2", type: "supplement", dose: "5000", unit: "IU", timeOfDay: "Morning", frequency: "daily" },
-        { id: "mock-ir3", name: "Magnesium Bisglycinate", type: "supplement", dose: "400", unit: "mg", timeOfDay: "Before Sleep", frequency: "daily" },
-      ]);
-    }
     res.json(routines);
   });
   app.post("/api/intake-routines", async (req, res) => {
@@ -1220,8 +1488,14 @@ export function registerRoutes(app: Express): Server {
     try {
       const { intakeLogs: logs, bodyProfile: profile } = req.body;
       const brief = await generateNutritionBrief(logs || [], profile || null);
-      res.json({ brief });
-    } catch (e: any) { res.json({ brief: "No intake logged yet today. Tap '+ Log intake' to get started." }); }
+      res.json({ status: "ready", brief });
+    } catch (e: any) {
+      res.status(503).json({
+        status: "unavailable",
+        brief: null,
+        reason: e instanceof Error ? e.message : "Nutrition brief unavailable",
+      });
+    }
   });
   app.post("/api/nutrition/classify-fuel", async (req, res) => {
     try {
@@ -1311,9 +1585,47 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/activity-logs", async (req, res) => {
     try {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      const data = insertActivityLogSchema.parse({ ...req.body, userId: (req.user as any).id });
+      const userId = (req.user as any).id;
+      const data = insertActivityLogSchema.parse({ ...req.body, userId });
+      if (!data.durationMinutes || data.durationMinutes <= 0) {
+        return res.status(400).json({
+          message: "A completed activity requires a positive duration",
+        });
+      }
       const log = await storage.createActivityLog(data);
-      res.json(log);
+      const definition = await bodyOperationalStore.createActivityDefinition({
+        userId,
+        slug: log.activityType,
+        name: log.activityName || log.activityType,
+        source: "legacy_activity",
+      });
+      const subject = await bodyOperationalStore.createSubject({
+        userId,
+        subjectType: "activity",
+        entityId: definition.id,
+        titleSnapshot: definition.name,
+        source: definition.source,
+      });
+      const actualEndAt = log.loggedAt;
+      const actualStartAt = new Date(
+        actualEndAt.getTime() - (log.durationMinutes ?? 0) * 60_000,
+      );
+      const execution = await bodyOperationalStore.createExecution({
+        userId,
+        subjectId: subject.id,
+        status: "completed",
+        actualStartAt,
+        actualEndAt,
+        source: "manual",
+        domainRecordType: "activity_log",
+        domainRecordId: log.id,
+      });
+      res.json({
+        ...log,
+        activityDefinitionId: definition.id,
+        operationalSubjectId: subject.id,
+        executionId: execution.id,
+      });
     } catch (e: any) {
       res.status(400).json({ message: e.message });
     }
@@ -1325,9 +1637,13 @@ export function registerRoutes(app: Express): Server {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const { generateActivityBrief } = await import("./ai");
       const brief = await generateActivityBrief(req.body.dailyData);
-      res.json({ brief });
+      res.json({ status: "ready", brief });
     } catch (e: any) {
-      res.json({ brief: "No activity logged yet today. Tap '+ Log activity' to get started." });
+      res.status(503).json({
+        status: "unavailable",
+        brief: null,
+        reason: e instanceof Error ? e.message : "Activity brief unavailable",
+      });
     }
   });
 
@@ -1337,21 +1653,603 @@ export function registerRoutes(app: Express): Server {
       if (!req.user) return res.status(401).json({ message: "Unauthorized" });
       const { generateRestBrief } = await import("./ai");
       const brief = await generateRestBrief(req.body.dailyState);
-      res.json({ brief });
+      res.json({ status: "ready", brief });
     } catch (e: any) {
-      res.json({ brief: "Rest & recovery analysis currently unavailable." });
+      res.status(503).json({
+        status: "unavailable",
+        brief: null,
+        reason: e instanceof Error ? e.message : "Rest brief unavailable",
+      });
     }
   });
 
   // Hygiene AI Brief
   app.post("/api/hygiene/ai-brief", async (req, res) => {
-    try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-      // Hygiene currently uses static or different logic, but adding for parity if needed
-      res.json({ brief: "All care routines are on track." });
-    } catch (e: any) {
-      res.json({ brief: "Hygiene analysis currently unavailable." });
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    res.status(501).json({
+      status: "unsupported",
+      brief: null,
+      reason: "Hygiene analysis is not implemented",
+    });
+  });
+
+  // ===== BODY OPERATIONAL SPINE =====
+  app.get("/api/body/operations", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const date = typeof req.query.date === "string" ? req.query.date : "";
+    const subjectType =
+      typeof req.query.subjectType === "string"
+        ? req.query.subjectType
+        : undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: "date must use YYYY-MM-DD" });
     }
+    try {
+      const snapshot = await bodyOperationalStore.getSnapshot(
+        (req.user as any).id,
+        date,
+        subjectType,
+      );
+      res.json(snapshot);
+    } catch (error) {
+      res.status(500).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to load Body operations",
+      });
+    }
+  });
+
+  app.get("/api/body/subjects", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const subjectType =
+      typeof req.query.subjectType === "string"
+        ? req.query.subjectType
+        : undefined;
+    res.json(
+      await bodyOperationalStore.listSubjects(
+        (req.user as any).id,
+        subjectType,
+      ),
+    );
+  });
+
+  app.get("/api/body/subjects/:id/history", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const history = await bodyOperationalStore.getSubjectHistory(
+      (req.user as any).id,
+      req.params.id,
+    );
+    if (!history) return res.status(404).json({ message: "Body subject not found" });
+    res.json(history);
+  });
+
+  app.get("/api/body/activity-definitions", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    await bodyOperationalStore.ensureInitialActivityDefinitions();
+    res.json(
+      await bodyOperationalStore.listActivityDefinitions(
+        (req.user as any).id,
+      ),
+    );
+  });
+
+  app.post("/api/body/activity-definitions", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const definition = await bodyOperationalStore.createActivityDefinition({
+        ...req.body,
+        userId: (req.user as any).id,
+        source: "user",
+      });
+      res.status(201).json(definition);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid activity definition",
+      });
+    }
+  });
+
+  app.post("/api/body/activity-plans", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const {
+      activityDefinitionId,
+      scheduleKind,
+      localDate,
+      startTime,
+      endTime,
+      plannedStartAt,
+      plannedEndAt,
+      timezone,
+      title,
+    } = req.body;
+    if (
+      typeof activityDefinitionId !== "string" ||
+      !["timed", "day_bound"].includes(scheduleKind) ||
+      typeof localDate !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(localDate)
+    ) {
+      return res.status(400).json({ message: "Invalid activity plan" });
+    }
+
+    const definition = await bodyOperationalStore.getActivityDefinition(
+      userId,
+      activityDefinitionId,
+    );
+    if (!definition) {
+      return res.status(404).json({ message: "Activity definition not found" });
+    }
+
+    let plannerBlock: Awaited<ReturnType<typeof storage.createTimeBlock>> | null =
+      null;
+    try {
+      if (scheduleKind === "timed") {
+        if (
+          typeof startTime !== "string" ||
+          typeof endTime !== "string" ||
+          !/^\d{2}:\d{2}$/.test(startTime) ||
+          !/^\d{2}:\d{2}$/.test(endTime) ||
+          typeof plannedStartAt !== "string" ||
+          typeof plannedEndAt !== "string" ||
+          typeof timezone !== "string"
+        ) {
+          return res.status(400).json({
+            message:
+              "Timed activity plans require local times, exact timestamps, and timezone",
+          });
+        }
+        plannerBlock = await storage.createTimeBlock(
+          insertTimeBlockSchema.parse({
+            date: localDate,
+            startTime,
+            endTime,
+            title:
+              typeof title === "string" && title.trim()
+                ? title.trim()
+                : definition.name,
+            linkedModule: "activity",
+            linkedItemId: definition.id,
+          }),
+        );
+      }
+
+      const subject = await bodyOperationalStore.createSubject({
+        userId,
+        subjectType: "activity",
+        entityId: definition.id,
+        titleSnapshot: definition.name,
+        source: definition.source,
+      });
+      const commitment = await bodyOperationalStore.createCommitment({
+        userId,
+        subjectId: subject.id,
+        scheduleKind,
+        localDate,
+        plannedStartAt:
+          scheduleKind === "timed" ? new Date(plannedStartAt) : undefined,
+        plannedEndAt:
+          scheduleKind === "timed" ? new Date(plannedEndAt) : undefined,
+        timezone: scheduleKind === "timed" ? timezone : undefined,
+        plannerBlockId: plannerBlock?.id,
+        source: "body_activity_plan",
+      });
+      res.status(201).json({ definition, subject, commitment, plannerBlock });
+    } catch (error) {
+      if (plannerBlock) {
+        await storage.deleteTimeBlock(plannerBlock.id);
+      }
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Unable to plan activity",
+      });
+    }
+  });
+
+  app.post("/api/body/activity-executions", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const { activityDefinitionId, commitmentId, actualStartAt } = req.body;
+    if (typeof activityDefinitionId !== "string") {
+      return res.status(400).json({
+        message: "activityDefinitionId is required",
+      });
+    }
+    const definition = await bodyOperationalStore.getActivityDefinition(
+      userId,
+      activityDefinitionId,
+    );
+    if (!definition) {
+      return res.status(404).json({ message: "Activity definition not found" });
+    }
+    try {
+      const subject = await bodyOperationalStore.createSubject({
+        userId,
+        subjectType: "activity",
+        entityId: definition.id,
+        titleSnapshot: definition.name,
+        source: definition.source,
+      });
+      const execution = await bodyOperationalStore.createExecution({
+        userId,
+        subjectId: subject.id,
+        commitmentId:
+          typeof commitmentId === "string" ? commitmentId : undefined,
+        status: "in_progress",
+        actualStartAt:
+          typeof actualStartAt === "string"
+            ? new Date(actualStartAt)
+            : new Date(),
+        source: "manual",
+      });
+      res.status(201).json({ definition, subject, execution });
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Unable to start activity",
+      });
+    }
+  });
+
+  app.post("/api/body/activity-executions/:id/complete", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const execution = await bodyOperationalStore.getExecution(
+      userId,
+      req.params.id,
+    );
+    if (!execution) {
+      return res.status(404).json({ message: "Activity execution not found" });
+    }
+    if (execution.status === "completed") {
+      return res.json({ execution, alreadyCompleted: true });
+    }
+    const subject = await bodyOperationalStore.getSubject(
+      userId,
+      execution.subjectId,
+    );
+    if (!subject || subject.subjectType !== "activity") {
+      return res.status(400).json({ message: "Execution is not an activity" });
+    }
+    const definition = await bodyOperationalStore.getActivityDefinition(
+      userId,
+      subject.entityId,
+    );
+    if (!definition) {
+      return res.status(404).json({ message: "Activity definition not found" });
+    }
+
+    try {
+      const actualEndAt =
+        typeof req.body.actualEndAt === "string"
+          ? new Date(req.body.actualEndAt)
+          : new Date();
+      const actualStartAt = execution.actualStartAt;
+      if (!actualStartAt || actualEndAt <= actualStartAt) {
+        return res.status(400).json({
+          message: "Activity completion requires a valid execution interval",
+        });
+      }
+      const durationMinutes = Math.max(
+        1,
+        Math.round((actualEndAt.getTime() - actualStartAt.getTime()) / 60_000),
+      );
+      const completedExecution = await bodyOperationalStore.updateExecution(
+        userId,
+        execution.id,
+        {
+          status: "completed",
+          actualStartAt,
+          actualEndAt,
+        },
+      );
+      const log = await storage.createActivityLog(
+        insertActivityLogSchema.parse({
+          userId,
+          activityType: definition.slug,
+          activityName: definition.name,
+          durationMinutes,
+          distanceKm: req.body.distanceKm ?? null,
+          caloriesBurned: req.body.caloriesBurned ?? null,
+          perceivedEffort: req.body.perceivedEffort ?? null,
+          notes: req.body.notes ?? null,
+          loggedAt: actualEndAt,
+        }),
+      );
+      const linkedExecution = await bodyOperationalStore.updateExecution(
+        userId,
+        execution.id,
+        {
+          status: "completed",
+          actualStartAt,
+          actualEndAt,
+          domainRecordType: "activity_log",
+          domainRecordId: log.id,
+        },
+      );
+
+      let commitment = null;
+      if (execution.commitmentId) {
+        commitment = await bodyOperationalStore.updateCommitment(
+          userId,
+          execution.commitmentId,
+          { status: "completed" },
+        );
+        await bodyOperationalStore.createReconciliation({
+          userId,
+          commitmentId: execution.commitmentId,
+          executionId: execution.id,
+          resolution: "fulfilled",
+          confirmedByUser: true,
+          reason: "Completed from Activity execution",
+        });
+        if (commitment?.plannerBlockId) {
+          await storage.updateTimeBlock(commitment.plannerBlockId, {
+            completed: true,
+          });
+        }
+      }
+
+      res.json({
+        definition,
+        execution: linkedExecution ?? completedExecution,
+        commitment,
+        activityLog: log,
+      });
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to complete activity",
+      });
+    }
+  });
+
+  app.post("/api/body/subjects", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const subject = await bodyOperationalStore.createSubject({
+        ...coerceOperationalDates(req.body),
+        userId: (req.user as any).id,
+      });
+      res.status(201).json(subject);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body subject",
+      });
+    }
+  });
+
+  const manualObservationSchema = z.object({
+    umbrellaId: z.enum([
+      "nutrition.caffeine",
+      "nutrition.alcohol",
+      "rest.perceived_stress",
+      "rest.naps",
+      "hygiene.cycle",
+      "hygiene.skin_progress",
+      "hygiene.appearance_progress",
+      "hygiene.products",
+      "hygiene.symptoms",
+    ]),
+    entityKey: z.string().trim().min(1).max(120).default("default"),
+    label: z.string().trim().min(1).max(160),
+    value: z.union([z.number().finite(), z.string().trim().max(500), z.boolean()]),
+    unit: z.string().trim().max(40).nullable().optional(),
+    scaleVersion: z.string().trim().max(80).nullable().optional(),
+    confidence: z.enum(["exact", "estimated", "unknown"]).default("exact"),
+    notes: z.string().trim().max(2000).nullable().optional(),
+    attributes: z.record(z.unknown()).default({}),
+    privacyClass: z.enum(["general_wellness", "sensitive_health"]).default("sensitive_health"),
+    observedAt: z.coerce.date(),
+    timezone: z.string().trim().min(1).max(80),
+    clientRecordId: z.string().trim().min(8).max(160),
+  });
+
+  app.get("/api/body/manual-observations/:umbrellaId", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const userId = (req.user as any).id;
+    const umbrellaId = req.params.umbrellaId;
+    if (!manualObservationSchema.shape.umbrellaId.safeParse(umbrellaId).success) {
+      return res.status(400).json({ message: "Unsupported observation umbrella" });
+    }
+    const subjects = await bodyOperationalStore.listSubjects(userId, "manual_observation");
+    const matchingSubjects = subjects.filter((subject) =>
+      subject.entityId.startsWith(`${umbrellaId}:`),
+    );
+    const histories = await Promise.all(
+      matchingSubjects.map((subject) =>
+        bodyOperationalStore.getSubjectHistory(userId, subject.id),
+      ),
+    );
+    const observations = histories
+      .flatMap((history) =>
+        (history?.executions ?? []).map((execution) => ({
+          ...execution,
+          subject: history?.subject,
+        })),
+      )
+      .sort(
+        (left, right) =>
+          (right.actualStartAt?.getTime() ?? 0) -
+          (left.actualStartAt?.getTime() ?? 0),
+      );
+    res.json({ umbrellaId, observations });
+  });
+
+  app.post("/api/body/manual-observations", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const userId = (req.user as any).id;
+      const input = manualObservationSchema.parse(req.body);
+      const existing = await bodyOperationalStore.getExecutionByDomainRecord(
+        userId,
+        "manual_observation",
+        input.clientRecordId,
+      );
+      if (existing) {
+        return res.json({ execution: existing, alreadyRecorded: true });
+      }
+      const subject = await bodyOperationalStore.createSubject({
+        userId,
+        subjectType: "manual_observation",
+        entityId: `${input.umbrellaId}:${input.entityKey}`,
+        titleSnapshot: input.label,
+        privacyClass: input.privacyClass,
+        source: "manual",
+      });
+      const execution = await bodyOperationalStore.createExecution({
+        userId,
+        subjectId: subject.id,
+        status: "completed",
+        actualStartAt: input.observedAt,
+        timezone: input.timezone,
+        source: "manual",
+        domainRecordType: "manual_observation",
+        domainRecordId: input.clientRecordId || randomUUID(),
+        evidence: {
+          value: input.value,
+          unit: input.unit ?? null,
+          scaleVersion: input.scaleVersion ?? null,
+          confidence: input.confidence,
+          notes: input.notes ?? null,
+          attributes: {
+            umbrellaId: input.umbrellaId,
+            entityKey: input.entityKey,
+            ...input.attributes,
+          },
+        },
+      });
+      res.status(201).json({ subject, execution });
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid manual observation",
+      });
+    }
+  });
+
+  app.post("/api/body/commitments", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const commitment = await bodyOperationalStore.createCommitment({
+        ...coerceOperationalDates(req.body),
+        userId: (req.user as any).id,
+      } as any);
+      res.status(201).json(commitment);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body commitment",
+      });
+    }
+  });
+
+  app.post("/api/body/executions", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const execution = await bodyOperationalStore.createExecution({
+        ...coerceOperationalDates(req.body),
+        userId: (req.user as any).id,
+      } as any);
+      res.status(201).json(execution);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body execution",
+      });
+    }
+  });
+
+  app.patch("/api/body/executions/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const execution = await bodyOperationalStore.updateExecution(
+        (req.user as any).id,
+        req.params.id,
+        coerceOperationalDates(req.body) as any,
+      );
+      if (!execution) {
+        return res.status(404).json({ message: "Body execution not found" });
+      }
+      res.json(execution);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body execution",
+      });
+    }
+  });
+
+  app.post("/api/body/reconciliations", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const reconciliation =
+        await bodyOperationalStore.createReconciliation({
+          ...req.body,
+          userId: (req.user as any).id,
+        });
+      res.status(201).json(reconciliation);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid Body reconciliation",
+      });
+    }
+  });
+
+  app.post("/api/body/goal-links", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const goal = await storage.getGoal(req.body.goalId);
+      if (!goal) return res.status(404).json({ message: "Goal not found" });
+      const link = await bodyOperationalStore.createGoalLink({
+        ...coerceOperationalDates(req.body),
+        userId: (req.user as any).id,
+      } as any);
+      res.status(201).json(link);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body goal link",
+      });
+    }
+  });
+
+  app.post("/api/body/goal-events", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const event = await bodyOperationalStore.createGoalEvent({
+        ...coerceOperationalDates(req.body),
+        userId: (req.user as any).id,
+      } as any);
+      res.status(201).json(event);
+    } catch (error) {
+      res.status(400).json({
+        message:
+          error instanceof Error ? error.message : "Invalid Body goal event",
+      });
+    }
+  });
+
+  app.get("/api/body/goal-links/:id/progress", async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const progress = await bodyOperationalStore.getGoalProgress(
+      (req.user as any).id,
+      req.params.id,
+    );
+    if (!progress) {
+      return res.status(404).json({ message: "Body goal link not found" });
+    }
+    res.json(progress);
   });
 
   // ===== WORSHIP =====

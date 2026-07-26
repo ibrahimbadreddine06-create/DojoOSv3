@@ -6,8 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChapterContentArea } from "@/components/chapter-content-area";
 import { useDualSidebar } from "@/contexts/dual-sidebar-context";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-chart";
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { Course, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
@@ -126,23 +126,16 @@ function OverviewDashboard({
               <TrendingUp className="h-4 w-4" />
               <h3 className="font-semibold">Progress Trend</h3>
             </div>
-            <ChartContainer
-              config={{
-                completion: { label: "Completion", color: "hsl(var(--primary))" },
-                readiness: { label: "Readiness", color: "hsl(var(--primary) / 0.7)" }
-              }}
-              className="flex-1 w-full min-h-[250px]"
-            >
-              <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
-                <YAxis domain={[0, 100]} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={30} tickFormatter={(v) => `${v}%`} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="completion" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} name="Completion" />
-                <Line type="monotone" dataKey="readiness" stroke="hsl(var(--primary) / 0.7)" strokeWidth={2} dot={{ fill: "hsl(var(--primary) / 0.7)", r: 3 }} name="Readiness" />
-                <Legend />
-              </LineChart>
-            </ChartContainer>
+            <ScrollableHistoryChart
+              data={chartData}
+              xKey="date"
+              series={[
+                { key: "completion", label: "Completion", color: "hsl(var(--primary))" },
+                { key: "readiness", label: "Readiness", color: "hsl(var(--primary) / 0.7)" },
+              ]}
+              height={270}
+              leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
+            />
           </Card>
         </div>
 

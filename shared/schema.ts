@@ -653,6 +653,32 @@ export const workoutSetsRelations = relations(workoutSets, ({ one }) => ({
 }));
 
 // ===== ACTIVITY LOGS (non-workout activities: runs, walks, etc.) =====
+export const activityDefinitions = pgTable(
+  "activity_definitions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id"),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    aliases: text("aliases").array().notNull().default(sql`ARRAY[]::text[]`),
+    category: text("category"),
+    supportedFields: text("supported_fields")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    instructions: text("instructions"),
+    imageUrl: text("image_url"),
+    source: text("source").notNull().default("curated"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("activity_definitions_owner_slug_unique").on(table.userId, table.slug),
+    index("activity_definitions_owner_name_idx").on(table.userId, table.name),
+  ],
+);
+
 export const activityLogs = pgTable("activity_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
@@ -1135,3 +1161,709 @@ export type InsertFollow = typeof follows.$inferInsert;
 export type PrivacySetting = typeof privacySettings.$inferSelect;
 export type InsertPrivacySetting = typeof privacySettings.$inferInsert;
 export type UpdatePrivacySetting = Partial<InsertPrivacySetting>;
+
+// ===== BODY CANONICAL HEALTH DATA =====
+//
+// These tables are additive. Legacy daily_state remains a projection during
+// migration and must not be used as the source of truth for new provider data.
+
+export const bodyConsentReceipts = pgTable(
+  "body_consent_receipts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    providerId: text("provider_id"),
+    purposeIds: text("purpose_ids").array().notNull(),
+    dataCategories: text("data_categories").array().notNull(),
+    scopes: text("scopes").array().notNull().default(sql`ARRAY[]::text[]`),
+    noticeVersion: text("notice_version").notNull(),
+    action: text("action").notNull(),
+    locale: text("locale").notNull(),
+    collectionSurface: text("collection_surface").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_consent_receipts_user_recorded_idx").on(
+      table.userId,
+      table.recordedAt,
+    ),
+    index("body_consent_receipts_provider_idx").on(table.providerId),
+  ],
+);
+
+export const bodyConnections = pgTable(
+  "body_connections",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    route: text("route").notNull(),
+    status: text("status").notNull(),
+    credentialReference: text("credential_reference"),
+    grantedScopes: text("granted_scopes").array().notNull().default(sql`ARRAY[]::text[]`),
+    consentReceiptId: varchar("consent_receipt_id")
+      .notNull()
+      .references(() => bodyConsentReceipts.id),
+    connectedAt: timestamp("connected_at", { withTimezone: true }),
+    disconnectedAt: timestamp("disconnected_at", { withTimezone: true }),
+    lastSuccessfulSyncAt: timestamp("last_successful_sync_at", {
+      withTimezone: true,
+    }),
+    lastAttemptedSyncAt: timestamp("last_attempted_sync_at", {
+      withTimezone: true,
+    }),
+    lastErrorCode: text("last_error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("body_connections_user_provider_route_unique").on(
+      table.userId,
+      table.providerId,
+      table.route,
+    ),
+    index("body_connections_user_status_idx").on(table.userId, table.status),
+  ],
+);
+
+export const bodyOauthTransactions = pgTable(
+  "body_oauth_transactions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    stateHash: text("state_hash").notNull(),
+    sessionBindingHash: text("session_binding_hash").notNull(),
+    requestedScopes: text("requested_scopes").array().notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("body_oauth_transactions_state_hash_unique").on(table.stateHash),
+    index("body_oauth_transactions_user_provider_idx").on(
+      table.userId,
+      table.providerId,
+    ),
+    index("body_oauth_transactions_expires_idx").on(table.expiresAt),
+  ],
+);
+
+export const bodyResourceSyncStates = pgTable(
+  "body_resource_sync_states",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    connectionId: varchar("connection_id")
+      .notNull()
+      .references(() => bodyConnections.id),
+    resourceFamily: text("resource_family").notNull(),
+    state: text("state").notNull(),
+    cursorReference: text("cursor_reference"),
+    requestedFrom: timestamp("requested_from", { withTimezone: true }),
+    receivedThrough: timestamp("received_through", { withTimezone: true }),
+    lastSuccessfulSyncAt: timestamp("last_successful_sync_at", {
+      withTimezone: true,
+    }),
+    recordCount: integer("record_count").notNull().default(0),
+    errorCode: text("error_code"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("body_resource_sync_connection_family_unique").on(
+      table.connectionId,
+      table.resourceFamily,
+    ),
+    index("body_resource_sync_state_idx").on(table.state),
+  ],
+);
+
+export const bodyRawIngestionEvents = pgTable(
+  "body_raw_ingestion_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    connectionId: varchar("connection_id")
+      .notNull()
+      .references(() => bodyConnections.id),
+    providerId: text("provider_id").notNull(),
+    resourceFamily: text("resource_family").notNull(),
+    providerRecordId: text("provider_record_id"),
+    providerRecordVersion: text("provider_record_version"),
+    operation: text("operation").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    payloadReference: text("payload_reference"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    processingErrorCode: text("processing_error_code"),
+  },
+  (table) => [
+    unique("body_raw_ingestion_connection_idempotency_unique").on(
+      table.connectionId,
+      table.idempotencyKey,
+    ),
+    index("body_raw_ingestion_user_received_idx").on(
+      table.userId,
+      table.receivedAt,
+    ),
+    index("body_raw_ingestion_provider_record_idx").on(
+      table.providerId,
+      table.providerRecordId,
+    ),
+  ],
+);
+
+export const bodyObservations = pgTable(
+  "body_observations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    canonicalType: text("canonical_type").notNull(),
+    numericValue: decimal("numeric_value", { precision: 20, scale: 8 }),
+    textValue: text("text_value"),
+    structuredValue: jsonb("structured_value"),
+    canonicalUnit: text("canonical_unit"),
+    observedAt: timestamp("observed_at", { withTimezone: true }),
+    intervalStart: timestamp("interval_start", { withTimezone: true }),
+    intervalEnd: timestamp("interval_end", { withTimezone: true }),
+    localDate: date("local_date"),
+    timezone: text("timezone"),
+    sourceClass: text("source_class").notNull(),
+    providerId: text("provider_id").notNull(),
+    ingestionRoute: text("ingestion_route").notNull(),
+    providerRecordId: text("provider_record_id"),
+    providerRecordVersion: text("provider_record_version"),
+    originalType: text("original_type").notNull(),
+    originalUnit: text("original_unit"),
+    originalValue: jsonb("original_value"),
+    sourceAppId: text("source_app_id"),
+    sourceDeviceId: text("source_device_id"),
+    rawIngestionEventId: varchar("raw_ingestion_event_id").references(
+      () => bodyRawIngestionEvents.id,
+    ),
+    consentReceiptId: varchar("consent_receipt_id").references(
+      () => bodyConsentReceipts.id,
+    ),
+    coverageRatio: decimal("coverage_ratio", { precision: 6, scale: 5 }),
+    sourceStatus: text("source_status"),
+    sourceQuality: text("source_quality"),
+    uncertainty: text("uncertainty").array().notNull().default(sql`ARRAY[]::text[]`),
+    status: text("status").notNull().default("active"),
+    supersedesObservationId: varchar("supersedes_observation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_observations_user_type_time_idx").on(
+      table.userId,
+      table.canonicalType,
+      table.observedAt,
+    ),
+    index("body_observations_user_type_date_idx").on(
+      table.userId,
+      table.canonicalType,
+      table.localDate,
+    ),
+    index("body_observations_provider_record_idx").on(
+      table.providerId,
+      table.providerRecordId,
+    ),
+    index("body_observations_interval_idx").on(
+      table.userId,
+      table.intervalStart,
+      table.intervalEnd,
+    ),
+  ],
+);
+
+export const bodyResolutionDecisions = pgTable(
+  "body_resolution_decisions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    canonicalType: text("canonical_type").notNull(),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    strategyId: text("strategy_id").notNull(),
+    strategyVersion: text("strategy_version").notNull(),
+    acceptedObservationIds: text("accepted_observation_ids").array().notNull(),
+    excludedObservationIds: text("excluded_observation_ids").array().notNull(),
+    state: text("state").notNull(),
+    rationale: jsonb("rationale").notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_resolution_user_type_period_idx").on(
+      table.userId,
+      table.canonicalType,
+      table.periodStart,
+    ),
+  ],
+);
+
+export const bodyMetricResults = pgTable(
+  "body_metric_results",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    metricId: text("metric_id").notNull(),
+    specificationVersion: text("specification_version").notNull(),
+    disposition: text("disposition").notNull(),
+    numericValue: decimal("numeric_value", { precision: 20, scale: 8 }),
+    textValue: text("text_value"),
+    structuredValue: jsonb("structured_value"),
+    canonicalUnit: text("canonical_unit"),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    localDate: date("local_date"),
+    state: text("state").notNull(),
+    sourceNamespace: text("source_namespace"),
+    transformationId: text("transformation_id"),
+    coverageRatio: decimal("coverage_ratio", { precision: 6, scale: 5 }),
+    freshUntil: timestamp("fresh_until", { withTimezone: true }),
+    uncertainty: text("uncertainty").array().notNull().default(sql`ARRAY[]::text[]`),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("body_metric_results_user_metric_period_idx").on(
+      table.userId,
+      table.metricId,
+      table.periodStart,
+    ),
+    index("body_metric_results_user_metric_date_idx").on(
+      table.userId,
+      table.metricId,
+      table.localDate,
+    ),
+  ],
+);
+
+export const bodyMetricResultInputs = pgTable(
+  "body_metric_result_inputs",
+  {
+    metricResultId: varchar("metric_result_id")
+      .notNull()
+      .references(() => bodyMetricResults.id),
+    observationId: varchar("observation_id")
+      .notNull()
+      .references(() => bodyObservations.id),
+    role: text("role").notNull().default("input"),
+  },
+  (table) => [
+    unique("body_metric_result_inputs_unique").on(
+      table.metricResultId,
+      table.observationId,
+    ),
+    index("body_metric_result_inputs_observation_idx").on(table.observationId),
+  ],
+);
+
+// ===== BODY OPERATIONAL SPINE =====
+// These tables keep intent, execution, observation, and goal evidence distinct.
+// Domain-specific detail remains in its authoritative table.
+export const bodySubjects = pgTable(
+  "body_subjects",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    subjectType: text("subject_type").notNull(),
+    entityId: varchar("entity_id").notNull(),
+    titleSnapshot: text("title_snapshot"),
+    privacyClass: text("privacy_class").notNull().default("general_wellness"),
+    source: text("source").notNull().default("body"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("body_subjects_user_type_entity_unique").on(
+      table.userId,
+      table.subjectType,
+      table.entityId,
+    ),
+    index("body_subjects_user_type_idx").on(table.userId, table.subjectType),
+  ],
+);
+
+export const bodyCommitments = pgTable(
+  "body_commitments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    subjectId: varchar("subject_id")
+      .notNull()
+      .references(() => bodySubjects.id),
+    scheduleKind: text("schedule_kind").notNull(),
+    localDate: date("local_date"),
+    plannedStartAt: timestamp("planned_start_at", { withTimezone: true }),
+    plannedEndAt: timestamp("planned_end_at", { withTimezone: true }),
+    timezone: text("timezone"),
+    recurrenceRuleId: varchar("recurrence_rule_id"),
+    plannerBlockId: varchar("planner_block_id").references(() => timeBlocks.id),
+    status: text("status").notNull().default("planned"),
+    source: text("source").notNull().default("body"),
+    sourceReference: text("source_reference"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_commitments_user_date_idx").on(table.userId, table.localDate),
+    index("body_commitments_subject_status_idx").on(table.subjectId, table.status),
+    unique("body_commitments_planner_block_unique").on(table.plannerBlockId),
+  ],
+);
+
+export const bodyExecutions = pgTable(
+  "body_executions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    subjectId: varchar("subject_id")
+      .notNull()
+      .references(() => bodySubjects.id),
+    commitmentId: varchar("commitment_id").references(() => bodyCommitments.id),
+    status: text("status").notNull().default("ready"),
+    actualStartAt: timestamp("actual_start_at", { withTimezone: true }),
+    actualEndAt: timestamp("actual_end_at", { withTimezone: true }),
+    timezone: text("timezone"),
+    source: text("source").notNull().default("manual"),
+    domainRecordType: text("domain_record_type"),
+    domainRecordId: varchar("domain_record_id"),
+    evidence: jsonb("evidence").$type<{
+      value?: number | string | boolean | null;
+      unit?: string | null;
+      scaleVersion?: string | null;
+      confidence?: "exact" | "estimated" | "unknown";
+      notes?: string | null;
+      attributes?: Record<string, unknown>;
+    }>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_executions_user_start_idx").on(table.userId, table.actualStartAt),
+    index("body_executions_subject_status_idx").on(table.subjectId, table.status),
+    index("body_executions_commitment_idx").on(table.commitmentId),
+    unique("body_executions_user_domain_record_unique").on(
+      table.userId,
+      table.domainRecordType,
+      table.domainRecordId,
+    ),
+  ],
+);
+
+export const bodyExecutionObservations = pgTable(
+  "body_execution_observations",
+  {
+    executionId: varchar("execution_id")
+      .notNull()
+      .references(() => bodyExecutions.id),
+    observationId: varchar("observation_id")
+      .notNull()
+      .references(() => bodyObservations.id),
+    role: text("role").notNull().default("evidence"),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("body_execution_observations_unique").on(
+      table.executionId,
+      table.observationId,
+    ),
+    index("body_execution_observations_observation_idx").on(table.observationId),
+  ],
+);
+
+export const bodyReconciliations = pgTable(
+  "body_reconciliations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    commitmentId: varchar("commitment_id")
+      .notNull()
+      .references(() => bodyCommitments.id),
+    executionId: varchar("execution_id")
+      .notNull()
+      .references(() => bodyExecutions.id),
+    resolution: text("resolution").notNull(),
+    confidence: decimal("confidence", { precision: 6, scale: 5 }),
+    confirmedByUser: boolean("confirmed_by_user").notNull().default(false),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("body_reconciliations_commitment_execution_unique").on(
+      table.commitmentId,
+      table.executionId,
+    ),
+    index("body_reconciliations_user_idx").on(table.userId),
+  ],
+);
+
+export const bodyGoalLinks = pgTable(
+  "body_goal_links",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    goalId: varchar("goal_id")
+      .notNull()
+      .references(() => goals.id),
+    subjectId: varchar("subject_id").references(() => bodySubjects.id),
+    canonicalType: text("canonical_type"),
+    criterionVersion: text("criterion_version").notNull(),
+    criterion: jsonb("criterion").notNull(),
+    targetValue: decimal("target_value", { precision: 20, scale: 8 }),
+    targetUnit: text("target_unit"),
+    validFrom: timestamp("valid_from", { withTimezone: true }),
+    validTo: timestamp("valid_to", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_goal_links_goal_idx").on(table.goalId),
+    index("body_goal_links_subject_idx").on(table.subjectId),
+  ],
+);
+
+export const bodyGoalEvents = pgTable(
+  "body_goal_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    goalLinkId: varchar("goal_link_id")
+      .notNull()
+      .references(() => bodyGoalLinks.id),
+    executionId: varchar("execution_id").references(() => bodyExecutions.id),
+    observationId: varchar("observation_id").references(() => bodyObservations.id),
+    contribution: decimal("contribution", { precision: 20, scale: 8 }).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversalReason: text("reversal_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("body_goal_events_link_time_idx").on(table.goalLinkId, table.occurredAt),
+    index("body_goal_events_execution_idx").on(table.executionId),
+    index("body_goal_events_observation_idx").on(table.observationId),
+  ],
+);
+
+export const insertBodyConsentReceiptSchema = createInsertSchema(
+  bodyConsentReceipts,
+).omit({ id: true });
+export const insertBodyConnectionSchema = createInsertSchema(bodyConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertBodyOauthTransactionSchema = createInsertSchema(
+  bodyOauthTransactions,
+).omit({ id: true, createdAt: true });
+export const insertBodyResourceSyncStateSchema = createInsertSchema(
+  bodyResourceSyncStates,
+).omit({ id: true, updatedAt: true });
+export const insertBodyRawIngestionEventSchema = createInsertSchema(
+  bodyRawIngestionEvents,
+).omit({ id: true });
+export const insertBodyObservationSchema = createInsertSchema(bodyObservations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertBodyResolutionDecisionSchema = createInsertSchema(
+  bodyResolutionDecisions,
+).omit({ id: true, decidedAt: true });
+export const insertBodyMetricResultSchema = createInsertSchema(
+  bodyMetricResults,
+).omit({ id: true });
+export const insertBodyMetricResultInputSchema = createInsertSchema(
+  bodyMetricResultInputs,
+);
+export const insertBodySubjectSchema = createInsertSchema(bodySubjects).omit({
+  id: true,
+  createdAt: true,
+});
+export const insertBodyCommitmentSchema = createInsertSchema(bodyCommitments)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .superRefine((value, ctx) => {
+    if (value.scheduleKind === "timed") {
+      if (!value.plannedStartAt || !value.plannedEndAt || !value.timezone) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Timed commitments require start, end, and timezone",
+        });
+      }
+    }
+    if (
+      value.plannedStartAt &&
+      value.plannedEndAt &&
+      value.plannedEndAt <= value.plannedStartAt
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Commitment end must be after start",
+      });
+    }
+    if (value.scheduleKind === "day_bound" && !value.localDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Day-bound commitments require a local date",
+      });
+    }
+  });
+export const insertBodyExecutionSchema = createInsertSchema(bodyExecutions)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.actualStartAt &&
+      value.actualEndAt &&
+      value.actualEndAt <= value.actualStartAt
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Execution end must be after start",
+      });
+    }
+    if (
+      ["in_progress", "paused", "completed", "partial", "abandoned"].includes(
+        value.status || "",
+      ) &&
+      !value.actualStartAt
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Started execution states require an actual start",
+      });
+    }
+  });
+export const insertBodyExecutionObservationSchema = createInsertSchema(
+  bodyExecutionObservations,
+).omit({ linkedAt: true });
+export const insertBodyReconciliationSchema = createInsertSchema(
+  bodyReconciliations,
+).omit({ id: true, createdAt: true });
+export const insertBodyGoalLinkSchema = createInsertSchema(bodyGoalLinks)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .superRefine((value, ctx) => {
+    if (!value.subjectId && !value.canonicalType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Body goal links require a subject or canonical type",
+      });
+    }
+    if (value.validFrom && value.validTo && value.validTo <= value.validFrom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Goal validity end must be after start",
+      });
+    }
+  });
+export const insertBodyGoalEventSchema = createInsertSchema(bodyGoalEvents)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .superRefine((value, ctx) => {
+    if (!value.executionId && !value.observationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Goal events require execution or observation evidence",
+      });
+    }
+  });
+export const insertActivityDefinitionSchema = createInsertSchema(
+  activityDefinitions,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).superRefine((value, ctx) => {
+  if (!value.slug.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["slug"],
+      message: "Activity definitions require a stable slug",
+    });
+  }
+  if (!value.name.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["name"],
+      message: "Activity definitions require a display name",
+    });
+  }
+  if (value.userId && value.source !== "user") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["source"],
+      message: "Private activity definitions must declare user provenance",
+    });
+  }
+});
+
+export type BodyConsentReceiptRow = typeof bodyConsentReceipts.$inferSelect;
+export type InsertBodyConsentReceipt = z.infer<
+  typeof insertBodyConsentReceiptSchema
+>;
+export type BodyConnectionRow = typeof bodyConnections.$inferSelect;
+export type InsertBodyConnection = z.infer<typeof insertBodyConnectionSchema>;
+export type BodyOauthTransactionRow = typeof bodyOauthTransactions.$inferSelect;
+export type InsertBodyOauthTransaction = z.infer<
+  typeof insertBodyOauthTransactionSchema
+>;
+export type BodyResourceSyncStateRow =
+  typeof bodyResourceSyncStates.$inferSelect;
+export type InsertBodyResourceSyncState = z.infer<
+  typeof insertBodyResourceSyncStateSchema
+>;
+export type BodyRawIngestionEventRow =
+  typeof bodyRawIngestionEvents.$inferSelect;
+export type InsertBodyRawIngestionEvent = z.infer<
+  typeof insertBodyRawIngestionEventSchema
+>;
+export type BodyObservationRow = typeof bodyObservations.$inferSelect;
+export type InsertBodyObservation = z.infer<
+  typeof insertBodyObservationSchema
+>;
+export type BodyResolutionDecisionRow =
+  typeof bodyResolutionDecisions.$inferSelect;
+export type InsertBodyResolutionDecision = z.infer<
+  typeof insertBodyResolutionDecisionSchema
+>;
+export type BodyMetricResultRow = typeof bodyMetricResults.$inferSelect;
+export type InsertBodyMetricResult = z.infer<
+  typeof insertBodyMetricResultSchema
+>;
+export type BodySubject = typeof bodySubjects.$inferSelect;
+export type InsertBodySubject = z.infer<typeof insertBodySubjectSchema>;
+export type BodyCommitment = typeof bodyCommitments.$inferSelect;
+export type InsertBodyCommitment = z.infer<typeof insertBodyCommitmentSchema>;
+export type BodyExecution = typeof bodyExecutions.$inferSelect;
+export type InsertBodyExecution = z.infer<typeof insertBodyExecutionSchema>;
+export type BodyExecutionObservation =
+  typeof bodyExecutionObservations.$inferSelect;
+export type InsertBodyExecutionObservation = z.infer<
+  typeof insertBodyExecutionObservationSchema
+>;
+export type BodyReconciliation = typeof bodyReconciliations.$inferSelect;
+export type InsertBodyReconciliation = z.infer<
+  typeof insertBodyReconciliationSchema
+>;
+export type BodyGoalLink = typeof bodyGoalLinks.$inferSelect;
+export type InsertBodyGoalLink = z.infer<typeof insertBodyGoalLinkSchema>;
+export type BodyGoalEvent = typeof bodyGoalEvents.$inferSelect;
+export type InsertBodyGoalEvent = z.infer<typeof insertBodyGoalEventSchema>;
+export type ActivityDefinition = typeof activityDefinitions.$inferSelect;
+export type InsertActivityDefinition = z.infer<
+  typeof insertActivityDefinitionSchema
+>;

@@ -1158,4 +1158,26 @@ html {
   .dojo-resize-handle:focus-visible {
     outline: none;
   }
+
+  .body-history-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #aeb5be transparent;
+  }
+
+  .body-history-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .body-history-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .body-history-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #aeb5be;
+  }
+
+  .body-history-scroll::-webkit-scrollbar-thumb:hover {
+    background: #7e8792;
+  }
 }

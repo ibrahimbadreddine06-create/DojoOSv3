@@ -1,4 +1,10 @@
 import { ModuleGrid } from "@/components/body/module-grid";
+import { productionActivitiesWidget, productionRecentActivitiesWidget } from "./activities-production-widget";
+import { productionStepsWidget } from "./steps-production-widget";
+import { productionWorkoutWidget } from "./workout-production-widget";
+import { activityCanonicalMetricWidgets } from "../canonical-metric-widget";
+import { productionStrengthProgressWidget } from "./strength-progress-widget";
+import { activityFirstRunPreset } from "../body-first-run-presets";
 
 export function ActivityPage() {
   return (
@@ -10,7 +16,19 @@ export function ActivityPage() {
         </div>
         <div id="body-activity-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[]} storageKey="moduleGrid_activity_v100_fresh_start" toolbarTargetId="body-activity-actions" />
+      <ModuleGrid
+        widgets={[
+          productionStepsWidget,
+          productionActivitiesWidget,
+          productionWorkoutWidget,
+          productionRecentActivitiesWidget,
+          productionStrengthProgressWidget,
+          ...activityCanonicalMetricWidgets,
+        ]}
+        initialPreset={activityFirstRunPreset}
+        storageKey="moduleGrid_activity_v107_all_umbrellas"
+        toolbarTargetId="body-activity-actions"
+      />
     </div>
   );
 }

@@ -323,6 +323,17 @@ export function ActiveWorkoutSession() {
         },
     });
 
+    useEffect(() => {
+        if (!workout || workout.startTime || workout.completed) return;
+        apiRequest("PATCH", `/api/workouts/${workoutId}`, {
+            startTime: new Date().toISOString(),
+        }).then(() => {
+            queryClient.invalidateQueries({
+                queryKey: [`/api/workouts/detail/${workoutId}`],
+            });
+        });
+    }, [queryClient, workout, workoutId]);
+
     const finishWorkoutMutation = useMutation({
         mutationFn: async () => {
             await apiRequest("PATCH", `/api/workouts/${workoutId}`, {

@@ -254,7 +254,7 @@ export function ExercisesMusclesSection(rootProps: React.HTMLAttributes<HTMLDivE
                           <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={30} />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Line
-                            type="monotone"
+                            type="natural"
                             dataKey="value"
                             stroke="hsl(0 84.2% 60.2%)"
                             strokeWidth={2}

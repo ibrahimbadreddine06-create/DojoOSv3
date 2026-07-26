@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { bodyPresentationResponse } from "@/lib/body-presentation-data";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -12,6 +13,11 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const presentation = await bodyPresentationResponse(method, url, data);
+  if (presentation) {
+    await throwIfResNotOk(presentation);
+    return presentation;
+  }
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -29,7 +35,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = queryKey.join("/") as string;
+    const presentation = await bodyPresentationResponse("GET", url);
+    const res = presentation ?? await fetch(url, {
       credentials: "include",
     });
 

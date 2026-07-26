@@ -16,7 +16,13 @@ const formSchema = insertWorkoutSchema;
 
 type FormData = z.infer<typeof formSchema>;
 
-export function AddWorkoutDialog() {
+export function AddWorkoutDialog({
+  trigger,
+  onCreated,
+}: {
+  trigger?: React.ReactNode;
+  onCreated?: () => void;
+} = {}) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,6 +45,7 @@ export function AddWorkoutDialog() {
       toast({ title: "Workout logged successfully" });
       setOpen(false);
       form.reset();
+      onCreated?.();
     },
     onError: () => {
       toast({ title: "Failed to log workout", variant: "destructive" });
@@ -48,10 +55,12 @@ export function AddWorkoutDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-add-workout">
-          <Plus className="w-4 h-4 mr-2" />
-          Log Workout
-        </Button>
+        {trigger ?? (
+          <Button size="sm" data-testid="button-add-workout">
+            <Plus className="w-4 h-4 mr-2" />
+            Log Workout
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>

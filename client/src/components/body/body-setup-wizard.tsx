@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Activity, Utensils, Moon, Sparkles, Check, Smartphone, Flame, Droplets, HeartPulse, Link2, Copy } from "lucide-react";
+import { ChevronLeft, ChevronRight, Activity, Utensils, Moon, Sparkles, Check, Smartphone, Flame, Droplets, HeartPulse } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -53,9 +53,6 @@ interface SetupData {
     activityLevel: string;
     sleepGoalHours: string;
     fastingProgram: string;
-    appleHealthConnected: boolean;
-    appleWebhookUrl?: string;
-    googleFitConnected: boolean;
 }
 
 export function BodySetupWizard() {
@@ -72,34 +69,6 @@ export function BodySetupWizard() {
         activityLevel: "moderate",
         sleepGoalHours: "8",
         fastingProgram: "16:8",
-        appleHealthConnected: false,
-        googleFitConnected: false,
-    });
-
-    // Check URL for Google Fit success
-    useEffect(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        if (searchParams.get("success") === "google_fit_connected") {
-            setData(prev => ({ ...prev, googleFitConnected: true }));
-            toast({ title: "Google Fit Connected Successfully" });
-            
-            // Clean URL
-            const newUrl = window.location.pathname;
-            window.history.replaceState({}, '', newUrl);
-        } else if (searchParams.get("error")) {
-            toast({ title: "Integration Failed", variant: "destructive" });
-        }
-    }, [toast]);
-
-    const generateAppleWebhook = useMutation({
-        mutationFn: async () => {
-            const res = await apiRequest("POST", "/api/health-sync/apple-webhook/generate-token");
-            return res.json();
-        },
-        onSuccess: (data) => {
-            updateData("appleWebhookUrl", data.webhookUrl);
-            updateData("appleHealthConnected", true);
-        }
     });
 
     const updateData = (field: keyof SetupData, value: any) =>
@@ -228,85 +197,44 @@ export function BodySetupWizard() {
                                     <span className="text-xs font-bold tracking-widest text-primary uppercase mb-1 block">Data Sources</span>
                                     <h2 className="text-3xl font-black tracking-tight">Sync Health</h2>
                                     <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
-                                        To calculate accurate recovery scores and track passive activity like steps and sleep stages, connect a health data source.
+                                        Wearable data will power passive activity and sleep tracking. Connections only appear as active after a verified source sends real data.
                                     </p>
                                 </div>
 
                                 <div className="mt-4 space-y-4">
-                                    {/* Google Fit Card */}
-                                    <div className={cn("border rounded-2xl p-5 transition-all text-left", data.googleFitConnected ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-card")}>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-green-500 flex items-center justify-center">
-                                                    <Activity className="w-5 h-5 text-white" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-base">Google Fit</p>
-                                                    <p className="text-xs text-muted-foreground">Steps, Sleep, Calories</p>
-                                                </div>
-                                            </div>
-                                            <Button 
-                                                variant={data.googleFitConnected ? "outline" : "default"} 
-                                                className={cn("rounded-xl h-9 px-4 text-xs font-bold", data.googleFitConnected && "text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 cursor-default")}
-                                                onClick={() => {
-                                                    if (!data.googleFitConnected) {
-                                                        window.location.href = "/api/health-sync/google-fit/auth";
-                                                    }
-                                                }}
-                                            >
-                                                {data.googleFitConnected ? "Connected" : "Connect"}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* Apple Health Card */}
-                                    <div className={cn("border rounded-2xl p-5 transition-all text-left", data.appleHealthConnected ? "border-emerald-500/50 bg-emerald-500/5" : "border-border bg-card")}>
-                                        <div className="flex items-center justify-between mb-4">
+                                    <div className="border border-border bg-card rounded-2xl p-5 text-left">
+                                        <div className="flex items-center justify-between gap-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-black dark:bg-white flex items-center justify-center">
                                                     <HeartPulse className="w-5 h-5 text-white dark:text-black" />
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <p className="font-bold text-base">Apple Health</p>
-                                                    <p className="text-xs text-muted-foreground">Steps, HRV, Sleep</p>
+                                                    <p className="text-xs leading-relaxed text-muted-foreground">Requires the native iPhone app and your selected Health permissions.</p>
                                                 </div>
                                             </div>
-                                            {!data.appleWebhookUrl && (
-                                                <Button 
-                                                    variant="outline"
-                                                    className="rounded-xl h-9 px-4 text-xs font-bold"
-                                                    disabled={generateAppleWebhook.isPending}
-                                                    onClick={() => generateAppleWebhook.mutate()}
-                                                >
-                                                    Setup Sync
-                                                </Button>
-                                            )}
+                                            <span className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">Native app</span>
                                         </div>
-                                        
-                                        <AnimatePresence>
-                                            {data.appleWebhookUrl && (
-                                                <motion.div initial={{opacity: 0, height: 0}} animate={{opacity: 1, height: "auto"}} className="space-y-3 overflow-hidden">
-                                                    <div className="bg-emerald-500/10 p-3 rounded-lg flex items-start gap-3">
-                                                        <Link2 className="w-5 h-5 text-emerald-600 mt-0.5" /> 
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Webhook Generated</p>
-                                                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-1">To bridge iOS to DojoOS, create an Apple Shortcut that POSTs your Health data to this secure URL daily:</p>
-                                                            
-                                                            <div className="mt-2 flex items-center gap-2 bg-background/50 border border-emerald-500/30 rounded p-2">
-                                                                <code className="text-[10px] break-all text-emerald-700 dark:text-emerald-400/90 whitespace-pre-wrap flex-1">{data.appleWebhookUrl}</code>
-                                                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => {
-                                                                    navigator.clipboard.writeText(data.appleWebhookUrl!);
-                                                                    toast({ title: "Copied Webhook URL" });
-                                                                }}>
-                                                                    <Copy className="w-3 h-3 text-emerald-600" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
                                     </div>
+
+                                    <div className="border border-border bg-card rounded-2xl p-5 text-left">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-[#edf5ef] flex items-center justify-center">
+                                                    <Activity className="w-5 h-5 text-[#28754b]" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-base">Health Connect</p>
+                                                    <p className="text-xs leading-relaxed text-muted-foreground">Requires the native Android app and only the permissions you choose.</p>
+                                                </div>
+                                            </div>
+                                            <span className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">Native app</span>
+                                        </div>
+                                    </div>
+
+                                    <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+                                        You can continue without a wearable. Body will only use manual entries you explicitly add; it will never invent sensor data or recovery scores.
+                                    </p>
                                 </div>
                             </div>
                         )}

@@ -140,7 +140,9 @@ export interface IStorage {
   createWorkoutExercise(data: InsertWorkoutExercise): Promise<WorkoutExercise>;
   createWorkoutSet(data: InsertWorkoutSet): Promise<WorkoutSet>;
   updateWorkoutSet(id: string, data: Partial<InsertWorkoutSet>): Promise<WorkoutSet>;
-  getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]>;
+  getWorkoutExerciseOwner(id: string): Promise<string | null>;
+  getWorkoutSetOwner(id: string): Promise<string | null>;
+  getExerciseProgress(userId: string, exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]>;
 
   getMuscleStats(userId: string): Promise<MuscleStat[]>;
   upsertMuscleStat(userId: string, muscleId: string, recoveryScore: number): Promise<MuscleStat>;
@@ -892,7 +894,33 @@ export class DatabaseStorage implements IStorage {
     return set;
   }
 
-  async getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
+  async getWorkoutSetOwner(id: string): Promise<string | null> {
+    this.ensureDb();
+    const [row] = await db
+      .select({ userId: workouts.userId })
+      .from(workoutSets)
+      .innerJoin(
+        workoutExercises,
+        eq(workoutSets.workoutExerciseId, workoutExercises.id),
+      )
+      .innerJoin(workouts, eq(workoutExercises.workoutId, workouts.id))
+      .where(eq(workoutSets.id, id))
+      .limit(1);
+    return row?.userId ?? null;
+  }
+
+  async getWorkoutExerciseOwner(id: string): Promise<string | null> {
+    this.ensureDb();
+    const [row] = await db
+      .select({ userId: workouts.userId })
+      .from(workoutExercises)
+      .innerJoin(workouts, eq(workoutExercises.workoutId, workouts.id))
+      .where(eq(workoutExercises.id, id))
+      .limit(1);
+    return row?.userId ?? null;
+  }
+
+  async getExerciseProgress(userId: string, exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
     this.ensureDb();
     const rows = await db
       .select({
@@ -903,7 +931,12 @@ export class DatabaseStorage implements IStorage {
       .from(workoutSets)
       .innerJoin(workoutExercises, eq(workoutSets.workoutExerciseId, workoutExercises.id))
       .innerJoin(workouts, eq(workoutExercises.workoutId, workouts.id))
-      .where(eq(workoutExercises.exerciseId, exerciseId))
+      .where(
+        and(
+          eq(workouts.userId, userId),
+          eq(workoutExercises.exerciseId, exerciseId),
+        ),
+      )
       .orderBy(asc(workouts.date));
 
     const byDate = new Map<string, { maxWeight: number; totalVolume: number }>();
@@ -2327,7 +2360,21 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
-  async getExerciseProgress(exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
+  async getWorkoutSetOwner(id: string): Promise<string | null> {
+    const set = this.workoutSets.get(id);
+    if (!set) return null;
+    const workoutExercise = this.workoutExercises.get(set.workoutExerciseId);
+    if (!workoutExercise) return null;
+    return this.workouts.get(workoutExercise.workoutId)?.userId ?? null;
+  }
+
+  async getWorkoutExerciseOwner(id: string): Promise<string | null> {
+    const workoutExercise = this.workoutExercises.get(id);
+    if (!workoutExercise) return null;
+    return this.workouts.get(workoutExercise.workoutId)?.userId ?? null;
+  }
+
+  async getExerciseProgress(_userId: string, _exerciseId: string): Promise<{ date: string; maxWeight: number; totalVolume: number }[]> {
     return [];
   }
 

@@ -26,20 +26,24 @@ declare global {
 }
 
 export function setupAuth(app: Express) {
+    const production = process.env.NODE_ENV === "production";
+    if (production && !process.env.SESSION_SECRET) {
+        throw new Error("SESSION_SECRET is required in production");
+    }
     // Session Configuration
     const sessionSettings: session.SessionOptions = {
-        secret: process.env.SESSION_SECRET || "dojo_os_fortress_secret_key_change_me",
+        secret: process.env.SESSION_SECRET || "dojo_os_local_development_only",
         resave: false,
         saveUninitialized: false,
         cookie: {
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             httpOnly: true,
-            sameSite: process.env.VERCEL === "1" ? "none" : "lax",
-            secure: process.env.VERCEL === "1",
+            sameSite: "lax",
+            secure: production,
         },
     };
 
-    if (process.env.VERCEL === "1") {
+    if (production) {
         app.set("trust proxy", 1);
     }
 
@@ -60,6 +64,9 @@ export function setupAuth(app: Express) {
         }
     }
 
+    if (!storeInitialized && production) {
+        throw new Error("A persistent PostgreSQL session store is required in production");
+    }
     if (!storeInitialized) {
         sessionSettings.store = new MemoryStoreSession({
             checkPeriod: 86400000 // prune expired entries every 24h

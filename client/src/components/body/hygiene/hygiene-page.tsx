@@ -1,4 +1,7 @@
 import { ModuleGrid } from "@/components/body/module-grid";
+import { productionRoutineConsistencyWidget, productionRoutinesWidget } from "./hygiene-production-widget";
+import { hygieneObservationWidgets } from "../manual-observation-widget";
+import { hygieneFirstRunPreset } from "../body-first-run-presets";
 
 export function HygienePage() {
   return (
@@ -10,7 +13,7 @@ export function HygienePage() {
         </div>
         <div id="body-hygiene-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[]} storageKey="moduleGrid_hygiene_v100_fresh_start" toolbarTargetId="body-hygiene-actions" />
+      <ModuleGrid widgets={[productionRoutinesWidget, productionRoutineConsistencyWidget, ...hygieneObservationWidgets]} initialPreset={hygieneFirstRunPreset} storageKey="moduleGrid_hygiene_v107_all_umbrellas" toolbarTargetId="body-hygiene-actions" />
     </div>
   );
 }

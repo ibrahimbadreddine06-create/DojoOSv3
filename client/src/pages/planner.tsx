@@ -40,12 +40,7 @@ import { X, Save } from "lucide-react";
 import { CircularProgress } from "@/components/circular-progress";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Brush } from "recharts";
+import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-chart";
 import {
   Popover,
   PopoverContent,
@@ -59,6 +54,7 @@ const SNAP_MINUTES = 30;
 const VISIBLE_HOURS_RANGE = 3; // Show 3 hours before and after current hour
 
 function getDateLabel(date: Date): string {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "Today";
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
   if (isTomorrow(date)) return "Tomorrow";
@@ -66,11 +62,16 @@ function getDateLabel(date: Date): string {
 }
 
 function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
+  if (!time || typeof time !== "string") return 0;
+  const parts = time.split(":");
+  if (parts.length < 2) return 0;
+  const hours = Number(parts[0]) || 0;
+  const minutes = Number(parts[1]) || 0;
   return hours * 60 + minutes;
 }
 
 function minutesToTime(minutes: number): string {
+  if (typeof minutes !== "number" || isNaN(minutes)) return "00:00";
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
@@ -78,6 +79,7 @@ function minutesToTime(minutes: number): string {
 
 // Snap minutes to grid
 function snapToGrid(minutes: number): number {
+  if (typeof minutes !== "number" || isNaN(minutes)) return 0;
   return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
@@ -96,7 +98,9 @@ function checkOverlap(
 }
 
 function sortChronologically(items: any[]): any[] {
+  if (!items || !Array.isArray(items)) return [];
   return [...items].sort((a, b) => {
+    if (!a || !b) return 0;
     // If both have startTime, sort chronologically
     if (a.startTime && b.startTime) {
       return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
@@ -442,9 +446,9 @@ export default function Planner() {
 
   // Initialize order values for sub-blocks that don't have them
   const blocks = useMemo(() => {
-    if (!rawBlocks) return undefined;
+    if (!rawBlocks || !Array.isArray(rawBlocks)) return undefined;
     return rawBlocks.map((block) => {
-      if (block.parentId) {
+      if (block && block.parentId) {
         // Sub-block: ensure it has an order value
         return { ...block, order: block.order || 0 };
       }
@@ -455,6 +459,7 @@ export default function Planner() {
   // Convert preset blocks to TimeBlock format for unified rendering
   const displayBlocks = useMemo((): TimeBlock[] | undefined => {
     if (isPresetMode) {
+      if (!Array.isArray(presetBlocks)) return [];
       // Convert preset blocks to TimeBlock format
       return presetBlocks.map((pb: (typeof presetBlocks)[0]) => ({
         id: pb.id,
@@ -470,23 +475,23 @@ export default function Planner() {
         parentId: pb.parentId || null,
         order: pb.order || 0,
         createdAt: null,
-        tasks: pb.tasks.map((t, idx) => ({
+        tasks: Array.isArray(pb.tasks) ? pb.tasks.map((t, idx) => ({
           id: `task-${idx}`,
           text: t.text,
           completed: false,
           importance: t.importance,
           order: idx,
-        })),
+        })) : [],
       })) as TimeBlock[];
     }
-    return blocks;
+    return Array.isArray(blocks) ? blocks : undefined;
   }, [isPresetMode, presetBlocks, blocks, dateStr]);
 
   // Centralized "Cheat Sheet" for overlap checks
   const occupiedIntervals = useMemo(() => {
-    if (!displayBlocks) return [];
+    if (!displayBlocks || !Array.isArray(displayBlocks)) return [];
     return displayBlocks
-      .filter((b) => !b.parentId) // Only check top-level blocks for overlaps
+      .filter((b) => b && !b.parentId) // Only check top-level blocks for overlaps
       .map((b) => ({
         id: b.id,
         start: timeToMinutes(b.startTime),
@@ -572,29 +577,33 @@ export default function Planner() {
     for (let i = 29; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      dateMap.set(d.toISOString().split("T")[0], 0);
+      const isoStr = d.toISOString().split("T")[0];
+      if (isoStr) dateMap.set(isoStr, 0);
     }
     // Fill in actual metric data where available
-    if (allMetrics) {
+    if (Array.isArray(allMetrics)) {
       for (const m of allMetrics) {
-        if (dateMap.has(m.date)) {
-          dateMap.set(m.date, parseFloat(m.plannerCompletion || "0"));
+        if (m && m.date && dateMap.has(m.date)) {
+          const val = parseFloat(m.plannerCompletion || "0");
+          dateMap.set(m.date, isNaN(val) ? 0 : val);
         }
       }
     }
-    return Array.from(dateMap.entries()).map(([date, completion]) => ({
-      date: format(parseISO(date), "MMM d"),
-      fullDate: date,
-      completion,
-    }));
+    return Array.from(dateMap.entries()).map(([date, completion]) => {
+      let formattedDate = date;
+      try {
+        const parsed = parseISO(date);
+        if (!isNaN(parsed.getTime())) {
+          formattedDate = format(parsed, "MMM d");
+        }
+      } catch {}
+      return {
+        date: formattedDate,
+        fullDate: date,
+        completion,
+      };
+    });
   }, [allMetrics]);
-
-  const chartConfig = {
-    completion: {
-      label: "Completion",
-      color: "hsl(var(--primary))",
-    },
-  };
 
   const applyPresetMutation = useMutation({
     mutationFn: async (preset: DayPreset) => {
@@ -1612,91 +1621,19 @@ export default function Planner() {
               </div>
             </CardHeader>
             <CardContent className="py-4 px-4">
-              <div className="h-96">
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <AreaChart
-                    data={chartData}
-                    margin={{ top: 12, right: 12, bottom: 12, left: 12 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="completionGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.3}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      className="stroke-muted"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 12 }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      domain={[0, 100]}
-                      ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 12 }}
-                      width={40}
-                      tickFormatter={(v) => `${v}%`}
-                    />
-                    <ChartTooltip
-                      content={<ChartTooltipContent />}
-                      labelFormatter={(_, payload) => {
-                        if (payload && payload[0]) {
-                          return payload[0].payload.fullDate;
-                        }
-                        return "";
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="completion"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      fill="url(#completionGradient)"
-                      dot={{
-                        fill: "hsl(var(--primary))",
-                        stroke: "hsl(var(--primary))",
-                        strokeWidth: 2,
-                        r: 3,
-                      }}
-                      activeDot={{
-                        r: 5,
-                        strokeWidth: 0,
-                      }}
-                    />
-                    <Brush
-                      dataKey="date"
-                      height={24}
-                      stroke="hsl(var(--primary) / 0.5)"
-                      fill="transparent"
-                      startIndex={Math.max(0, chartData.length - 14)}
-                      endIndex={chartData.length - 1}
-                      travellerWidth={0}
-                    />
-                  </AreaChart>
-                </ChartContainer>
-              </div>
+              <ScrollableHistoryChart
+                data={chartData}
+                xKey="date"
+                series={[{
+                  key: "completion",
+                  label: "Completion",
+                  color: "hsl(var(--primary))",
+                }]}
+                kind="area"
+                height={360}
+                leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
+                tooltipLabelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate ?? ""}
+              />
             </CardContent>
           </Card>
         )}

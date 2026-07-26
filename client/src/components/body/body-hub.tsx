@@ -1,8 +1,7 @@
-﻿import { ModuleGrid } from "./module-grid";
-import { bodyMetricUmbrellas } from "./body-metric-umbrellas";
-import { ChartDataProvider, stepsUmbrellaWidget } from "./hub-style-widgets";
-
-const bodyLanguageWidgets = [stepsUmbrellaWidget, ...bodyMetricUmbrellas];
+import { ModuleGrid } from "./module-grid";
+import { productionBodyTimelineWidget, productionDataCoverageWidget, productionTodayWidget } from "./hub-production-widgets";
+import { hubCanonicalMetricWidgets } from "./canonical-metric-widget";
+import { hubFirstRunPreset } from "./body-first-run-presets";
 
 export function BodyHub() {
   return (
@@ -14,9 +13,12 @@ export function BodyHub() {
         </div>
         <div id="body-hub-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ChartDataProvider showControls={false}>
-        <ModuleGrid widgets={bodyLanguageWidgets} storageKey="moduleGrid_body_language_final_1" toolbarTargetId="body-hub-actions" />
-      </ChartDataProvider>
+      <ModuleGrid
+        widgets={[productionTodayWidget, productionBodyTimelineWidget, productionDataCoverageWidget, ...hubCanonicalMetricWidgets]}
+        initialPreset={hubFirstRunPreset}
+        storageKey="moduleGrid_body_v107_all_umbrellas"
+        toolbarTargetId="body-hub-actions"
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,19 @@ import { useLocation } from "wouter";
 import {
   Bike, Footprints, Waves, Trophy, Dumbbell, MoreHorizontal, ArrowLeft, Flame,
 } from "lucide-react";
+import type { ActivityDefinition } from "@shared/schema";
 
-const ACTIVITY_TYPES = [
-  { type: "run", label: "Run", icon: Footprints, color: "#f59e0b" },
-  { type: "walk", label: "Walk", icon: Footprints, color: "#14b8a6" },
-  { type: "cycle", label: "Cycle", icon: Bike, color: "#3b82f6" },
-  { type: "swim", label: "Swim", icon: Waves, color: "#06b6d4" },
-  { type: "sport", label: "Sport", icon: Trophy, color: "#8b5cf6" },
-  { type: "workout", label: "Workout", icon: Dumbbell, color: "#f59e0b" },
-  { type: "other", label: "Other", icon: MoreHorizontal, color: "#6b7280" },
-];
+const activityPresentation: Record<
+  string,
+  { icon: typeof Footprints; color: string }
+> = {
+  run: { icon: Footprints, color: "#f59e0b" },
+  walk: { icon: Footprints, color: "#14b8a6" },
+  cycle: { icon: Bike, color: "#3b82f6" },
+  swim: { icon: Waves, color: "#06b6d4" },
+  sport: { icon: Trophy, color: "#8b5cf6" },
+  workout: { icon: Dumbbell, color: "#f59e0b" },
+};
 
 // Simple calorie estimation based on activity type and duration
 function estimateCalories(type: string, durationMin: number, weightKg = 70): number {
@@ -46,6 +49,10 @@ export function LogActivityModal({ open, onOpenChange }: LogActivityModalProps) 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const { data: activityDefinitions = [] } = useQuery<ActivityDefinition[]>({
+    queryKey: ["/api/body/activity-definitions"],
+    enabled: open,
+  });
 
   const durationNum = parseInt(duration) || 0;
   const estimatedCal = selectedType && durationNum > 0
@@ -54,11 +61,31 @@ export function LogActivityModal({ open, onOpenChange }: LogActivityModalProps) 
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (selectedType === "other" && activityName.trim()) {
+        const slug = activityName
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        const definitionResponse = await apiRequest(
+          "POST",
+          "/api/body/activity-definitions",
+          {
+            slug,
+            name: activityName.trim(),
+            category: "custom",
+            supportedFields: ["duration", "distance", "effort"],
+          },
+        );
+        const definition = (await definitionResponse.json()) as ActivityDefinition;
+        data.activityType = definition.slug;
+      }
       const res = await apiRequest("POST", "/api/activity-logs", data);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activity-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/body/activity-definitions"] });
       toast({ title: "Activity logged" });
       resetAndClose();
     },
@@ -119,16 +146,24 @@ export function LogActivityModal({ open, onOpenChange }: LogActivityModalProps) 
 
         {step === 1 ? (
           <div className="grid grid-cols-3 gap-3 pt-2">
-            {ACTIVITY_TYPES.map((at) => {
-              const Icon = at.icon;
+            {[...activityDefinitions, {
+              id: "custom",
+              slug: "other",
+              name: "Other",
+            } as ActivityDefinition].map((definition) => {
+              const presentation = activityPresentation[definition.slug] ?? {
+                icon: MoreHorizontal,
+                color: "#6b7280",
+              };
+              const Icon = presentation.icon;
               return (
                 <button
-                  key={at.type}
-                  onClick={() => handleTypeSelect(at.type)}
+                  key={definition.id}
+                  onClick={() => handleTypeSelect(definition.slug)}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
                 >
-                  <Icon className="w-6 h-6" style={{ color: at.color }} />
-                  <span className="text-xs font-medium">{at.label}</span>
+                  <Icon className="w-6 h-6" style={{ color: presentation.color }} />
+                  <span className="text-xs font-medium">{definition.name}</span>
                 </button>
               );
             })}

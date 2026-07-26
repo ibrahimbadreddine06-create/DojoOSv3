@@ -20,17 +20,14 @@ process.on("uncaughtException", (err) => {
 });
 
 // Environment Variable Validation for Production
-if (process.env.VERCEL === "1") {
+if (process.env.NODE_ENV === "production") {
   const required = ["DATABASE_URL", "SESSION_SECRET"];
   const missing = required.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
-    console.error("\n\n#################################################");
-    console.error("CRITICAL ERROR: MISSING ENVIRONMENT VARIABLES");
-    console.error(`Please add the following variables in Vercel Dashboard:`);
-    missing.forEach(m => console.error(`- ${m}`));
-    console.error("#################################################\n\n");
-    // We don't exit(1) here to allow the logs to actually showing up in Vercel's dashboard before the function dies
+    throw new Error(
+      `Missing production environment variables: ${missing.join(", ")}`,
+    );
   }
 
   if (process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_SECRET) {
@@ -62,12 +59,12 @@ declare module 'http' {
   }
 }
 app.use(express.json({
-  limit: "50mb",
+  limit: "10mb",
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+app.use(express.urlencoded({ extended: false, limit: "2mb" }));
 
 // Simple log function for production (avoids importing vite)
 function log(message: string, source = "express") {

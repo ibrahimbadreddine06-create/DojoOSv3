@@ -21,6 +21,7 @@ import * as THREE from "three";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 import Home from "@/pages/home";
 import AuthPage from "@/pages/auth";
@@ -56,6 +57,7 @@ import CourseNewPage from "@/pages/course-new";
 import GoalNewPage from "@/pages/goal-new";
 import NotFound from "@/pages/not-found";
 import { ActiveWorkoutSession } from "@/components/body/active-workout-session";
+import { BodyUmbrellaDetailPage } from "@/components/body/body-umbrella-detail-page";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const [location, setLocation] = useLocation();
@@ -90,7 +92,11 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
 }
 
 const ProtectedHome = () => <ProtectedRoute component={Home} />;
-const ProtectedPlanner = () => <ProtectedRoute component={Planner} />;
+const ProtectedPlanner = () => (
+  <ErrorBoundary fallbackTitle="Er is een fout opgetreden in de Daily Planner.">
+    <ProtectedRoute component={Planner} />
+  </ErrorBoundary>
+);
 const ProtectedGoals = () => <ProtectedRoute component={Goals} />;
 const ProtectedSecondBrain = () => <ProtectedRoute component={SecondBrain} />;
 const ProtectedThemeDetail = () => <ProtectedRoute component={ThemeDetail} />;
@@ -98,6 +104,7 @@ const ProtectedLanguages = () => <ProtectedRoute component={Languages} />;
 const ProtectedDisciplines = () => <ProtectedRoute component={Disciplines} />;
 const ProtectedDisciplineDetail = () => <ProtectedRoute component={DisciplineDetail} />;
 const ProtectedBody = () => <ProtectedRoute component={Body} />;
+const ProtectedBodyUmbrellaDetail = () => <ProtectedRoute component={BodyUmbrellaDetailPage} />;
 const ProtectedWorship = () => <ProtectedRoute component={Worship} />;
 const ProtectedFinances = () => <ProtectedRoute component={Finances} />;
 const ProtectedMasterpieces = () => <ProtectedRoute component={Masterpieces} />;
@@ -124,6 +131,7 @@ function AuthenticatedRouter() {
       <Route path="/disciplines" component={ProtectedDisciplines} />
       <Route path="/disciplines/:id" component={ProtectedDisciplineDetail} />
       <Route path="/body" component={ProtectedBody} />
+      <Route path="/body/detail/:umbrellaId" component={ProtectedBodyUmbrellaDetail} />
       <Route path="/body/:subpage" component={ProtectedBody} />
       <Route path="/worship" component={ProtectedWorship} />
       <Route path="/finances" component={ProtectedFinances} />

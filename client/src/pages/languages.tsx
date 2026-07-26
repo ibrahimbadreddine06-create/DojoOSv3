@@ -9,8 +9,7 @@ import { Languages as LanguagesIcon, Trash2, Archive, MoreVertical } from "lucid
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TodaySessions } from "@/components/today-sessions";
 import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, Legend, CartesianGrid, Brush } from "recharts";
+import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-chart";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -183,53 +182,17 @@ export default function Languages() {
             <CardDescription>Completion progress over time for each language</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-96 w-full aspect-auto">
-              <LineChart data={chartData} margin={{ top: 12, right: 0, bottom: 30, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  padding={{ left: 20, right: 20 }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  ticks={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                  tick={{ fontSize: 12, textAnchor: 'start', dx: -8 }}
-                  tickLine={false}
-                  axisLine={false}
-                  mirror={true}
-                  width={1}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <ChartTooltip
-                  content={<ChartTooltipContent />}
-                />
-                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                {Object.keys(chartConfig).map((key) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    name={chartConfig[key].label}
-                    stroke={chartConfig[key].color}
-                    strokeWidth={2}
-                    dot={{ fill: chartConfig[key].color, r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                ))}
-                <Brush
-                  dataKey="date"
-                  height={30}
-                  stroke="hsl(var(--primary) / 0.5)"
-                  fill="transparent"
-                  startIndex={Math.max(0, chartData.length - 14)}
-                  endIndex={chartData.length - 1}
-                  travellerWidth={0}
-                />
-              </LineChart>
-            </ChartContainer>
+            <ScrollableHistoryChart
+              data={chartData}
+              xKey="date"
+              series={Object.keys(chartConfig).map((key) => ({
+                key,
+                label: chartConfig[key].label,
+                color: chartConfig[key].color,
+              }))}
+              height={360}
+              leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
+            />
           </CardContent>
         </Card>
 

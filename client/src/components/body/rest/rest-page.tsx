@@ -1,4 +1,8 @@
 import { ModuleGrid } from "@/components/body/module-grid";
+import { productionLastSleepWidget, productionRestPlanWidget, productionSleepScheduleWidget } from "./rest-production-widgets";
+import { restCanonicalMetricWidgets } from "../canonical-metric-widget";
+import { restObservationWidgets } from "../manual-observation-widget";
+import { restFirstRunPreset } from "../body-first-run-presets";
 
 export function RestPage() {
   return (
@@ -10,7 +14,7 @@ export function RestPage() {
         </div>
         <div id="body-rest-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[]} storageKey="moduleGrid_rest_v100_fresh_start" toolbarTargetId="body-rest-actions" />
+      <ModuleGrid widgets={[productionLastSleepWidget, productionRestPlanWidget, productionSleepScheduleWidget, ...restCanonicalMetricWidgets, ...restObservationWidgets]} initialPreset={restFirstRunPreset} storageKey="moduleGrid_rest_v107_all_umbrellas" toolbarTargetId="body-rest-actions" />
     </div>
   );
 }

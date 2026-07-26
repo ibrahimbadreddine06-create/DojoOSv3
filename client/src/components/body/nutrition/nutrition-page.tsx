@@ -1,4 +1,7 @@
 import { ModuleGrid } from "@/components/body/module-grid";
+import { productionCaloriesWidget, productionFastingWidget, productionFiberWidget, productionLogIntakeWidget, productionMacrosWidget, productionMealPlanWidget, productionMicronutrientsWidget, productionRecentMealsWidget, productionSupplementsWidget, productionWaterWidget } from "./nutrition-production-widgets";
+import { nutritionObservationWidgets } from "../manual-observation-widget";
+import { nutritionFirstRunPreset } from "../body-first-run-presets";
 
 export function NutritionPage() {
   return (
@@ -10,7 +13,12 @@ export function NutritionPage() {
         </div>
         <div id="body-nutrition-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[]} storageKey="moduleGrid_nutrition_v100_fresh_start" toolbarTargetId="body-nutrition-actions" />
+      <ModuleGrid
+        widgets={[productionLogIntakeWidget, productionMealPlanWidget, productionCaloriesWidget, productionMacrosWidget, productionFiberWidget, productionMicronutrientsWidget, productionWaterWidget, productionRecentMealsWidget, productionSupplementsWidget, productionFastingWidget, ...nutritionObservationWidgets]}
+        initialPreset={nutritionFirstRunPreset}
+        storageKey="moduleGrid_nutrition_v107_all_umbrellas"
+        toolbarTargetId="body-nutrition-actions"
+      />
     </div>
   );
 }

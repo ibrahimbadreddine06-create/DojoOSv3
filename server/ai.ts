@@ -829,7 +829,7 @@ OUTPUT — return ONLY a valid JSON array (no markdown, no extra text):
 
 export async function generateActivityBrief(dailyData: any): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "No activity logged yet today. Tap '+ Log activity' to get started.";
+  if (!apiKey) throw new Error("Activity brief provider is not configured");
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -846,7 +846,7 @@ export async function generateActivityBrief(dailyData: any): Promise<string> {
 
 export async function generateNutritionBrief(intakeLogs: any[], bodyProfile: any): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "No intake logged yet today. Tap '+ Log intake' to get started.";
+  if (!apiKey) throw new Error("Nutrition brief provider is not configured");
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });

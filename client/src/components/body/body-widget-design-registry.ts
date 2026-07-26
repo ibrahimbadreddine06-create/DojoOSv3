@@ -1,5 +1,5 @@
 export const bodyWidgetDesignRegistry = {
-  version: 3,
+  version: 4,
   defaultPlacement: "E",
   defaultScore: 9.5,
   absoluteFreedomRule: "ALLES KAN. Never enumerate possible content, element types, compositions, placements, or visualizations as a definition of what is allowed. Any enumeration creates an unintended boundary. Describe only the governing purpose and constraints; possibility itself remains unlimited.",
@@ -196,6 +196,13 @@ export const bodyWidgetDesignRegistry = {
       reason: "It combines a primary visualization with an integrated metric slot, making it useful for explaining future behavior without privileging a special-case layout.",
     },
   },
+  creativeFreedom: {
+    rule: "ALLES KAN. Design space is intentionally unbounded; guidance protects purpose and quality without defining a catalogue of allowed outcomes.",
+    visualizationRule: "Begin with what the person needs to understand, then invent or select the visual form that communicates it best. Familiar and bespoke visualizations have equal standing.",
+    originalityRule: "Do not default to a recurring visual family merely because it already exists elsewhere. Reuse is valid when it is the strongest answer; originality is valid when it creates clearer or more memorable understanding.",
+    caseByCaseRule: "Every umbrella, variant, footprint, zone, element slot, and interaction is judged in the context of that exact widget. Shared language creates coherence but never replaces deliberate design judgment.",
+    preservationRule: "Approved work is archived as its actual component definition before the active product surface is cleared or replaced, preserving every variant, supported size, behavior, and responsive composition.",
+  },
   responsiveVariantModel: {
     vocabulary: {
       umbrella: "The metric or subject family shown once in Available widgets. Removing its final active variant returns the umbrella to that list.",
@@ -205,8 +212,8 @@ export const bodyWidgetDesignRegistry = {
     rules: [
       "ALLES KAN. No fixed zone template, visualization family, placement list, or information list limits a new variant.",
       "Design begins by identifying the complete information universe for the umbrella, including useful derived information, before choosing what each variant and size displays.",
-      "Variant count is a product decision, not a quota. A variant exists only when it gives the user a meaningfully different and useful way to understand the umbrella; scarcity is preferred over redundant choice.",
-      "Every umbrella is deliberately evaluated for alternative preferences. Two variants are the normal starting point, but the final count may be anything when product value justifies it.",
+      "Every production umbrella offers at least two variants so a user always has a genuine presentation preference. More variants exist only when they add a meaningfully different and useful way to understand or use the umbrella.",
+      "A visual-first variant is the default drawer presentation. A restrained metric-led variant may remain available for people who prefer direct values, but it is not used as a substitute for the umbrella's primary visualization.",
       "Every variant supports 1×1, 1×2, and 2×1 and uses 1×1 as the canonical drawer preview.",
       "Supported footprints are continuous on each axis. A variant cannot offer a farther size while omitting an intermediate size required to reach it.",
       "The resize destination map always displays every supported footprint, including the current one.",
@@ -230,23 +237,24 @@ export const bodyWidgetDesignRegistry = {
     ],
   },
   stepsUmbrellaPrototype: {
-    essentialInformation: ["current step total", "distance", "active calories"],
-    optionalInformationUniverse: ["daily goal", "goal completion", "steps remaining", "hourly distribution", "peak hour", "best-hour value", "pace versus expectation"],
+    umbrellaId: "activity.steps",
+    essentialInformation: ["recorded step total", "selected period", "data state"],
+    optionalInformationUniverse: ["daily goal", "goal completion", "steps remaining", "hourly distribution", "peak hour", "best-hour value", "source and coverage"],
     variants: {
       hourlyBars: {
         visualization: "hourly step distribution",
         allowedSizes: ["1x1", "2x1", "1x2", "2x2"],
-        progression: "Larger formats retain total, distance, and calories, then add goal completion and steps remaining.",
+        progression: "Every size retains the recorded total and data state. Larger formats may add finer real interval resolution, comparable history, and source or coverage context.",
       },
       goalRing: {
         visualization: "progress toward daily goal",
         allowedSizes: ["1x1", "2x1", "2x2"],
-        progression: "Larger formats retain the goal ring and core metrics, then add hourly distribution, peak hour, goal, and pace.",
+        progression: "Every size retains the recorded total, personal goal, and data state. Larger formats may add remaining steps, real hourly distribution, and comparable goal history.",
       },
       stepField: {
         visualization: "100-cell completion field",
         allowedSizes: ["1x1", "1x2", "3x1"],
-        progression: "Tall and wide formats retain the field and core metrics, then add goal progress, remaining steps, peak time, and best-hour value where the shape supports them.",
+        progression: "Every size retains the truthful step field, recorded total, and data state. Larger formats may add goal context, real peak interval, and source or coverage context.",
       },
     },
   },

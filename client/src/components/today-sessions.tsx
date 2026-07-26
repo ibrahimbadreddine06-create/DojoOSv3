@@ -15,8 +15,10 @@ import { cn } from "@/lib/utils";
 const HOUR_HEIGHT = 40;
 
 function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
+  if (!time || typeof time !== "string") return 0;
+  const parts = time.split(":");
+  if (parts.length < 2) return 0;
+  return (Number(parts[0]) || 0) * 60 + (Number(parts[1]) || 0);
 }
 
 function getBlockHeight(block: TimeBlock): number {
@@ -33,7 +35,6 @@ interface TodaySessionsProps {
   hideHeader?: boolean;
   className?: string;
 }
-
 function getModuleColorVar(linkedModule?: string | null): string {
   if (!linkedModule) return '--primary';
   const moduleColorMap: Record<string, string> = {

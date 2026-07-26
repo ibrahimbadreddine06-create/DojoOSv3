@@ -9,6 +9,7 @@ import { HygienePage } from "@/components/body/hygiene/hygiene-page";
 import { BodyHub } from "@/components/body/body-hub";
 import { BodyLayout } from "@/components/body/body-layout";
 import { BodySetupWizard } from "@/components/body/body-setup-wizard";
+import { BodyWidgetArchivePage } from "@/components/body/body-widget-archive-page";
 
 const SETUP_SKIP_KEY = "dojo-body-setup-skipped";
 
@@ -42,6 +43,7 @@ export default function Body() {
       {subpage === "nutrition" && <NutritionPage />}
       {subpage === "sleep" && <RestPage />}
       {subpage === "looks" && <HygienePage />}
+      {subpage === "archive" && <BodyWidgetArchivePage />}
     </BodyLayout>
   );
 }

@@ -163,7 +163,7 @@ function Sparkline({values,domain=[0,100],strokeWidth=3,smooth=true,showScale=fa
           <XAxis hide dataKey="index" type="number" domain={[0,data.length-1]} allowDataOverflow/>
           <YAxis hide width={0} domain={liveDomain} ticks={ticks}/>
           {interactive?<Tooltip cursor={{stroke:"#747D89",strokeWidth:0.8,strokeDasharray:"2 2"}} content={<ChartTooltip labels={tooltipLabels} unit={tooltipUnit}/>} isAnimationActive={false} wrapperStyle={{outline:"none",pointerEvents:"none"}}/>:null}
-          <Line dataKey="value" type={smooth?"monotone":"linear"} stroke="var(--widget-accent)" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" dot={false} activeDot={interactive?{r:3.5,fill:"#FFFFFF",stroke:"var(--widget-accent)",strokeWidth:2}:false} isAnimationActive={false}/>
+          <Line dataKey="value" type="natural" stroke="var(--widget-accent)" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" dot={false} activeDot={interactive?{r:3.5,fill:"#FFFFFF",stroke:"var(--widget-accent)",strokeWidth:2}:false} isAnimationActive={false}/>
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Clock, ImageIcon, Minus, Plus, Settings2, Type, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 export interface Visualization {
   id: string;
@@ -16,19 +17,14 @@ export interface Visualization {
 }
 
 /**
- * Body-module language for Vision 2:
- * - A body page is one section of the Body module, for example Hub, Rest,
- *   Activity, Nutrition, or Hygiene.
- * - A card is the conceptual unit on a body page, for example Effort Score.
- *   The current code still calls this a WidgetDefinition for historical reasons.
- * - A widget is a display form inside that card, for example Ring, Bar,
- *   Gauge, Sparkline, Heatmap, Timeline, List, or Number.
- *   The current code stores these under `visualizations`.
- * - A size is the grid footprint for that widget/card, for example 1x1,
- *   2x1, 1x2, 2x2, or 3x2.
+ * Body widget ontology:
+ * - A Body page is a submodule, for example Hub, Rest, Activity, Nutrition,
+ *   or Hygiene.
+ * - A WidgetDefinition is the widget umbrella itself, for example Steps.
+ * - `visualizations` are variants of that same widget umbrella.
+ * - A size is a supported grid footprint of one variant.
  *
- * So "Effort Score" is one card. "Effort Score Ring" and "Effort Score Bar"
- * are widgets/display forms inside that card, not separate cards.
+ * There is no grouping layer between submodule and widget umbrella.
  */
 export type WidgetSize = {
   w: number;
@@ -47,6 +43,10 @@ export interface WidgetRenderContext {
 
 export interface WidgetDefinition {
   id: string;
+  /** Previous stable IDs that may still exist in persisted user layouts. */
+  legacyIds?: string[];
+  /** Optional primary destination for navigational widget umbrellas. */
+  href?: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   defaultW: number;
@@ -79,6 +79,21 @@ interface ModuleGridState {
   gridColumns?: number;
   customWidgets?: CustomWidget[];
 }
+
+export type ModuleGridPresetItem = {
+  widgetId: string;
+  visualizationId?: string;
+  size?: WidgetSize;
+  accentColor?: string;
+  placement?: { row: number; column: number };
+};
+
+export type ModuleGridPreset = {
+  items: ModuleGridPresetItem[];
+  gridColumns?: number;
+  /** Present exactly one chosen/default variant from every umbrella. */
+  includeAllWidgets?: boolean;
+};
 
 type CustomWidgetType = "image" | "text" | "clock";
 
@@ -444,38 +459,95 @@ function fitSizeToColumns(size: WidgetSize, columns: number): WidgetSize {
   return { ...size, w: clamp(Math.round(size.w), 1, columns) };
 }
 
-function freshState(widgets: WidgetDefinition[], initialActiveWidgetIds?: string[]): ModuleGridState {
-  const activeIds = initialActiveWidgetIds?.length
-    ? widgets
-      .filter((widget) => initialActiveWidgetIds.includes(widget.id))
-      .map(defaultWidgetKey)
-    : widgets.map(defaultWidgetKey);
+function freshState(
+  widgets: WidgetDefinition[],
+  initialActiveWidgetIds?: string[],
+  initialPreset?: ModuleGridPreset,
+): ModuleGridState {
+  const widgetById = new Map(widgets.map((widget) => [widget.id, widget]));
+  const presetItems = (initialPreset?.items ?? []).flatMap((item) => {
+    const widget = widgetById.get(item.widgetId);
+    if (!widget) return [];
+    const visualizationId = realVisualizationId(
+      widget,
+      item.visualizationId ?? defaultVisualizationId(widget),
+    );
+    return [{ ...item, widget, visualizationId, key: widgetVariantKey(widget.id, visualizationId) }];
+  });
+  const presetByWidgetId = new Map(presetItems.map((item) => [item.widget.id, item]));
+  const activeIds = initialPreset?.includeAllWidgets
+    ? widgets.map((widget) => presetByWidgetId.get(widget.id)?.key ?? defaultWidgetKey(widget))
+    : presetItems.length
+    ? presetItems.map((item) => item.key)
+    : initialActiveWidgetIds?.length
+      ? widgets
+        .filter((widget) => initialActiveWidgetIds.includes(widget.id))
+        .map(defaultWidgetKey)
+      : widgets.map(defaultWidgetKey);
+  const presetByKey = new Map(presetItems.map((item) => [item.key, item]));
   return {
     activeIds,
-    sizes: Object.fromEntries(widgets.map((widget) => {
-      const visualizationId = defaultVisualizationId(widget);
-      return [defaultWidgetKey(widget), defaultSize(widget, visualizationId)];
-    })),
-    visualizations: Object.fromEntries(widgets.map((widget) => {
-      const visualizationId = defaultVisualizationId(widget);
-      return [widgetVariantKey(widget.id, visualizationId), visualizationId];
-    })),
-    placements: {},
-    gridColumns: undefined,
+    sizes: Object.fromEntries(widgets.flatMap((widget) =>
+      visualizationOptions(widget).map((visualization) => {
+        const key = widgetVariantKey(widget.id, visualization.id);
+        const wanted = presetByKey.get(key)?.size;
+        return [
+          key,
+          wanted
+            ? nearestAllowed(widget, wanted, visualization.id)
+            : defaultSize(widget, visualization.id),
+        ];
+      }),
+    )),
+    visualizations: Object.fromEntries(widgets.flatMap((widget) =>
+      visualizationOptions(widget).map((visualization) => [
+        widgetVariantKey(widget.id, visualization.id),
+        visualization.id,
+      ]),
+    )),
+    placements: Object.fromEntries(
+      presetItems
+        .filter((item) => item.placement)
+        .map((item) => [item.key, item.placement!]),
+    ),
+    gridColumns: initialPreset?.gridColumns,
     customWidgets: [],
-    accentColors: {},
+    accentColors: Object.fromEntries(
+      presetItems
+        .filter((item) => item.accentColor)
+        .map((item) => [item.key, item.accentColor!]),
+    ),
   };
 }
 
-function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidgetIds?: string[]): ModuleGridState {
+function loadState(
+  key: string,
+  widgets: WidgetDefinition[],
+  initialActiveWidgetIds?: string[],
+  initialPreset?: ModuleGridPreset,
+): ModuleGridState {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return freshState(widgets, initialActiveWidgetIds);
+    if (!raw) return freshState(widgets, initialActiveWidgetIds, initialPreset);
 
     const parsed = JSON.parse(raw) as ModuleGridState & { version?: number };
-    if (parsed.version !== STORAGE_VERSION && parsed.version !== 12) return freshState(widgets, initialActiveWidgetIds);
+    if (parsed.version !== STORAGE_VERSION && parsed.version !== 12) {
+      return freshState(widgets, initialActiveWidgetIds, initialPreset);
+    }
 
     const customWidgets = parsed.customWidgets ?? [];
+    const legacyToCurrent = new Map(
+      widgets.flatMap((widget) =>
+        (widget.legacyIds ?? []).map((legacyId) => [legacyId, widget.id] as const),
+      ),
+    );
+    const migrateVariantKey = (key: string) => {
+      const [widgetId, visualizationId] = key.split("::");
+      const currentId = legacyToCurrent.get(widgetId) ?? widgetId;
+      return visualizationId
+        ? widgetVariantKey(currentId, visualizationId)
+        : currentId;
+    };
     const widgetById = new Map(widgets.map((widget) => [widget.id, widget]));
     const validKeys = new Set<string>();
     widgets.forEach((widget) => {
@@ -498,6 +570,7 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
     };
 
     const activeIds = Array.from(new Set((parsed.activeIds ?? [])
+      .map(migrateVariantKey)
       .map(normalizeActiveId)
       .filter((id): id is string => id !== null && validKeys.has(id))));
 
@@ -505,7 +578,14 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
     widgets.forEach((widget) => {
       visualizationOptions(widget).forEach((visualization) => {
         const variantKey = widgetVariantKey(widget.id, visualization.id);
-        const saved = parsed.sizes?.[variantKey] ?? parsed.sizes?.[widget.id];
+        const legacySaved = (widget.legacyIds ?? []).map((legacyId) =>
+          parsed.sizes?.[widgetVariantKey(legacyId, visualization.id)] ??
+          parsed.sizes?.[legacyId],
+        ).find((value) => value !== undefined);
+        const saved =
+          parsed.sizes?.[variantKey] ??
+          parsed.sizes?.[widget.id] ??
+          legacySaved;
         sizes[variantKey] = saved
           ? nearestAllowed(widget, saved, visualization.id)
           : defaultSize(widget, visualization.id);
@@ -531,6 +611,7 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
       gridColumns: parsed.gridColumns,
       placements: Object.fromEntries(
         Object.entries(parsed.placements ?? {})
+          .map(([id, placement]) => [migrateVariantKey(id), placement] as const)
           .filter(([id]) => activeIds.includes(id))
           .map(([id, placement]) => [id, {
             row: Math.max(0, Math.round(placement.row)),
@@ -538,10 +619,15 @@ function loadState(key: string, widgets: WidgetDefinition[], initialActiveWidget
           }]),
       ),
       customWidgets,
-      accentColors: parsed.accentColors ?? {},
+      accentColors: Object.fromEntries(
+        Object.entries(parsed.accentColors ?? {}).map(([id, color]) => [
+          migrateVariantKey(id),
+          color,
+        ]),
+      ),
     };
   } catch {
-    return freshState(widgets, initialActiveWidgetIds);
+    return freshState(widgets, initialActiveWidgetIds, initialPreset);
   }
 }
 
@@ -853,16 +939,20 @@ export interface ModuleGridProps {
   widgets: WidgetDefinition[];
   storageKey: string;
   initialActiveWidgetIds?: string[];
+  initialPreset?: ModuleGridPreset;
   toolbarTargetId?: string;
 }
 
-export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds, toolbarTargetId }: ModuleGridProps) {
-  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} toolbarTargetId={toolbarTargetId} />;
+export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds, initialPreset, toolbarTargetId }: ModuleGridProps) {
+  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} initialPreset={initialPreset} toolbarTargetId={toolbarTargetId} />;
 }
 
-function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolbarTargetId }: ModuleGridProps) {
+function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initialPreset, toolbarTargetId }: ModuleGridProps) {
+  const [, navigate] = useLocation();
   const [editing, setEditing] = useState(false);
-  const [state, setState] = useState<ModuleGridState>(() => loadState(storageKey, widgets, initialActiveWidgetIds));
+  const [state, setState] = useState<ModuleGridState>(() =>
+    loadState(storageKey, widgets, initialActiveWidgetIds, initialPreset),
+  );
   const [addPopoverOpen, setAddPopoverOpen] = useState(false);
   const [availablePopoverId, setAvailablePopoverId] = useState<string | null>(null);
   const [availableVisualizationId, setAvailableVisualizationId] = useState<string | undefined>();
@@ -1600,6 +1690,23 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
             const gridProps = {
               key: entry.key,
               onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => beginWidgetPointerInteraction(event, entry),
+              onClick: (event: React.MouseEvent<HTMLDivElement>) => {
+                if (editing || dragId || resizeId) return;
+                const destination = entry.widget.href
+                  ?? (entry.widget.id.includes(".") ? `/body/detail/${encodeURIComponent(entry.widget.id)}` : null);
+                if (!destination) return;
+                if ((event.target as HTMLElement).closest("button,a,input,textarea,select,[role='button'],[data-no-detail]")) return;
+                navigate(destination);
+              },
+              onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+                if (editing || event.target !== event.currentTarget) return;
+                const destination = entry.widget.href
+                  ?? (entry.widget.id.includes(".") ? `/body/detail/${encodeURIComponent(entry.widget.id)}` : null);
+                if (!destination) return;
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                navigate(destination);
+              },
               onClickCapture: (event: React.MouseEvent<HTMLDivElement>) => {
                 if (!editing) return;
                 if ((event.target as HTMLElement).closest(".dojo-widget-action,.dojo-resize-handle")) return;
@@ -1617,6 +1724,11 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, toolb
               "data-widget-h": size.h,
               "data-dragging": dragId === entry.key ? "true" : undefined,
               "data-resizing": resizeId === entry.key ? "true" : undefined,
+              role: !editing && (entry.widget.href || entry.widget.id.includes(".")) ? "link" : undefined,
+              tabIndex: !editing && (entry.widget.href || entry.widget.id.includes(".")) ? 0 : -1,
+              "aria-label": !editing && (entry.widget.href || entry.widget.id.includes("."))
+                ? `Open ${entry.label}`
+                : undefined,
               className: cn(editing && "is-editing select-none"),
             };
             const controls = editing ? (
