@@ -14,7 +14,7 @@ export function RestPage() {
         </div>
         <div id="body-rest-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[productionLastSleepWidget, productionRestPlanWidget, productionSleepScheduleWidget, ...restCanonicalMetricWidgets, ...restObservationWidgets]} initialPreset={restFirstRunPreset} storageKey="moduleGrid_rest_v107_all_umbrellas" toolbarTargetId="body-rest-actions" />
+      <ModuleGrid widgets={[productionLastSleepWidget, productionRestPlanWidget, productionSleepScheduleWidget, ...restCanonicalMetricWidgets, ...restObservationWidgets]} initialPreset={restFirstRunPreset} storageKey="moduleGrid_rest_v108_curated_default" toolbarTargetId="body-rest-actions" />
     </div>
   );
 }

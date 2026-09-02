@@ -22,6 +22,7 @@ import { ThemeProvider } from "@/contexts/theme-context";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { SampleWorkspaceToggle } from "@/components/sample-workspace-toggle";
 
 import Home from "@/pages/home";
 import AuthPage from "@/pages/auth";
@@ -50,6 +51,7 @@ import FlashcardEditPage from "@/pages/flashcard-edit";
 import FlashcardsListPage from "@/pages/flashcards-list";
 import MaterialNewPage from "@/pages/material-new";
 import ProfileView from "@/pages/social/profile-view";
+import Social from "@/pages/social";
 import NoteEditPage from "@/pages/note-edit";
 import ChapterNewPage from "@/pages/chapter-new";
 import ThemeNewPage from "@/pages/theme-new";
@@ -144,6 +146,7 @@ function AuthenticatedRouter() {
       <Route path="/social-purpose" component={ProtectedSocialPurpose} />
       <Route path="/ultimate-test" component={ProtectedUltimateTest} />
       <Route path="/profile" component={ProtectedProfile} />
+      <Route path="/social" component={() => <ProtectedRoute component={Social} />} />
       <Route path="/social/:username" component={ProtectedProfileView} />
       <Route component={NotFound} />
     </Switch>
@@ -317,6 +320,7 @@ function MainLayout() {
       onOpenChange={setMainSidebarOpen}
     >
       <div className="fixed inset-0 flex overflow-hidden bg-background">
+        <SampleWorkspaceToggle />
         {isMobile ? (
           <>
             <Sheet open={mainSidebarOpen} onOpenChange={setMainSidebarOpen}>

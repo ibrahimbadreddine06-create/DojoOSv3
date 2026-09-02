@@ -26,6 +26,8 @@ export default function HomePage() {
           initialPreset={dashboardFirstRunPreset}
           storageKey="moduleGrid_dashboard_v1_e_language"
           toolbarTargetId="dashboard-grid-actions"
+          singleVariantPerWidget
+          desktopMinColumns={4}
         />
       </div>
     </div>

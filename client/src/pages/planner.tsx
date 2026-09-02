@@ -47,6 +47,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import type { TimeBlock, DayPreset, DailyMetric } from "@shared/schema";
+import {
+  calculatePlannerCompletion,
+  calculatePlannerNodeCompletion,
+  type PlannerBlockNode,
+} from "@/lib/planner-domain";
 
 const ALL_HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 100;
@@ -113,151 +118,19 @@ function sortChronologically(items: any[]): any[] {
   });
 }
 
-const DEFAULT_IMPORTANCE = 3;
-
-// Calculate the internal weight of a sub-block based on its tasks
-function getSubBlockInternalWeight(subBlock: any): {
-  total: number;
-  completed: number;
-} {
-  const tasks = subBlock.tasks || [];
-  if (tasks.length === 0) {
-    // If no tasks, the sub-block itself counts as 1 unit
-    return {
-      total: DEFAULT_IMPORTANCE,
-      completed: subBlock.completed ? DEFAULT_IMPORTANCE : 0,
-    };
-  }
-
-  const total = tasks.reduce(
-    (sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE),
-    0,
-  );
-  const completed = tasks
-    .filter((t: any) => t.completed)
-    .reduce(
-      (sum: number, t: any) => sum + (t.importance || DEFAULT_IMPORTANCE),
-      0,
-    );
-
-  return { total, completed };
-}
-
-// Calculate weighted completion considering hierarchical sub-block weights
 function calculateWeightedCompletion(
   tasks: any[] | null | undefined,
   subBlocks?: any[] | null | undefined,
 ): number {
-  if (!tasks) tasks = [];
-  if (!subBlocks) subBlocks = [];
-
-  let totalWeight = 0;
-  let completedWeight = 0;
-
-  // Add direct tasks (each weighted by their importance)
-  tasks.forEach((task) => {
-    const importance = task.importance || DEFAULT_IMPORTANCE;
-    totalWeight += importance;
-    if (task.completed) {
-      completedWeight += importance;
-    }
-  });
-
-  // Add sub-blocks with hierarchical weighting
-  // Sub-block weight = (sum of internal task importances) * (subBlock importance / DEFAULT_IMPORTANCE)
-  subBlocks.forEach((subBlock) => {
-    const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
-    const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
-
-    const internal = getSubBlockInternalWeight(subBlock);
-    const subBlockWeight = internal.total * importanceMultiplier;
-
-    totalWeight += subBlockWeight;
-
-    // Calculate completion proportionally
-    if (subBlock.completed) {
-      // If manually marked complete, count full weight
-      completedWeight += subBlockWeight;
-    } else if (internal.total > 0) {
-      // Otherwise, calculate based on internal task completion
-      const completionRatio = internal.completed / internal.total;
-      completedWeight += subBlockWeight * completionRatio;
-    }
-  });
-
-  return totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
+  const children = (subBlocks ?? []).map((block) => ({
+    ...block,
+    children: [],
+  })) as PlannerBlockNode[];
+  return calculatePlannerNodeCompletion(tasks ?? [], children).percent;
 }
 
-// Calculate overall day completion using weighted logic across all time blocks
 function calculateDayCompletion(allBlocks: any[]): number {
-  if (!allBlocks || allBlocks.length === 0) return 0;
-
-  const parentBlocks = allBlocks.filter((b) => !b.parentId);
-  if (parentBlocks.length === 0) return 0;
-
-  let totalDayWeight = 0;
-  let completedDayWeight = 0;
-
-  parentBlocks.forEach((block) => {
-    const blockImportance = block.importance || DEFAULT_IMPORTANCE;
-    const subBlocks = allBlocks.filter((b) => b.parentId === block.id);
-
-    // Calculate this block's internal weight (tasks + sub-blocks)
-    let blockInternalWeight = 0;
-    let blockCompletedWeight = 0;
-
-    // Add direct tasks
-    const tasks = block.tasks || [];
-    tasks.forEach((task: any) => {
-      const taskImportance = task.importance || DEFAULT_IMPORTANCE;
-      blockInternalWeight += taskImportance;
-      if (task.completed) {
-        blockCompletedWeight += taskImportance;
-      }
-    });
-
-    // Add sub-blocks with their hierarchical weights
-    subBlocks.forEach((subBlock) => {
-      const subBlockImportance = subBlock.importance || DEFAULT_IMPORTANCE;
-      const importanceMultiplier = subBlockImportance / DEFAULT_IMPORTANCE;
-      const internal = getSubBlockInternalWeight(subBlock);
-      const subBlockWeight = internal.total * importanceMultiplier;
-
-      blockInternalWeight += subBlockWeight;
-
-      if (subBlock.completed) {
-        blockCompletedWeight += subBlockWeight;
-      } else if (internal.total > 0) {
-        const completionRatio = internal.completed / internal.total;
-        blockCompletedWeight += subBlockWeight * completionRatio;
-      }
-    });
-
-    // If block has no content, use block importance as base weight
-    if (blockInternalWeight === 0) {
-      blockInternalWeight = blockImportance;
-      if (block.completed) {
-        blockCompletedWeight = blockImportance;
-      }
-    }
-
-    // Apply block's importance as a multiplier to scale its contribution to the day
-    const blockMultiplier = blockImportance / DEFAULT_IMPORTANCE;
-    const finalBlockWeight = blockInternalWeight * blockMultiplier;
-
-    totalDayWeight += finalBlockWeight;
-
-    if (block.completed) {
-      // If block is manually marked complete, count full weight
-      completedDayWeight += finalBlockWeight;
-    } else if (blockInternalWeight > 0) {
-      // Otherwise use internal completion ratio
-      const blockCompletionRatio = blockCompletedWeight / blockInternalWeight;
-      completedDayWeight += finalBlockWeight * blockCompletionRatio;
-    }
-  });
-
-  return totalDayWeight > 0 ? (completedDayWeight / totalDayWeight) * 100 : 0;
+  return calculatePlannerCompletion(allBlocks ?? []).percent;
 }
 
 // Merge tasks and sub-blocks into one unified ordered list
@@ -1552,7 +1425,7 @@ export default function Planner() {
 
   return (
     <div
-      className="container mx-auto p-4 md:p-6 max-w-7xl"
+      className="mx-auto min-h-screen max-w-[1600px] p-4 pb-24 sm:p-6 md:p-8 [&_.shadcn-card]:rounded-[22px] [&_.shadcn-card]:border-[#e4e7eb] [&_.shadcn-card]:shadow-none"
       onPointerMove={dragState ? handleDragMove : undefined}
       onPointerUp={dragState ? handleDragEnd : undefined}
       onPointerLeave={dragState ? handleDragEnd : undefined}
@@ -1594,11 +1467,18 @@ export default function Planner() {
             </div>
           </div>
         ) : (
-          <h1 className="text-2xl font-bold">Daily Planner</h1>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Schedule
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-[#18202a]">
+              Daily Planner
+            </h1>
+          </div>
         )}
 
         {!isPresetMode && (
-          <Card className="flex-shrink-0">
+          <Card className="order-3 flex-shrink-0 overflow-visible bg-white">
             <CardHeader className="py-3 px-4">
               <div className="flex items-center justify-between gap-4">
                 <CardTitle className="text-sm font-medium">
@@ -1630,7 +1510,7 @@ export default function Planner() {
                   color: "hsl(var(--primary))",
                 }]}
                 kind="area"
-                height={360}
+                height={220}
                 leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
                 tooltipLabelFormatter={(_, payload) => payload?.[0]?.payload?.fullDate ?? ""}
               />
@@ -1639,7 +1519,7 @@ export default function Planner() {
         )}
 
         <div
-          className={`grid gap-4 auto-rows-max lg:auto-rows-auto ${isPresetMode ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-4"}`}
+          className={`order-2 grid gap-4 auto-rows-max lg:auto-rows-auto ${isPresetMode ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-4"}`}
         >
           <Card
             className={`order-1 lg:order-none flex flex-col ${isPresetMode ? "" : "lg:col-span-3 lg:h-[calc(100vh-[12rem])]"}`}

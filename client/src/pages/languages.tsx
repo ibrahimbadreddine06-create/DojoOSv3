@@ -1,312 +1,105 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Languages as LanguagesIcon, Trash2, Archive, MoreVertical } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TodaySessions } from "@/components/today-sessions";
-import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
-import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-chart";
+import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
+import { Languages as LanguagesIcon } from "lucide-react";
+import { AddThemeDialog } from "@/components/dialogs/add-theme-dialog";
+import { LearningModuleDashboard } from "@/components/learning/learning-module-dashboard";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
-interface MetricData {
-  topicId: string;
-  topicName: string;
-  date: string;
-  completion: string;
-}
-
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(210, 70%, 50%)",
-  "hsl(280, 60%, 55%)",
-  "hsl(30, 80%, 50%)",
-];
+const SERIES_COLORS = ["#0e7490", "#0891b2", "#06b6d4", "#22d3ee", "#155e75", "#164e63"];
 
 export default function Languages() {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const { data: languages, isLoading } = useQuery<any[]>({
+  const { data: languages = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/knowledge-topics", "language"],
   });
-
-  const { data: metricsData } = useQuery<any[]>({
+  const { data: metricsData = [] } = useQuery<any[]>({
     queryKey: ["/api/knowledge-metrics-all", "language"],
   });
-
-  const latestMetrics = useMemo(() => {
-    if (!metricsData) return {};
-    const latest: Record<string, { completion: number; importance: number }> = {};
-    for (const m of metricsData) {
-      if (!latest[m.topicId] || m.date > (metricsData.find(x => x.topicId === m.topicId && latest[m.topicId])?.date || '')) {
-        latest[m.topicId] = { completion: parseFloat(m.completion), importance: m.importance || 0 };
-      }
-    }
-    return latest;
-  }, [metricsData]);
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/ api / knowledge - topics / ${id} `);
-    },
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/knowledge-topics", "language"] });
-      const previous = queryClient.getQueryData(["/api/knowledge-topics", "language"]);
-      queryClient.setQueryData(["/api/knowledge-topics", "language"], (old: any[]) =>
-        old.filter((lang) => lang.id !== id)
-      );
-      return { previous };
-    },
+  const deleteLanguage = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/knowledge-topics/${id}`),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["/api/knowledge-metrics-all", "language"] });
-      toast({ title: "Language deleted" });
-    },
-    onError: (err, id, context: any) => {
-      if (context?.previous) {
-        queryClient.setQueryData(["/api/knowledge-topics", "language"], context.previous);
-      }
-      toast({ title: "Failed to delete language", variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-topics", "language"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-metrics-all", "language"] });
     },
   });
 
-  const { chartData, chartConfig } = useMemo(() => {
-    if (!languages) {
-      return { chartData: [], chartConfig: {} };
-    }
-
-    // Create a set of currently existing language names
-    const existingLanguageNames = new Set(languages.map(l => l.name));
-    const languageNames = Array.from(existingLanguageNames).sort();
-
-    const dateMap = new Map<string, Record<string, number>>();
-
-    // Always initialize with at least the last 14 days so the Brush scrollbar (arrows) can render
-    const today = new Date();
-    for (let i = 14; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      dateMap.set(dateStr, {});
-    }
-
-    // Add all metrics data if available
-    if (metricsData && metricsData.length > 0) {
-      for (const m of metricsData) {
-        if (!existingLanguageNames.has(m.topicName)) continue;
-        const completionVal = parseFloat(m.completion);
-        if (isNaN(completionVal)) continue;
-        if (!dateMap.has(m.date)) {
-          dateMap.set(m.date, {});
-        }
-        dateMap.get(m.date)![m.topicName] = completionVal;
+  const latest = useMemo(() => {
+    const values: Record<string, { value: number; date: string }> = {};
+    for (const metric of metricsData) {
+      if (!values[metric.topicId] || metric.date > values[metric.topicId].date) {
+        values[metric.topicId] = { value: Number(metric.completion) || 0, date: metric.date };
       }
     }
+    return values;
+  }, [metricsData]);
 
-    const sortedDates = Array.from(dateMap.keys()).sort();
-
-    // Build continuous data with all languages on each date (fill gaps with previous value or 0)
-    const finalLanguageNames = languageNames;
-    const data = sortedDates.map((date, idx) => {
-      const dayData: Record<string, string | number> = {
+  const { history, series } = useMemo(() => {
+    const names = new Set(languages.map((language) => language.name));
+    const dates = new Map<string, Record<string, number>>();
+    for (const metric of metricsData) {
+      if (!names.has(metric.topicName)) continue;
+      if (!dates.has(metric.date)) dates.set(metric.date, {});
+      dates.get(metric.date)![metric.topicName] = Number(metric.completion) || 0;
+    }
+    return {
+      history: Array.from(dates.keys()).sort().map((date) => ({
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
-      };
+        ...dates.get(date),
+      })),
+      series: languages.map((language, index) => ({
+        key: language.name,
+        label: language.name,
+        color: SERIES_COLORS[index % SERIES_COLORS.length],
+      })),
+    };
+  }, [languages, metricsData]);
 
-      for (const langName of finalLanguageNames) {
-        // Get value for this date, or use previous value, or default to 0
-        if (dateMap.get(date)?.[langName] !== undefined) {
-          dayData[langName] = dateMap.get(date)![langName];
-        } else {
-          // Find last known value
-          let lastValue = 0;
-          for (let i = idx - 1; i >= 0; i--) {
-            if (dateMap.get(sortedDates[i])?.[langName] !== undefined) {
-              lastValue = dateMap.get(sortedDates[i])![langName];
-              break;
-            }
-          }
-          dayData[langName] = lastValue;
-        }
-      }
-      return dayData;
-    });
-
-    const config: Record<string, { label: string; color: string }> = {};
-    let colorIndex = 0;
-    for (const name of finalLanguageNames) {
-      config[name] = {
-        label: name,
-        color: CHART_COLORS[colorIndex % CHART_COLORS.length],
-      };
-      colorIndex++;
-    }
-
-    return { chartData: data, chartConfig: config };
-  }, [metricsData, languages]);
+  const config = {
+    kind: "languages" as const,
+    label: "Languages",
+    href: "/languages",
+    icon: LanguagesIcon,
+    accent: "#0891b2",
+    gridColumns: 3 as const,
+    historyDefaultSize: { w: 3, h: 2 },
+    plannerDefaultSize: { w: 3, h: 1 },
+    entityDefaultSize: { w: 1, h: 1 },
+    entities: languages.map((language) => ({
+        id: language.id,
+        name: language.name,
+        href: `/languages/${language.id}`,
+        description: language.description,
+        completion: latest[language.id]?.value ?? 0,
+        readiness: language.readiness ?? 0,
+        itemCount: language.flashcardsCount ?? 0,
+        itemLabel: "Flashcards",
+        secondaryValue: `${Math.round(language.readiness ?? 0)}%`,
+        secondaryLabel: "Ready",
+        onDelete: () => deleteLanguage.mutate(language.id),
+      })),
+    history,
+    historySeries: series,
+    historyLabel: "Language progress",
+  };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight" data-testid="text-languages-title">
-              Languages
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Track language learning progress and fluency
-            </p>
-          </div>
-          <AddThemeDialog type="language" />
+    <LearningModuleDashboard
+      title="Languages"
+      description="Track fluency, review readiness and every language learning path."
+      config={config}
+      actions={<AddThemeDialog type="language" />}
+      isLoading={isLoading}
+      storageVersion={4}
+      empty={
+        <div className="rounded-[22px] border border-dashed p-12 text-center">
+          <LanguagesIcon className="mx-auto size-10 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-semibold">No languages yet</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Add a language to begin.</p>
+          <div className="mt-5"><AddThemeDialog type="language" /></div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Overall Metrics</CardTitle>
-            <CardDescription>Completion progress over time for each language</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollableHistoryChart
-              data={chartData}
-              xKey="date"
-              series={Object.keys(chartConfig).map((key) => ({
-                key,
-                label: chartConfig[key].label,
-                color: chartConfig[key].color,
-              }))}
-              height={360}
-              leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
-            />
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="languages">
-          <TabsList>
-            <TabsTrigger value="languages" data-testid="tab-languages">
-              Languages
-            </TabsTrigger>
-            <TabsTrigger value="linked-blocks" data-testid="tab-linked-blocks">
-              Linked Time Blocks
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="languages" className="space-y-4 mt-6">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
-                ))}
-              </div>
-            ) : languages && languages.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {languages.map((language) => (
-                  <Card
-                    key={language.id}
-                    className="hover-elevate active-elevate-2"
-                    data-testid={`card-language-${language.id}`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1 cursor-pointer" onClick={() => navigate(`/languages/${language.id}`)}>
-                          <CardTitle className="text-lg">{language.name}</CardTitle>
-                          {language.description && (
-                            <CardDescription className="text-sm line-clamp-2">
-                              {language.description}
-                            </CardDescription>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                data-testid={`button-menu-${language.id}`}
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (confirm(`Delete "${language.name}"? This cannot be undone.`)) {
-                                    deleteMutation.mutate(language.id);
-                                  }
-                                }}
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                data-testid={`button-delete-${language.id}`}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <LanguagesIcon className="w-5 h-5 text-chart-4" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 cursor-pointer" onClick={() => navigate(`/languages/${language.id}`)}>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Completion (Weighted)</span>
-                          <span className="font-mono font-medium">
-                            {latestMetrics[language.id]?.completion || 0}%
-                          </span>
-                        </div>
-                        <Progress value={latestMetrics[language.id]?.completion || 0} className="h-2" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Readiness</span>
-                          <span className="font-mono font-medium">
-                            {language.readiness || 0}%
-                          </span>
-                        </div>
-                        <Progress value={language.readiness || 0} className="h-2" />
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <Badge variant="outline">
-                          {language.flashcardsCount || 0} flashcards
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <LanguagesIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">No languages yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Start tracking your language learning journey
-                </p>
-                <AddThemeDialog type="language" />
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="linked-blocks" className="space-y-4 mt-6">
-            <TodaySessions module="languages" />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+      }
+    />
   );
 }
-

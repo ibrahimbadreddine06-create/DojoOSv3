@@ -28,7 +28,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { UserSearchDialog } from "@/components/social/user-search-dialog";
 import { Link, useLocation } from "wouter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
@@ -74,6 +73,11 @@ const activeModules = [
     url: "/disciplines",
     icon: Award,
   },
+  {
+    title: "People",
+    url: "/social",
+    icon: Users,
+  },
 ];
 
 const lockedModules = [
@@ -106,11 +110,6 @@ const lockedModules = [
     title: "Work",
     url: "/work",
     icon: Briefcase,
-  },
-  {
-    title: "Social Purpose",
-    url: "/social",
-    icon: Users,
   },
   {
     title: "Ultimate Test",
@@ -236,7 +235,6 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
       </div>
 
       <div className="flex flex-col gap-2 p-2 mt-auto">
-        <UserSearchDialog />
         <div className="flex flex-col gap-0.5">
           <ProfileMenuItemSimple />
         </div>
@@ -341,9 +339,6 @@ export function AppSidebar({ isMobileSheet = false }: AppSidebarProps) {
 
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <div className="px-2 pb-2">
-              <UserSearchDialog />
-            </div>
             <SidebarMenu>
               <UserProfileSection />
             </SidebarMenu>

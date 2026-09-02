@@ -941,13 +941,24 @@ export interface ModuleGridProps {
   initialActiveWidgetIds?: string[];
   initialPreset?: ModuleGridPreset;
   toolbarTargetId?: string;
+  visibleWidgetIds?: string[];
+  /**
+   * Managed collections keep exactly one visible variant of every definition.
+   * New definitions appear automatically and cannot be removed into a drawer.
+   * Reorder, resize, accent and variant customization remain available.
+   */
+  mode?: "catalog" | "managed";
+  /** Keep at most one active variant per widget umbrella. */
+  singleVariantPerWidget?: boolean;
+  /** Minimum column count once the grid has desktop/tablet width. */
+  desktopMinColumns?: number;
 }
 
-export function ModuleGrid({ widgets, storageKey, initialActiveWidgetIds, initialPreset, toolbarTargetId }: ModuleGridProps) {
-  return <ModuleGridInstance key={storageKey} widgets={widgets} storageKey={storageKey} initialActiveWidgetIds={initialActiveWidgetIds} initialPreset={initialPreset} toolbarTargetId={toolbarTargetId} />;
+export function ModuleGrid(props: ModuleGridProps) {
+  return <ModuleGridInstance key={props.storageKey} {...props} />;
 }
 
-function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initialPreset, toolbarTargetId }: ModuleGridProps) {
+function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initialPreset, toolbarTargetId, mode = "catalog", visibleWidgetIds, singleVariantPerWidget = false, desktopMinColumns = 1 }: ModuleGridProps) {
   const [, navigate] = useLocation();
   const [editing, setEditing] = useState(false);
   const [state, setState] = useState<ModuleGridState>(() =>
@@ -997,6 +1008,51 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
   }, [state, storageKey]);
 
   useEffect(() => {
+    if (mode !== "managed") return;
+    setState((previous) => {
+      const widgetById = new Map(widgets.map((widget) => [widget.id, widget]));
+      const currentByWidgetId = new Map(
+        previous.activeIds.map((key) => [key.split("::")[0], key]),
+      );
+      const activeIds = widgets.map((widget) => (
+        currentByWidgetId.get(widget.id) ?? defaultWidgetKey(widget)
+      ));
+      const validIds = new Set(activeIds);
+      const sizes = { ...previous.sizes };
+      const visualizations = { ...previous.visualizations };
+      for (const key of activeIds) {
+        const [widgetId, savedVisualization] = key.split("::");
+        const widget = widgetById.get(widgetId);
+        if (!widget) continue;
+        const visualizationId = realVisualizationId(
+          widget,
+          savedVisualization ?? defaultVisualizationId(widget),
+        );
+        sizes[key] ??= defaultSize(widget, visualizationId);
+        visualizations[key] = visualizationId;
+      }
+      const placements = Object.fromEntries(
+        Object.entries(previous.placements ?? {}).filter(([key]) => validIds.has(key)),
+      );
+      if (
+        activeIds.length === previous.activeIds.length &&
+        activeIds.every((key, index) => key === previous.activeIds[index]) &&
+        Object.keys(placements).length === Object.keys(previous.placements ?? {}).length
+      ) {
+        return previous;
+      }
+      return {
+        ...previous,
+        activeIds,
+        sizes,
+        visualizations,
+        placements,
+        customWidgets: [],
+      };
+    });
+  }, [mode, widgets]);
+
+  useEffect(() => {
     if (!addPopoverOpen) return;
 
     const closeFloatingPanels = () => {
@@ -1029,7 +1085,10 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
     );
   }, [gridWidth]);
 
-  const effectiveColumns = clamp(state.gridColumns ?? 3, 1, maxColumns);
+  const responsiveMinimumColumns = gridWidth && gridWidth >= 760
+    ? Math.min(desktopMinColumns, maxColumns)
+    : 1;
+  const effectiveColumns = clamp(state.gridColumns ?? 3, responsiveMinimumColumns, maxColumns);
 
   const measuredGridWidth = gridWidth ?? 0;
   const gridGap = measuredGridWidth >= 1180 ? 18 : measuredGridWidth >= 760 ? 16 : 14;
@@ -1042,15 +1101,15 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
   const setGridColumns = useCallback((columns: number) => {
     setState((prev) => ({
       ...prev,
-      gridColumns: clamp(columns, 1, maxColumns),
+      gridColumns: clamp(columns, responsiveMinimumColumns, maxColumns),
       sizes: Object.fromEntries(
         Object.entries(prev.sizes).map(([id, size]) => [
           id,
-          { ...size, w: Math.min(size.w, clamp(columns, 1, maxColumns)) },
+          { ...size, w: Math.min(size.w, clamp(columns, responsiveMinimumColumns, maxColumns)) },
         ]),
       ),
     }));
-  }, [maxColumns]);
+  }, [maxColumns, responsiveMinimumColumns]);
 
   const updateCustomWidget = useCallback((id: string, patch: Partial<CustomWidget>) => {
     setState((prev) => ({
@@ -1125,6 +1184,10 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
   ), [state.customWidgets]);
 
   const allWidgets = useMemo(() => [...widgets, ...customDefinitions], [customDefinitions, widgets]);
+  const visibleWidgetIdSet = useMemo(
+    () => visibleWidgetIds ? new Set(visibleWidgetIds) : null,
+    [visibleWidgetIds],
+  );
 
   const activeWidgets = useMemo(() => {
     const byId = new Map(allWidgets.map((widget) => [widget.id, widget]));
@@ -1141,15 +1204,20 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
           label: widgetVariantLabel(widget, visualizationId),
         };
       })
-      .filter((entry): entry is ActiveWidget => Boolean(entry));
-  }, [allWidgets, customDefinitions, state.activeIds, state.visualizations]);
+      .filter((entry): entry is ActiveWidget => Boolean(entry))
+      .filter((entry) => !visibleWidgetIdSet || visibleWidgetIdSet.has(entry.widget.id));
+  }, [allWidgets, customDefinitions, state.activeIds, state.visualizations, visibleWidgetIdSet]);
+  const layoutActiveIds = useMemo(() => activeWidgets.map((entry) => entry.key), [activeWidgets]);
 
-  const hiddenWidgets = useMemo(
-    () => widgets.filter((widget) => visualizationOptions(widget).some((visualization) => (
+  const hiddenWidgets = useMemo(() => {
+    if (singleVariantPerWidget) {
+      const activeWidgetIds = new Set(state.activeIds.map((key) => key.split("::")[0]));
+      return widgets.filter((widget) => !activeWidgetIds.has(widget.id));
+    }
+    return widgets.filter((widget) => visualizationOptions(widget).some((visualization) => (
       !state.activeIds.includes(widgetVariantKey(widget.id, visualization.id))
-    ))),
-    [widgets, state.activeIds],
-  );
+    )));
+  }, [singleVariantPerWidget, widgets, state.activeIds]);
 
   const draggedWidget = useMemo(
     () => activeWidgets.find((entry) => entry.key === dragOverlay?.id) ?? null,
@@ -1179,7 +1247,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
   const placementsById = useMemo(() => {
     return new Map(
       buildPlacements(
-        state.activeIds,
+        layoutActiveIds,
         state.sizes,
         effectiveColumns,
         hardPlacement ?? undefined,
@@ -1187,7 +1255,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
       )
         .map((placement) => [placement.id, placement]),
     );
-  }, [effectiveColumns, hardPlacement, state.activeIds, state.placements, state.sizes]);
+  }, [effectiveColumns, hardPlacement, layoutActiveIds, state.placements, state.sizes]);
 
   useLayoutEffect(() => {
     const grid = gridRef.current;
@@ -1257,9 +1325,16 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
     const realVisualization = realVisualizationId(widget, visualizationId ?? defaultVisualizationId(widget));
     const variantKey = widgetVariantKey(id, realVisualization);
 
-    setState((prev) => ({
+    setState((prev) => {
+      const existingKey = singleVariantPerWidget
+        ? prev.activeIds.find((key) => key.split("::")[0] === id)
+        : undefined;
+      const activeIds = existingKey
+        ? prev.activeIds.map((key) => key === existingKey ? variantKey : key)
+        : prev.activeIds.includes(variantKey) ? prev.activeIds : [...prev.activeIds, variantKey];
+      return {
       ...prev,
-      activeIds: prev.activeIds.includes(variantKey) ? prev.activeIds : [...prev.activeIds, variantKey],
+      activeIds,
       sizes: {
         ...prev.sizes,
         [variantKey]: fitSizeToColumns(prev.sizes[variantKey] ?? defaultSize(widget, realVisualization), effectiveColumns),
@@ -1268,8 +1343,8 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
         ...prev.visualizations,
         [variantKey]: realVisualization,
       },
-    }));
-  }, [effectiveColumns, widgets]);
+    }});
+  }, [effectiveColumns, singleVariantPerWidget, widgets]);
 
   const removeWidget = useCallback((entry: ActiveWidget) => {
     setState((prev) => ({
@@ -1289,6 +1364,40 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
         [entry.key]: accentColor,
       },
     }));
+  }, []);
+
+  const setWidgetVisualization = useCallback((entry: ActiveWidget, visualizationId: string) => {
+    const nextVisualization = realVisualizationId(entry.widget, visualizationId);
+    const nextKey = widgetVariantKey(entry.widget.id, nextVisualization);
+    setState((previous) => {
+      const index = previous.activeIds.indexOf(entry.key);
+      if (index < 0 || nextKey === entry.key) return previous;
+      const activeIds = [...previous.activeIds];
+      activeIds[index] = nextKey;
+      const previousSize = previous.sizes[entry.key] ?? defaultSize(entry.widget, entry.visualizationId);
+      const placement = previous.placements?.[entry.key];
+      const accent = previous.accentColors?.[entry.key];
+      return {
+        ...previous,
+        activeIds,
+        sizes: {
+          ...previous.sizes,
+          [nextKey]: nearestAllowed(entry.widget, previousSize, nextVisualization),
+        },
+        visualizations: {
+          ...previous.visualizations,
+          [nextKey]: nextVisualization,
+        },
+        placements: {
+          ...(previous.placements ?? {}),
+          ...(placement ? { [nextKey]: placement } : {}),
+        },
+        accentColors: {
+          ...(previous.accentColors ?? {}),
+          ...(accent ? { [nextKey]: accent } : {}),
+        },
+      };
+    });
   }, []);
 
   const beginDrag = useCallback((
@@ -1414,7 +1523,10 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
         if (targetPlacement) {
           setState((prev) => {
             const settled = buildPlacements(
-              prev.activeIds,
+              prev.activeIds.filter((key) => {
+                const widgetId = key.split("::")[0];
+                return !visibleWidgetIdSet || visibleWidgetIdSet.has(widgetId);
+              }),
               prev.sizes,
               effectiveColumns,
               { id: drag.id, ...targetPlacement },
@@ -1550,7 +1662,10 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
       setResizeGuide(null);
       setState((prev) => {
         const settled = buildPlacements(
-          prev.activeIds,
+          prev.activeIds.filter((key) => {
+            const widgetId = key.split("::")[0];
+            return !visibleWidgetIdSet || visibleWidgetIdSet.has(widgetId);
+          }),
           prev.sizes,
           effectiveColumns,
           undefined,
@@ -1578,7 +1693,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
 
   const headerControls = (
     <div className={cn("dojo-header-controls", editing && "is-editing")}>
-      {editing && (
+      {editing && mode === "catalog" && (
         <Popover open={addPopoverOpen} onOpenChange={setAddPopoverOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl px-3 text-xs">
@@ -1733,19 +1848,89 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
             };
             const controls = editing ? (
               <>
-                <button
-                  type="button"
-                  className="dojo-widget-action dojo-remove-widget"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    removeWidget(entry);
-                  }}
-                  aria-label={`Remove ${entry.label}`}
-                >
-                  <Minus aria-hidden="true" />
-                </button>
+                {mode === "catalog" ? (
+                  <>
+                  <button
+                    type="button"
+                    className="dojo-widget-action dojo-remove-widget"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      removeWidget(entry);
+                    }}
+                    aria-label={`Remove ${entry.label}`}
+                  >
+                    <Minus aria-hidden="true" />
+                  </button>
+                  {singleVariantPerWidget && visualizationOptions(entry.widget).length > 1 ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="dojo-widget-action dojo-variant-widget"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          aria-label={`Change ${entry.widget.label} variant`}
+                        >
+                          <Settings2 aria-hidden="true" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-48 rounded-2xl p-2">
+                        <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">Variant</p>
+                        {visualizationOptions(entry.widget).map((visualization) => (
+                          <button
+                            key={visualization.id}
+                            type="button"
+                            className={cn("w-full rounded-xl px-2.5 py-2 text-left text-xs font-semibold hover:bg-muted", visualization.id === entry.visualizationId && "bg-muted")}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setWidgetVisualization(entry, visualization.id);
+                            }}
+                          >
+                            {visualization.label}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
+                  </>
+                ) : visualizationOptions(entry.widget).length > 1 ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="dojo-widget-action dojo-remove-widget"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        aria-label={`Change ${entry.label} variant`}
+                      >
+                        <Settings2 aria-hidden="true" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-48 rounded-2xl p-2">
+                      <p className="px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/55">
+                        Variant
+                      </p>
+                      {visualizationOptions(entry.widget).map((visualization) => (
+                        <button
+                          key={visualization.id}
+                          type="button"
+                          className={cn(
+                            "w-full rounded-xl px-2.5 py-2 text-left text-xs font-semibold hover:bg-muted",
+                            visualization.id === entry.visualizationId && "bg-muted",
+                          )}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setWidgetVisualization(entry, visualization.id);
+                          }}
+                        >
+                          {visualization.label}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                ) : null}
                 <WidgetColorPicker
                   label={entry.label}
                   value={state.accentColors?.[entry.key] ?? entry.widget.defaultAccentColor ?? "#2563eb"}
@@ -1821,7 +2006,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
         return renderWidgetShell(content, overlayProps);
       })()}
 
-      {editing && hiddenWidgets.length > 0 && (
+      {editing && mode === "catalog" && hiddenWidgets.length > 0 && (
         <div className="mt-6">
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground/45">
             Available widgets
@@ -1832,7 +2017,9 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
               const activeVisualizationIds = visualizationOptions(widget)
                 .map((visualization) => visualization.id)
                 .filter((visualizationId) => state.activeIds.includes(widgetVariantKey(widget.id, visualizationId)));
-              const availableCount = visualizationOptions(widget).length - activeVisualizationIds.length;
+              const availableCount = singleVariantPerWidget
+                ? 1
+                : visualizationOptions(widget).length - activeVisualizationIds.length;
               return (
                 <Popover
                   key={widget.id}
@@ -1854,7 +2041,7 @@ function ModuleGridInstance({ widgets, storageKey, initialActiveWidgetIds, initi
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-bold">{widget.label}</span>
                         <span className="block truncate text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                          {availableCount} widget{availableCount === 1 ? "" : "s"} available
+                          {singleVariantPerWidget ? "Available" : `${availableCount} widget${availableCount === 1 ? "" : "s"} available`}
                         </span>
                       </span>
                     </button>

@@ -26,7 +26,7 @@ export function ActivityPage() {
           ...activityCanonicalMetricWidgets,
         ]}
         initialPreset={activityFirstRunPreset}
-        storageKey="moduleGrid_activity_v107_all_umbrellas"
+        storageKey="moduleGrid_activity_v108_curated_default"
         toolbarTargetId="body-activity-actions"
       />
     </div>

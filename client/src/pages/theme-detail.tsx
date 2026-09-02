@@ -11,7 +11,7 @@ import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-c
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { KnowledgeTopic, LearnPlanItem, KnowledgeMetric, Flashcard } from "@shared/schema";
-import { TodaySessions } from "@/components/today-sessions";
+import { PlannerBridgeWidget } from "@/components/planner/planner-bridge-widget";
 
 interface ChapterWithChildren extends LearnPlanItem {
   children: ChapterWithChildren[];
@@ -113,15 +113,15 @@ function OverviewDashboard({
   }, [flashcards]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 [&_.shadcn-card]:rounded-[22px] [&_.shadcn-card]:border-[#e4e7eb] [&_.shadcn-card]:shadow-none">
       <div>
-        <h1 className="text-2xl font-bold mb-2" data-testid="text-theme-title">{theme.name}</h1>
+        <h1 className="mb-2 text-3xl font-semibold tracking-[-0.04em] text-[#18202a]" data-testid="text-theme-title">{theme.name}</h1>
         {theme.description && (
           <p className="text-muted-foreground">{theme.description}</p>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 items-stretch gap-[15px] lg:grid-cols-3">
         <div className="lg:col-span-2 flex flex-col">
           <Card className="p-6 flex-1 flex flex-col">
             <div className="flex items-center gap-2 mb-4">
@@ -141,7 +141,7 @@ function OverviewDashboard({
           </Card>
         </div>
 
-        <div className="lg:col-span-1 flex flex-col gap-3">
+        <div className="flex flex-col gap-[15px] lg:col-span-1">
           <Card className="p-4 flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-2">
               <BookOpen className="h-4 w-4 text-primary" />
@@ -174,7 +174,13 @@ function OverviewDashboard({
       </div>
 
       <div className="mt-2">
-        <TodaySessions module={isLanguage ? "languages" : "second_brain"} itemId={theme.id} />
+        <PlannerBridgeWidget
+          module={isLanguage ? "languages" : "second_brain"}
+          itemId={theme.id}
+          title="Linked sessions"
+          maxVisibleBlocks={6}
+          className="min-h-[280px] rounded-[22px] border border-border bg-white p-5"
+        />
       </div>
 
 

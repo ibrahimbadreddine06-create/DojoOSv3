@@ -16,7 +16,7 @@ export function NutritionPage() {
       <ModuleGrid
         widgets={[productionLogIntakeWidget, productionMealPlanWidget, productionCaloriesWidget, productionMacrosWidget, productionFiberWidget, productionMicronutrientsWidget, productionWaterWidget, productionRecentMealsWidget, productionSupplementsWidget, productionFastingWidget, ...nutritionObservationWidgets]}
         initialPreset={nutritionFirstRunPreset}
-        storageKey="moduleGrid_nutrition_v107_all_umbrellas"
+        storageKey="moduleGrid_nutrition_v108_curated_default"
         toolbarTargetId="body-nutrition-actions"
       />
     </div>

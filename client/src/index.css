@@ -747,6 +747,39 @@ html {
     stroke-width: 2.4;
   }
 
+  .dojo-variant-widget {
+    position: absolute;
+    top: calc(-0.5rem * var(--dojo-widget-scale, 1));
+    left: calc(1.7rem * var(--dojo-widget-scale, 1));
+    z-index: 70;
+    display: inline-flex;
+    height: 1.75rem;
+    width: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid hsl(var(--border) / 0.72);
+    border-radius: 999px;
+    background: hsl(var(--background) / 0.96);
+    color: hsl(var(--foreground) / 0.72);
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.12);
+    transform: scale(var(--dojo-widget-scale, 1));
+    transform-origin: top left;
+  }
+
+  .dojo-variant-widget:hover,
+  .dojo-variant-widget:focus-visible,
+  .dojo-variant-widget[data-state="open"] {
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    outline: none;
+  }
+
+  .dojo-variant-widget svg {
+    height: 0.9rem;
+    width: 0.9rem;
+    stroke-width: 2.2;
+  }
+
   .dojo-accent-control {
     position: absolute;
     top: calc(-0.5rem * var(--dojo-widget-scale, 1));

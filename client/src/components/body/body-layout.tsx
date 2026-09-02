@@ -1,8 +1,6 @@
 import { motion } from "framer-motion";
 import { Dumbbell, Moon, Sparkles, Utensils, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { isBodyPresentationMode, setBodyPresentationMode } from "@/lib/body-presentation-data";
-import { queryClient } from "@/lib/queryClient";
 
 interface BodyLayoutProps {
     children: React.ReactNode;
@@ -18,36 +16,14 @@ const navItems = [
 
 export function BodyLayout({ children }: BodyLayoutProps) {
     const [location] = useLocation();
-    const presentation = isBodyPresentationMode();
-
-    const togglePresentation = () => {
-        setBodyPresentationMode(!presentation);
-        queryClient.clear();
-        window.location.reload();
-    };
-
     const activeItem = navItems.slice().reverse().find(item =>
         item.id === "hub" ? location === "/body" : location.startsWith(item.path)
     );
 
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground overflow-x-hidden">
-            {import.meta.env.DEV && (
-                <button
-                    type="button"
-                    onClick={togglePresentation}
-                    className="fixed right-4 top-16 z-50 rounded-full border border-black/10 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-[#18202a] shadow-[0_8px_24px_rgba(24,32,42,.12)] backdrop-blur-md transition-transform hover:-translate-y-0.5"
-                >
-                    {presentation ? "Sample data · Exit" : "Preview sample data"}
-                </button>
-            )}
-            {presentation && (
-                <div className="fixed inset-x-0 top-0 z-50 flex h-7 items-center justify-center bg-[#18202a] text-[10px] font-semibold uppercase tracking-[.12em] text-white">
-                    Presentation Mode · Sample data · Nothing is saved
-                </div>
-            )}
             {/* Main content */}
-            <main className={presentation ? "flex-1 pt-7" : "flex-1"} style={{ paddingBottom: 'calc(3.5rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
+            <main className="flex-1" style={{ paddingBottom: 'calc(3.5rem + max(0.5rem, env(safe-area-inset-bottom)))' }}>
                 {children}
             </main>
 

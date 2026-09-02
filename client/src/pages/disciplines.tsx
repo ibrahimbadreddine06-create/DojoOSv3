@@ -1,276 +1,109 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Target, Trash2, MoreVertical, Zap } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TodaySessions } from "@/components/today-sessions";
-import { CreateDisciplineDialog } from "@/components/disciplines/create-discipline-dialog";
-import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-chart";
+import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Target } from "lucide-react";
 import type { Discipline } from "@shared/schema";
+import { CreateDisciplineDialog } from "@/components/disciplines/create-discipline-dialog";
+import { LearningModuleDashboard } from "@/components/learning/learning-module-dashboard";
+import type { LearningHistoryPoint } from "@/components/learning/learning-module-widgets";
+import { apiRequest } from "@/lib/queryClient";
 
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "#f59e0b", // Amber
-  "#10b981", // Emerald
-  "#8b5cf6", // Violet
-];
+const COLORS = ["#c2410c", "#ea580c", "#f97316", "#fb923c", "#9a3412", "#7c2d12"];
 
 export default function Disciplines() {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const { data: disciplines, isLoading } = useQuery<Discipline[]>({
+  const { data: disciplines = [], isLoading } = useQuery<Discipline[]>({
     queryKey: ["/api/disciplines"],
   });
-
   const { data: metricsData = [] } = useQuery<any[]>({
     queryKey: ["/api/discipline-metrics-all"],
   });
-
-  const latestMetrics = useMemo(() => {
-    if (!metricsData) return {};
-    const latest: Record<string, { completion: number; date: string }> = {};
-    for (const m of metricsData) {
-      if (!latest[m.topicId] || m.date > latest[m.topicId].date) {
-        latest[m.topicId] = { completion: parseFloat(m.completion) || 0, date: m.date };
-      }
-    }
-    return latest;
-  }, [metricsData]);
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/disciplines/${id}`);
-    },
+  const deleteDiscipline = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/disciplines/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/disciplines"] });
       queryClient.invalidateQueries({ queryKey: ["/api/discipline-metrics-all"] });
-      toast({ title: "Discipline deleted" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete discipline", variant: "destructive" });
     },
   });
 
-  const { chartData, chartConfig } = useMemo(() => {
-    if (!disciplines) {
-      return { chartData: [], chartConfig: {} };
-    }
-
-    const existingNames = new Set(disciplines.map(d => d.name));
-    const names = Array.from(existingNames).sort();
-    const dateMap = new Map<string, Record<string, number>>();
-
-    // Always initialize with at least the last 14 days so the Brush scrollbar (arrows) can render
-    const today = new Date();
-    for (let i = 14; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      dateMap.set(dateStr, {});
-    }
-
-    if (metricsData && metricsData.length > 0) {
-      for (const m of metricsData) {
-        if (!existingNames.has(m.topicName)) continue;
-        const completionVal = parseFloat(m.completion);
-        if (isNaN(completionVal)) continue;
-        if (!dateMap.has(m.date)) {
-          dateMap.set(m.date, {});
-        }
-        dateMap.get(m.date)![m.topicName] = completionVal;
+  const latest = useMemo(() => {
+    const values: Record<string, { value: number; date: string }> = {};
+    for (const metric of metricsData) {
+      if (!values[metric.topicId] || metric.date > values[metric.topicId].date) {
+        values[metric.topicId] = {
+          value: Number.parseFloat(metric.completion) || 0,
+          date: metric.date,
+        };
       }
     }
+    return values;
+  }, [metricsData]);
 
-    const sortedDates = Array.from(dateMap.keys()).sort();
-
-    const data = sortedDates.map((date, idx) => {
-      const dayData: Record<string, string | number> = {
+  const { history, series } = useMemo(() => {
+    const names = disciplines.map((discipline) => discipline.name);
+    const dates = new Map<string, Record<string, number>>();
+    for (const metric of metricsData) {
+      if (!names.includes(metric.topicName)) continue;
+      if (!dates.has(metric.date)) dates.set(metric.date, {});
+      dates.get(metric.date)![metric.topicName] = Number.parseFloat(metric.completion) || 0;
+    }
+    return {
+      history: Array.from(dates.keys()).sort().map((date) => ({
         date: format(parseISO(date), "MMM d"),
         fullDate: date,
-      };
-
-      for (const name of names) {
-        if (dateMap.get(date)?.[name] !== undefined) {
-          dayData[name] = dateMap.get(date)![name];
-        } else {
-          let lastValue = 0;
-          for (let i = idx - 1; i >= 0; i--) {
-            if (dateMap.get(sortedDates[i])?.[name] !== undefined) {
-              lastValue = dateMap.get(sortedDates[i])![name];
-              break;
-            }
-          }
-          dayData[name] = lastValue;
-        }
-      }
-      return dayData;
-    });
-
-    const config: Record<string, { label: string; color: string }> = {};
-    let colorIndex = 0;
-    for (const name of names) {
-      config[name] = {
+        ...dates.get(date),
+      })),
+      series: names.map((name, index) => ({
+        key: name,
         label: name,
-        color: CHART_COLORS[colorIndex % CHART_COLORS.length],
-      };
-      colorIndex++;
-    }
+        color: COLORS[index % COLORS.length],
+      })),
+    };
+  }, [disciplines, metricsData]);
 
-    return { chartData: data, chartConfig: config };
-  }, [metricsData, disciplines]);
+  const config = {
+    kind: "disciplines" as const,
+    label: "Disciplines",
+    href: "/disciplines",
+    icon: Target,
+    accent: "#ea7c16",
+    gridColumns: 3 as const,
+    historyDefaultSize: { w: 3, h: 2 },
+    plannerDefaultSize: { w: 3, h: 1 },
+    entityDefaultSize: { w: 1, h: 1 },
+    entities: disciplines.map((discipline) => ({
+      id: discipline.id,
+      name: discipline.name,
+      href: `/disciplines/${discipline.id}`,
+      description: discipline.description,
+      completion: latest[discipline.id]?.value ?? 0,
+      itemCount: discipline.level ?? 1,
+      itemLabel: "Level",
+      secondaryValue: `${discipline.currentXp ?? 0}/${discipline.maxXp ?? 100}`,
+      secondaryLabel: "XP",
+      onDelete: () => deleteDiscipline.mutate(discipline.id),
+    })),
+    history: history as LearningHistoryPoint[],
+    historySeries: series,
+    historyLabel: "Discipline history",
+  };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-              Disciplines
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Master your skills and track your growth
-            </p>
-          </div>
-          <CreateDisciplineDialog />
+    <LearningModuleDashboard
+      title="Disciplines"
+      description="Skills, deliberate practice and the sessions that move each discipline forward."
+      config={config}
+      isLoading={isLoading}
+      actions={<CreateDisciplineDialog />}
+      empty={
+        <div className="rounded-[22px] border border-dashed p-12 text-center">
+          <Target className="mx-auto size-10 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-semibold">No disciplines tracked</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Create a discipline to start deliberate practice.</p>
+          <div className="mt-5"><CreateDisciplineDialog /></div>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Mastery Progress</CardTitle>
-            <CardDescription>Progression across your disciplines</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollableHistoryChart
-              data={chartData}
-              xKey="date"
-              series={Object.keys(chartConfig).map((key) => ({
-                key,
-                label: chartConfig[key].label,
-                color: chartConfig[key].color,
-              }))}
-              height={360}
-              leftAxis={{ domain: [0, 100], formatter: (value) => `${Math.round(value)}%` }}
-            />
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="list">
-          <TabsList>
-            <TabsTrigger value="list">All Disciplines</TabsTrigger>
-            <TabsTrigger value="linked-blocks">Linked Sessions</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="list" className="space-y-4 mt-6">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
-                ))}
-              </div>
-            ) : disciplines && disciplines.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {disciplines.map((discipline) => (
-                  <Card
-                    key={discipline.id}
-                    className="hover-elevate active-elevate-2"
-                    data-testid={`card-discipline-${discipline.id}`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1 cursor-pointer" onClick={() => navigate(`/disciplines/${discipline.id}`)}>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            {discipline.name}
-                            <Badge variant="secondary" className="font-mono">
-                              Lvl {discipline.level || 1}
-                            </Badge>
-                          </CardTitle>
-                          {discipline.description && (
-                            <CardDescription className="text-sm line-clamp-2 italic">
-                              {discipline.description}
-                            </CardDescription>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                data-testid={`button-menu-${discipline.id}`}
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  if (confirm(`Delete "${discipline.name}"? This cannot be undone.`)) {
-                                    deleteMutation.mutate(discipline.id);
-                                  }
-                                }}
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                data-testid={`button-delete-${discipline.id}`}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Zap className="w-5 h-5 text-amber-500 fill-amber-500/20" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 cursor-pointer" onClick={() => navigate(`/disciplines/${discipline.id}`)}>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Completion (Weighted)</span>
-                          <span className="font-mono font-medium" data-testid={`text-completion-${discipline.id}`}>
-                            {latestMetrics[discipline.id]?.completion || 0}%
-                          </span>
-                        </div>
-                        <Progress value={latestMetrics[discipline.id]?.completion || 0} className="h-2" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 border-2 border-dashed rounded-xl bg-muted/10">
-                <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50 opacity-50" />
-                <h3 className="text-xl font-semibold mb-2">No disciplines tracked</h3>
-                <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Disciplines represent skills, habits, or areas of focus you want to master through deliberate practice.
-                </p>
-                <CreateDisciplineDialog />
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="linked-blocks" className="space-y-4 mt-6">
-            <TodaySessions module="disciplines" />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+      }
+      storageVersion={4}
+    />
   );
 }
-

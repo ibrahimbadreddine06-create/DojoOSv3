@@ -54,6 +54,9 @@ interface AddTimeBlockDialogProps {
   onOpenChange?: (open: boolean) => void;
   defaultStartTime?: string;
   defaultEndTime?: string;
+  defaultLinkedModule?: string;
+  defaultLinkedItemId?: string;
+  defaultLinkedSubItemId?: string;
   parentId?: string;
   /** For preset mode - if provided, calls this instead of API */
   onPresetSubmit?: (block: {
@@ -75,6 +78,9 @@ export function AddTimeBlockDialog({
   onOpenChange: controlledOnOpenChange,
   defaultStartTime = "09:00",
   defaultEndTime = "10:00",
+  defaultLinkedModule,
+  defaultLinkedItemId,
+  defaultLinkedSubItemId,
   parentId,
   onPresetSubmit,
   existingBlocks = []
@@ -96,9 +102,9 @@ export function AddTimeBlockDialog({
       endTime: defaultEndTime,
       title: "",
       completed: false,
-      linkedModule: undefined,
-      linkedItemId: undefined,
-      linkedSubItemId: undefined,
+      linkedModule: defaultLinkedModule,
+      linkedItemId: defaultLinkedItemId,
+      linkedSubItemId: defaultLinkedSubItemId,
       importance: 3,
     },
   });
@@ -139,26 +145,35 @@ export function AddTimeBlockDialog({
         endTime: defaultEndTime,
         title: "",
         completed: false,
-        linkedModule: undefined,
-        linkedItemId: undefined,
-        linkedSubItemId: undefined,
+        linkedModule: defaultLinkedModule,
+        linkedItemId: defaultLinkedItemId,
+        linkedSubItemId: defaultLinkedSubItemId,
         importance: 3,
       });
     }
-  }, [date, open, defaultStartTime, defaultEndTime, form]);
+  }, [
+    date,
+    open,
+    defaultStartTime,
+    defaultEndTime,
+    defaultLinkedModule,
+    defaultLinkedItemId,
+    defaultLinkedSubItemId,
+    form,
+  ]);
 
   useEffect(() => {
-    if (selectedModule) {
+    if (selectedModule && selectedModule !== defaultLinkedModule) {
       form.setValue("linkedItemId", undefined);
       form.setValue("linkedSubItemId", undefined);
     }
-  }, [selectedModule, form]);
+  }, [selectedModule, defaultLinkedModule, form]);
 
   useEffect(() => {
-    if (selectedItemId) {
+    if (selectedItemId && selectedItemId !== defaultLinkedItemId) {
       form.setValue("linkedSubItemId", undefined);
     }
-  }, [selectedItemId, form]);
+  }, [selectedItemId, defaultLinkedItemId, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: FormData & { linkedSubItemId?: string }) => {
@@ -172,7 +187,9 @@ export function AddTimeBlockDialog({
       return await apiRequest("POST", "/api/time-blocks", payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-blocks", date] });
+      queryClient.invalidateQueries({
+        predicate: (query) => String(query.queryKey[0]).startsWith("/api/time-blocks"),
+      });
       toast({ title: "Time block created successfully" });
       setOpen(false);
       form.reset();
@@ -394,7 +411,7 @@ export function AddTimeBlockDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xs font-medium text-muted-foreground">
-                          {selectedModule === 'second-brain' ? 'Theme' :
+                          {selectedModule === 'second_brain' ? 'Theme' :
                             selectedModule === 'languages' ? 'Language' :
                               selectedModule === 'studies' ? 'Course' :
                                 selectedModule === 'body' ? 'Sub-Module' :
@@ -443,7 +460,7 @@ export function AddTimeBlockDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs font-medium text-muted-foreground">
-                        {selectedModule === 'second-brain' || selectedModule === 'languages' ? 'Chapter / Milestone' :
+                        {selectedModule === 'second_brain' || selectedModule === 'languages' ? 'Chapter / Milestone' :
                           selectedModule === 'studies' ? 'Lesson / Material' :
                             selectedModule === 'body' ? 'Exercise / Activity' :
                               selectedModule === 'goals' ? 'Sub-Goal' : 'Detail (Optional)'}

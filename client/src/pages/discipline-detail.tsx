@@ -11,7 +11,7 @@ import { ScrollableHistoryChart } from "@/components/charts/scrollable-history-c
 import { format, parseISO } from "date-fns";
 import { calculateReadinessWithDecay } from "@/lib/readiness";
 import type { Discipline, LearnPlanItem, Flashcard, DisciplineLog } from "@shared/schema";
-import { TodaySessions } from "@/components/today-sessions";
+import { PlannerBridgeWidget } from "@/components/planner/planner-bridge-widget";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
@@ -115,11 +115,11 @@ function OverviewDashboard({
     }, [flashcards]);
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6 [&_.shadcn-card]:rounded-[22px] [&_.shadcn-card]:border-[#e4e7eb] [&_.shadcn-card]:shadow-none">
             <div className="flex items-center justify-between">
                 <div>
                     <Badge variant="outline" className="mb-2 uppercase tracking-widest text-[10px] font-bold">Discipline Focus</Badge>
-                    <h1 className="text-3xl font-bold mb-1 flex items-center gap-3">
+                    <h1 className="mb-1 flex items-center gap-3 text-3xl font-semibold tracking-[-0.04em] text-[#18202a]">
                         {discipline.name}
                         <div className="flex items-center gap-1 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded text-sm border border-amber-500/20">
                             <Zap className="h-4 w-4 fill-amber-500" />
@@ -136,7 +136,7 @@ function OverviewDashboard({
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="grid grid-cols-1 items-stretch gap-[15px] lg:grid-cols-3">
                 <div className="lg:col-span-2 flex flex-col space-y-6">
                     <Card className="p-6 flex-1 flex flex-col">
                         <div className="flex items-center gap-2 mb-4">
@@ -181,7 +181,7 @@ function OverviewDashboard({
                     </Card>
                 </div>
 
-                <div className="lg:col-span-1 flex flex-col gap-3">
+                <div className="flex flex-col gap-[15px] lg:col-span-1">
                     <Card className="p-4 bg-primary/5 border-primary/20 flex-1 flex flex-col justify-center">
                         <div className="flex items-center gap-2 mb-2">
                             <BookOpen className="h-4 w-4 text-primary" />
@@ -218,7 +218,13 @@ function OverviewDashboard({
             </div>
 
             <div className="mt-2">
-                <TodaySessions module="disciplines" itemId={discipline.id} />
+                <PlannerBridgeWidget
+                  module="disciplines"
+                  itemId={discipline.id}
+                  title="Linked sessions"
+                  maxVisibleBlocks={6}
+                  className="min-h-[280px] rounded-[22px] border border-border bg-white p-5"
+                />
             </div>
 
 

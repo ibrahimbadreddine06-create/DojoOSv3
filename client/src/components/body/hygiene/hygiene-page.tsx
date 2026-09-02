@@ -13,7 +13,7 @@ export function HygienePage() {
         </div>
         <div id="body-hygiene-actions" className="flex shrink-0 justify-end" />
       </div>
-      <ModuleGrid widgets={[productionRoutinesWidget, productionRoutineConsistencyWidget, ...hygieneObservationWidgets]} initialPreset={hygieneFirstRunPreset} storageKey="moduleGrid_hygiene_v107_all_umbrellas" toolbarTargetId="body-hygiene-actions" />
+      <ModuleGrid widgets={[productionRoutinesWidget, productionRoutineConsistencyWidget, ...hygieneObservationWidgets]} initialPreset={hygieneFirstRunPreset} storageKey="moduleGrid_hygiene_v108_curated_default" toolbarTargetId="body-hygiene-actions" />
     </div>
   );
 }

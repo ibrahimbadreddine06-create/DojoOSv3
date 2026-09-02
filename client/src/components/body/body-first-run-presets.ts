@@ -2,7 +2,7 @@ import type { ModuleGridPreset } from "@/components/body/module-grid";
 
 export const hubFirstRunPreset: ModuleGridPreset = {
   gridColumns: 4,
-  includeAllWidgets: true,
+  includeAllWidgets: false,
   items: [
     { widgetId: "hub.today", visualizationId: "day-map", size: { w: 2, h: 1 }, accentColor: "#2563eb", placement: { row: 0, column: 0 } },
     { widgetId: "hub.data_coverage", visualizationId: "connection-field", size: { w: 1, h: 1 }, accentColor: "#0891b2", placement: { row: 0, column: 2 } },
@@ -15,7 +15,7 @@ export const hubFirstRunPreset: ModuleGridPreset = {
 
 export const activityFirstRunPreset: ModuleGridPreset = {
   gridColumns: 4,
-  includeAllWidgets: true,
+  includeAllWidgets: false,
   items: [
     { widgetId: "activity.activities", visualizationId: "day-flow", size: { w: 2, h: 1 }, accentColor: "#20a65a", placement: { row: 0, column: 0 } },
     { widgetId: "activity.steps", visualizationId: "recorded-pattern", size: { w: 1, h: 1 }, accentColor: "#2563eb", placement: { row: 0, column: 2 } },
@@ -28,7 +28,7 @@ export const activityFirstRunPreset: ModuleGridPreset = {
 
 export const nutritionFirstRunPreset: ModuleGridPreset = {
   gridColumns: 4,
-  includeAllWidgets: true,
+  includeAllWidgets: false,
   items: [
     { widgetId: "nutrition.log_intake", visualizationId: "day-rhythm", size: { w: 1, h: 1 }, accentColor: "#ea7c16", placement: { row: 0, column: 0 } },
     { widgetId: "nutrition.meal_plan", visualizationId: "plan-rail", size: { w: 2, h: 1 }, accentColor: "#2563eb", placement: { row: 0, column: 1 } },
@@ -42,7 +42,7 @@ export const nutritionFirstRunPreset: ModuleGridPreset = {
 
 export const restFirstRunPreset: ModuleGridPreset = {
   gridColumns: 4,
-  includeAllWidgets: true,
+  includeAllWidgets: false,
   items: [
     { widgetId: "rest.last_sleep", visualizationId: "duration-orb", size: { w: 2, h: 1 }, accentColor: "#7c3aed", placement: { row: 0, column: 0 } },
     { widgetId: "rest.rest_plan", visualizationId: "night-window", size: { w: 1, h: 1 }, accentColor: "#2563eb", placement: { row: 0, column: 2 } },
@@ -56,7 +56,7 @@ export const restFirstRunPreset: ModuleGridPreset = {
 
 export const hygieneFirstRunPreset: ModuleGridPreset = {
   gridColumns: 4,
-  includeAllWidgets: true,
+  includeAllWidgets: false,
   items: [
     { widgetId: "hygiene.routines", visualizationId: "progress-field", size: { w: 2, h: 1 }, accentColor: "#db2777", placement: { row: 0, column: 0 } },
     { widgetId: "hygiene.routine_consistency", visualizationId: "streak-landscape", size: { w: 1, h: 1 }, accentColor: "#7c3aed", placement: { row: 0, column: 2 } },

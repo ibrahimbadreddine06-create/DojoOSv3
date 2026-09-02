@@ -16,7 +16,7 @@ export function BodyHub() {
       <ModuleGrid
         widgets={[productionTodayWidget, productionBodyTimelineWidget, productionDataCoverageWidget, ...hubCanonicalMetricWidgets]}
         initialPreset={hubFirstRunPreset}
-        storageKey="moduleGrid_body_v107_all_umbrellas"
+        storageKey="moduleGrid_body_v108_curated_default"
         toolbarTargetId="body-hub-actions"
       />
     </div>

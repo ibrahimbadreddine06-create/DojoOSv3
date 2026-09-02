@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { bodyPresentationResponse } from "@/lib/body-presentation-data";
+import { sampleWorkspaceResponse } from "@/lib/sample-workspace-data";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -13,7 +13,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const presentation = await bodyPresentationResponse(method, url, data);
+  const presentation = await sampleWorkspaceResponse(method, url, data);
   if (presentation) {
     await throwIfResNotOk(presentation);
     return presentation;
@@ -36,7 +36,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey.join("/") as string;
-    const presentation = await bodyPresentationResponse("GET", url);
+    const presentation = await sampleWorkspaceResponse("GET", url);
     const res = presentation ?? await fetch(url, {
       credentials: "include",
     });
